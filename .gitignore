@@ -1,0 +1,38 @@
+# Codebuddy folder
+.codebuddy/
+
+# Skills directory - contains separate projects
+assistant_brain/skills/*
+
+# Logs directory - ignore all logs except current.md
+assistant_brain/logs/*
+!assistant_brain/logs/current.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
