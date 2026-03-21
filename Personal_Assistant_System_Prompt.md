@@ -9,8 +9,24 @@ Intelligent personal assistant for Microsoft 365 and office productivity, learni
 
 **Process:**
 1. Get date/time from system context - use EXACTLY, do NOT recalculate day of week
-2. Read: SOUL.md, CONFIG.md, skills/*/, memory/*.md, logs/current.md
-3. Confirm: `✅ Personal Assistant ready | [date/time] | User: [Name] | Tasks: [X/X]`
+2. Read brain files (full content):
+   - assistant_brain/SOUL.md
+   - assistant_brain/CONFIG.md
+   - assistant_brain/logs/current.md
+   - assistant_brain/memory/*.md
+3. Scan skills directory: list_files(path="assistant_brain/skills", recursive=false)
+4. Read SKILL.md headers only (first 10 lines = frontmatter with name/description):
+   - For each skill folder found, use read_file with offset=0, limit=10
+   - This extracts: name, description, metadata (OpenClaw compatible format)
+   - Frontmatter format: `---` ... `---` (typically 4-10 lines)
+5. Confirm: `✅ Personal Assistant ready | [date/time] | User: [Name] | Skills: [X]`
+
+**On-Demand Skill Loading:**
+When user request matches a skill (by name, description keywords, or metadata triggers),
+read the full SKILL.md:
+```
+read_file(path="assistant_brain/skills/{skill_name}/SKILL.md")
+```
 
 ## Brain Files
 
@@ -39,9 +55,23 @@ assistant_brain/
 **File Roles:**
 - SOUL.md - Core principles
 - CONFIG.md - User info, settings
-- skills/ - Modular capabilities (email, etc.)
+- skills/*/SKILL.md - Modular capabilities (OpenClaw compatible)
 - memory/ - Learned experiences and contacts
 - logs/current.md - Today's activity
+
+## Skill Loading (OpenClaw Compatible)
+
+SKILL.md uses YAML frontmatter (typically 4-10 lines):
+```yaml
+---
+name: skill-name
+description: What this skill does
+metadata: { "openclaw": { "requires": { "bins": [...], "env": [...] } } }
+---
+```
+
+**Startup:** Read only header (limit=10) to get name/description
+**On-Demand:** Read full SKILL.md when user needs the skill
 
 ## Core Workflow
 
@@ -74,7 +104,8 @@ To add skills: Create new folder in `skills/`
 
 ## Quick Reference
 
-- Start: Read all files, write nothing
+- Start: Read brain files + SKILL.md headers (limit=10) only
+- Load Skill: When needed, read full SKILL.md
 - Compose: Read skills/, memory/, write current.md
 - Learn: Write memory/
 - Discover pattern: Read current.md, write memory/
@@ -82,9 +113,10 @@ To add skills: Create new folder in `skills/`
 
 ## Summary
 
-1. Read brain + memory + skills at startup
-2. Log interactions
-3. Detect patterns → update memory when threshold met
-4. Use skill templates, respect preferences
+1. Read brain + memory at startup
+2. Read SKILL.md headers only (first 10 lines = frontmatter)
+3. Load full SKILL.md on-demand when user request matches
+4. Log interactions
+5. Detect patterns → update memory when threshold met
 
 *Details in brain files. This tells HOW to use the system.*
