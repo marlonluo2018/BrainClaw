@@ -65,7 +65,7 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 
 | Feature | Description |
 |---------|-------------|
-| **Task Management** | Detailed task tracking with Status, Priority, Category, Due Time, Contact, History |
+| **Task Management** | Detailed task tracking with Status, Priority, Category, Due Time, Contact, Keywords, History |
 | **Email Management** | Check, send, reply emails (via Microsoft Graph Skill) |
 | **Memory System** | Learns your preferences over time |
 | **Calendar** | Schedule management (with skills) |
@@ -73,10 +73,24 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 
 ### Task Queue Features
 
-- **Rich Task Cards**: Each task includes Status, Priority, Category, Due Time, Contact, History, Note
+- **Rich Task Cards**: Each task includes Status, Priority, Category, Due Time, Contact, Keywords, History, Note
 - **Auto-Detection**: Automatically determines Due Time and Priority from context
+- **Smart Keywords**: 2-3 unique identifiers (Request IDs, full names, specific codes) for easy source tracing
 - **History Tracking**: Cumulative record of all task updates with timestamp and source
 - **Smart Carry-Over**: End of Day preserves uncompleted tasks with all fields
+
+### Keywords System
+
+BrainClaw uses a smart keyword system to help you trace tasks back to their source:
+
+- **What**: 2-3 unique identifiers per task (Request IDs, full names, specific codes)
+- **Why**: Quickly find the original email/document that created the task
+- **How**: Avoid generic terms, use specific identifiers only
+
+**Examples:**
+- ✅ Good: `CRT282911, Ashish Sah, Platform Developer II` → finds exact email
+- ✅ Good: `Req 11695, Informatica PowerCenter` → unique request
+- ❌ Bad: `certification, approval, Salesforce` → finds hundreds of emails
 
 ## Project Structure
 

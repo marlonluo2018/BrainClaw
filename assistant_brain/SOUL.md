@@ -40,11 +40,30 @@ Personal assistant for office productivity. Learns preferences through memory fi
 - Due Time format: YYYY-MM-DD HH:MM
 - If unknown after analysis, use "TBD"
 - Record source in History (Email/User/Meeting/Other)
+- **Add Keywords field**: Extract 2-3 UNIQUE identifiers that distinguish this task from others
 
 **Priority Auto-Detection:**
 - High: Urgent keywords, executive sender, deadline within 2 days
 - Medium: Normal work items, deadline within 1 week
 - Low: FYI items, no strict deadline
+
+**Keywords Guidelines - CRITICAL:**
+- **Use SPECIFIC identifiers only**: Request IDs, unique names, specific project codes, exact URLs
+- **Avoid generic terms**: "certification", "approval", "email", "project" (too common, useless for search)
+- **Priority order**:
+  1. Request/Ticket IDs (e.g., CRT282911, Req 11695, Brief ID 5021519)
+  2. Full names (e.g., "Ken Nakata AWS CCP" not just "AWS")
+  3. Unique system identifiers (e.g., ibm.tbs.aon.com, rol.redhat.com)
+  4. Specific project/course codes (e.g., DO280, Q1 achievements)
+- **Format**: 2-3 terms max, space-separated phrases OK
+- **Test**: Can you find ONLY this task's source email with these keywords? If not, refine!
+
+**Examples:**
+- ✅ Good: "CRT282911, Ashish Sah, Platform Developer II"
+- ✅ Good: "Req 11695, Informatica PowerCenter, LearnQuest"
+- ✅ Good: "Brief ID 5021519, Citi double ILC claim"
+- ❌ Bad: "certification, Salesforce, approval" (too generic)
+- ❌ Bad: "AWS, CCP, certification, voucher" (too many generic terms)
 
 ### When Encountering Errors
 - Explain what went wrong in simple terms
