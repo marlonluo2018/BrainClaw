@@ -20,5 +20,10 @@
 - Standard: 3-5 business days
 - Urgent: 1-2 business days
 
+## Contact Management
+- **DO NOT** add company colleagues to contacts.md (can be found via Microsoft Graph)
+- **ONLY** add external contacts (non-colleagues) when user explicitly requests
+- Company email directory is the source of truth for internal contacts
+
 ---
-Last Updated: [SETUP_DATE]
+Last Updated: 2026-03-23

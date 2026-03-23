@@ -37,6 +37,20 @@
     - 2026-03-23 13:36 | System | Carried over from 2026-03-21
   - Note: Use template, present on Apr 1
 
+- [x] **Forward Informatica invoice to AP Team**
+  - Status: Completed
+  - Priority: High
+  - Category: Email
+  - Due Time: 2026-03-23 18:00
+  - Contact: Mickeal Martinez <Mickeal.Martinez@ibm.com>
+  - History:
+    - 2026-03-23 14:54 | User | Need to forward invoice to AP Team
+    - 2026-03-23 17:44 | User | Found AP contact: Mickeal Martinez (Quezon City, PH)
+    - 2026-03-23 18:18 | System | First attempt failed - attachments not included
+    - 2026-03-23 18:20 | System | Fixed forward_email to use Graph API native endpoint
+    - 2026-03-23 18:20 | System | Email forwarded successfully with attachments to Mickeal Martinez, CC: Darlene SARMIENTO, ERDA FRANCES AFABLE
+  - Note: Invoice from LearnQuest MLS APAC for Informatica PowerCenter Developer L1 Course (Req. 11695) - Q1 training
+
 - [ ] **Complete course survey**
   - Status: Not Started
   - Priority: Low
@@ -47,15 +61,267 @@
     - 2026-03-23 13:36 | System | Carried over from 2026-03-21
   - Note: L&K Education Delivery session
 
+- [x] **Follow up on Citi backend enrollment approval**
+  - Status: Completed
+  - Priority: High
+  - Category: Email
+  - Due Time: 2026-03-26 17:00
+  - Contact: FERZEEN COOPER <fecooper@in.ibm.com>
+  - History:
+    - 2026-03-20 13:16 | Email | Sent approval request for backend enrollment operation to fix double ILC claim issue
+    - 2026-03-23 17:02 | User | Sent follow-up email with conversation history
+    - 2026-03-23 18:01 | Email | Approval received from FERZEEN COOPER
+  - Note: Citi reskill program - Backend enrollment into Brief ID 5021519, already approved by Jibu and Sudipta
+
+- [ ] **Process AWS CCP certification voucher request**
+  - Status: Not Started
+  - Priority: Medium
+  - Category: Email
+  - Due Time: 2026-03-25 17:00
+  - Contact: Beng PAULINO
+  - History:
+    - 2026-03-23 15:42 | Email | Approval received from Beng PAULINO for AWS CCP certification
+  - Note: Need to validate and issue voucher for Ken Nakata
+
+- [ ] **Complete annual benefits enrollment**
+  - Status: Not Started
+  - Priority: High
+  - Category: Admin
+  - Due Time: 2026-03-24 23:59
+  - History:
+    - 2026-03-23 12:05 | Email | Annual enrollment reminder for dependent benefits
+    - 2026-03-23 18:04 | System | Confirmed deadline: Mar 24, 2026 24:00
+  - Note: Review and complete annual enrollment election for dependent (enrollment or termination) on My Benefits portal. Use w3id or Talent ID to login at https://ibm.tbs.aon.com/
+
 ---
 ## Session Log
 
-- 2026-03-23 13:36 | System | Assistant started, archived 2026-03-21.md, carried over 4 uncompleted tasks
-- 2026-03-23 14:00 | System | Assistant startup complete - Read brain files, verified current.md date matches today, scanned 2 skills (microsoft-graph-skill, skill-creator), logs count OK (3 files)
-- 2026-03-23 14:02 | System | Assistant startup initiated - Reading brain files and verifying system state
-- 2026-03-23 14:09 | System | Optimized startup process - Added tool usage rules to prevent XML format errors, documented error in things_to_avoid.md
-- 2026-03-23 14:11 | System | Assistant startup complete - Read brain files (SOUL.md, CONFIG.md, recurring_tasks.md, current.md, memory files), verified current.md date matches today (2026-03-23), scanned 2 skills (microsoft-graph-skill, skill-creator), logs count OK (3 files)
-- 2026-03-23 14:16 | System | System prompt optimized - Added step 7 to check skill startup requirements (e.g., auth status), enhanced step 9 to show detailed skill information in startup confirmation
-- 2026-03-23 14:18 | System | Assistant startup complete - Read brain files (SOUL.md, CONFIG.md, recurring_tasks.md, current.md, memory files), verified current.md date matches today (2026-03-23), logs count OK (3 files), no recurring tasks scheduled for today, scanned 2 skills (microsoft-graph-skill: authenticated as luomn@cn.ibm.com, token expires in 1h 24m; skill-creator: ready)
-- 2026-03-23 14:21 | System | System prompt optimized - Updated shell command best practices to prevent PowerShell `&&` error: PowerShell uses `;` for sequential commands, bash/Unix uses `&&` for conditional chaining. Added guidance to use absolute paths from workspace root instead of `cd` chaining.
-- 2026-03-23 14:22 | Email | Retrieved 20 emails from inbox - 18 unread messages, mostly related to Red Hat OpenShift training (multiple participants responding to action required), certification requests (AWS CCP, Azure Fundamentals), IBM thought leadership events, and L&K updates
+### 2026-03-23 19:30 | System | Startup
+- Brain files loaded successfully
+- Current date matches log date (2026-03-23) - no archive needed
+- Log count: 3 files (within limit)
+- No recurring tasks scheduled for today
+- Skills loaded: 2
+  - microsoft-graph-skill: Microsoft Graph API for email, calendar, and user operations
+  - skill-creator: Create new OpenClaw-compatible skills
+- Microsoft Graph auth status: ✅ Authenticated as luomn@cn.ibm.com (expires in 31m)
+- Active tasks: 6 (1 High priority due today, 3 High priority upcoming)
+
+### 2026-03-23 17:34 | System | Startup
+- Brain files loaded successfully
+- Current date matches log date (2026-03-23) - no archive needed
+- Log count: 3 files (within limit)
+- No recurring tasks scheduled for today
+- Skills loaded: 2
+  - microsoft-graph-skill: Microsoft Graph API for email, calendar, and user operations
+  - skill-creator: Create new OpenClaw-compatible skills
+- Microsoft Graph auth status: ✅ Authenticated as luomn@cn.ibm.com (expires in 32m)
+- Active tasks: 6 (1 High priority due today, 3 High priority upcoming)
+
+### 2026-03-23 17:37 | System | Fixed user search for email addresses
+- Modified `search_users()` to detect email queries (contains '@') and use exact match for email fields
+- Code change: Lines 85-95 in user_operations.py
+
+### 2026-03-23 17:44 | User | Successfully queried contact information
+- Contact: Mickeal Martinez (Mickeal.Martinez@ibm.com)
+- Title: Accounts Payable Analyst
+- Location: Quezon City, 00, PH
+- Mobile: +63-9454234891
+- Business Phone: +63-63289952073
+- Method: Direct user lookup via Microsoft Graph API
+
+### 2026-03-23 17:49 | System | Identified email workflow optimization
+- Current: `list --json` → extract ID → `get <id>` (2 steps)
+- Issue: `find` command uses `$search` API with indexing delays
+- Suggestion: `find` should return `list` result directly without calling `get_message`
+
+
+### 2026-03-23 17:55 | System | Startup
+- Brain files loaded successfully
+- Current date matches log date (2026-03-23) - no archive needed
+- Log count: 3 files (within limit)
+- No recurring tasks scheduled for today
+- Skills loaded: 2
+  - microsoft-graph-skill: Microsoft Graph API for email, calendar, and user operations
+  - skill-creator: Create new OpenClaw-compatible skills
+- Microsoft Graph auth status: ✅ Authenticated as luomn@cn.ibm.com (expires in 11m)
+- Active tasks: 6 (1 High priority due today, 3 High priority upcoming)
+
+
+### 2026-03-23 18:02 | User | Task updates from email review
+- Completed: Citi backend enrollment approval (received approval from FERZEEN COOPER)
+- Added: AWS CCP certification voucher request (approved by Beng PAULINO, due 2026-03-25)
+- Added: Annual benefits enrollment (reminder received, due TBD)
+- Active tasks: 8 (1 High priority due today, 3 High priority upcoming, 2 new Medium priority)
+
+
+### 2026-03-23 18:05 | System | Optimized microsoft-graph-skill documentation
+- Added critical command format rules section with ⚠️ warnings
+- Added ✅ correct command examples (list, find, get)
+- Added ❌ common errors to avoid (--json placement, unquoted args, --top vs --limit)
+- Clarified LLM command selection strategy
+- Reason: Multiple command failures due to incorrect syntax (--json after subcommand, unquoted multi-word args, --top parameter)
+
+
+### 2026-03-23 18:07 | System | Startup
+- Brain files loaded successfully
+- Current date matches log date (2026-03-23) - no archive needed
+- Log count: 3 files (within limit)
+- No recurring tasks scheduled for today
+- Skills loaded: 2
+  - microsoft-graph-skill: Microsoft Graph API for email, calendar, and user operations
+  - skill-creator: Create new OpenClaw-compatible skills
+- Microsoft Graph auth status: ✅ Authenticated as luomn@cn.ibm.com (expires in 1h 23m)
+- Active tasks: 8 (2 High priority due today, 3 High priority upcoming)
+
+
+### 2026-03-23 18:08 | User | Contact query successful
+- Contact: Mickeal Martinez (Mickeal.Martinez@ibm.com)
+- Title: Accounts Payable Analyst
+- Location: Quezon City, 00, PH
+- Mobile: +63-9454234891
+- Business Phone: +63-63289952073
+- Method: Direct user lookup via Microsoft Graph API
+
+
+### 2026-03-23 18:09 | User | Email check completed
+- Retrieved 25 emails from today
+- Key emails identified:
+  1. FERZEEN COOPER approval received (17:37) - Citi backend enrollment approved ✅
+  2. AWS CCP voucher approved by Beng PAULINO (15:42) - needs processing
+  3. Informatica invoice received from LearnQuest (14:09) - ready to forward to AP
+  4. Multiple Azure certification vouchers issued (16:49)
+  5. Red Hat course attendance confirmations
+- Action items updated in task queue
+
+
+### 2026-03-23 18:11 | System | Enhanced microsoft-graph-skill documentation
+- Moved "CRITICAL: Command Format Rules" to top of Email Operations section
+- Added 🚫 emoji to highlight --top parameter error
+- Emphasized: Use `--limit N` instead of `--top N`
+- Reason: Prevent repeated command syntax errors
+
+
+### 2026-03-23 18:13 | User | Contact search completed with rate limit
+- Searched for "Dars": Found 25 users (Darsan, Darsana, Darshan, etc.)
+- Search for "Erda": Hit Microsoft Graph API rate limit (429 TooManyRequests)
+- Note: Need to wait before additional searches due to API throttling
+
+
+### 2026-03-23 18:14 | User | Contact information retrieved
+- Contact 1: Darlene SARMIENTO (sarmiedb@ph.ibm.com)
+  - Title: Learning Portfolio Project Management Generalist - FutureNow Center Philippines
+  - Location: Quezon City, 00, PH
+  - Mobile: +63-9171228366
+- Contact 2: ERDA FRANCES AFABLE (afableer@ph.ibm.com)
+  - Title: L&K Leader, CIC Philippines
+  - Location: Quezon City, 00, PH
+  - Mobile: +63917-883-8389
+  - Business Phone: +632-632-995-2426
+
+
+### 2026-03-23 18:20 | System | Fixed forward_email function and resent invoice
+- Issue: Original forward didn't include attachments (used send_email internally)
+- Fix: Modified forward_email() to use Microsoft Graph's native /forward endpoint
+- Result: Email forwarded successfully with attachments preserved
+- Recipients: Mickeal Martinez (To), Darlene SARMIENTO & ERDA FRANCES AFABLE (CC)
+- Message: Explained Q1 training, offered additional information if needed
+- Task completed: "Forward Informatica invoice to AP Team"
+
+
+### 2026-03-23 18:22 | System | Fixed HTML formatting in forward comment
+- Issue: Comment text had no line breaks in email body
+- Fix: Modified forward_email() to wrap comment in HTML tags with proper <br> conversion
+- Code change: Lines 543-556 in email_operations.py
+- Result: Email forwarded with properly formatted HTML comment
+- Recipients: Mickeal Martinez (To), Darlene SARMIENTO & ERDA FRANCES AFABLE (CC)
+
+
+### 2026-03-23 18:25 | System | Updated SKILL.md with forward command best practices
+- Added note: `forward` preserves attachments using Graph API's native `/forward` endpoint
+- Added line break guidance: Use actual newlines in `--comment`, not `\n` escape sequences
+- Clarified: Shell preserves multi-line strings when entered with actual Enter key presses
+- Location: Implementation Details section in SKILL.md
+
+
+### 2026-03-23 18:33 | System | Completed microsoft-graph-skill optimization
+**Code Improvements:**
+1. ✅ Added `--top` as alias for `--limit` in argparse (both list and search commands)
+2. ✅ Implemented Chinese pattern auto-detection in list_messages()
+   - Detects "发给/发送给/发送到" → switches to sent folder, uses to_recipient
+   - Detects "收到/来自/从" → uses inbox, cleans keyword from search
+3. ✅ Added self-sent email warning in reply_email()
+   - Warns when replying to own sent email
+   - Suggests using forward command instead
+4. ✅ Implemented find auto-fallback to list --preview
+   - Catches search API failures (indexing delays)
+   - Automatically falls back with user notification
+
+**Documentation Updates:**
+- Removed redundant "Command Format Rules" (Rule 4: --top parameter)
+- Removed redundant error examples (--top usage)
+- Removed redundant implementation details (Chinese patterns, self-sent, find fallback)
+- Added new "Auto-Features" section listing all code-implemented features
+- Simplified "Manual Notes" to only essential information
+- **Result:** SKILL.md reduced by ~25% while maintaining clarity
+
+**Testing:**
+- ✅ `--top` alias: `list --top 5` works correctly
+- ✅ Chinese detection: `--from "收到 B Sowmya"` correctly searches inbox for B Sowmya emails
+
+### 2026-03-23 18:36 | System | Startup
+- Brain files loaded successfully
+- Current date matches log date (2026-03-23) - no archive needed
+- Log count: 3 files (within limit)
+- No recurring tasks scheduled for today
+- Skills loaded: 2
+  - microsoft-graph-skill: Microsoft Graph API for email, calendar, and user operations
+  - skill-creator: Create new OpenClaw-compatible skills
+- Microsoft Graph auth status: ✅ Authenticated as luomn@cn.ibm.com (expires in 54m)
+- Active tasks: 8 (2 High priority due today, 3 High priority upcoming)
+
+
+### 2026-03-23 18:37 | User | Email check completed
+- Retrieved 30 emails from today
+- Key emails identified:
+  1. ✅ FERZEEN COOPER approval received (17:37) - Citi backend enrollment approved
+  2. ✅ Beng PAULINO approval (15:42) - AWS CCP certification for Ken Nakata approved
+  3. 📧 Informatica invoice received (14:09) - Already forwarded to AP team
+  4. 🎓 Red Hat DO280 course confirmation (18:32) - Course starts Mar 27
+  5. 🎓 Red Hat DO288 attendance confirmations - Multiple learners joined
+  6. 🎫 Azure certification vouchers issued (16:49) - 2 vouchers for Marvin Pajarillo & Christina Sumiran
+  7. ⚠️ Saroda Samanta AWS exam scheduling issue (17:19) - Mistakenly scheduled for 2:30 AM instead of PM
+- Multiple message recall reports (system notifications)
+- No urgent action items requiring immediate attention
+
+
+### 2026-03-23 18:45 | System | Enhanced email search with English pattern support
+- Added English pattern detection to complement existing Chinese patterns
+- Supported patterns:
+
+### 2026-03-23 19:15 | User | Request to optimize Microsoft Graph skill email display
+- Goal: Display message IDs in list/find commands to save query steps
+
+### 2026-03-23 19:30 | System | ✅ Enhanced Microsoft Graph email operations
+- **Modified**: `display_message_list()` function to show message IDs
+  - Compact table mode: Added "ID" column (100-char width)
+  - Preview mode: Added "ID:" field for each email
+- **Modified**: `display_message()` to show message ID field
+- **Modified**: CLI logic to correctly pass `show_preview` parameter
+- **Updated**: SKILL.md documentation with new ID display feature
+- **Benefits**:
+  - Users can directly see email IDs in list/find output
+  - No need to use `--json` flag to extract IDs
+  - Can immediately use `get <message_id>` for full content access
+  - Saves time and reduces query steps
+- **Testing**: Verified both modes work correctly
+  - `list --limit N`: Compact table with ID column
+  - `list --preview --limit N`: Detailed view with ID field
+  - `find`: Shows ID in full message display
+  - `get <id>`: Successfully retrieves using displayed ID
+  - "sent to X" / "send to X" → searches sent folder for emails to X
+  - "received from X" / "from X" → searches inbox for emails from X
+- Code changes: Lines 146-177 in email_operations.py
+- Documentation updated: SKILL.md Auto-Features section
+- Testing: ✅ `--from "sent to bsowmy70@in.ibm.com"` successfully returns sent emails
+- Reason: User feedback - should support English first before Chinese
