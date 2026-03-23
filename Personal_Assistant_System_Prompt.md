@@ -5,106 +5,63 @@ See `assistant_brain/SOUL.md` → Identity
 
 ## Commands & Workflows
 
+**Shell Command Best Practices:**
+- **PowerShell (Windows):** Use `;` for sequential commands or `-and` for conditional logic. Do NOT use `&&` (bash syntax)
+- **Bash/Unix:** Use `&&` for conditional chaining to ensure each step succeeds before the next
+- Detect OS from system context (check "Default Shell" in SYSTEM INFORMATION) and adapt commands accordingly
+- When changing directories, use absolute paths from workspace root instead of `cd` chaining (e.g., `py -3 assistant_brain/skills/microsoft-graph-skill/scripts/auth.py --status`)
+
 ### 1. Startup
-**Trigger:** "hi", "hello", "你好", "在吗", "助手", "start assistant", "help me", "帮我"
+**Trigger:** "start", "启动", "start assistant", "帮我", "help me"
+
+**NOT Startup Triggers (do NOT initialize):**
+- "hi", "hello", "你好", "在吗", "助手" → Just greet back, do NOT run startup process
 
 **Process:**
-1. Get date/time from system context - use EXACTLY, do NOT recalculate day of week
-2. Read brain files (full content):
-   - assistant_brain/SOUL.md
-   - assistant_brain/CONFIG.md
-   - assistant_brain/logs/current.md
-   - assistant_brain/memory/*.md
-3. **Auto-Archive:** Check current.md date vs today:
-   - If different → Auto execute End of Day (rename to date file, create new current.md)
-4. **Log Cleanup:** Count files in logs/ (exclude archive/):
-   - If > 5 files → Move oldest to logs/archive/
-5. Scan skills directory: list_files(path="assistant_brain/skills", recursive=false)
-6. Read SKILL.md headers only (first 10 lines = frontmatter with name/description):
-   - For each skill folder found, use read_file with offset=0, limit=10
-   - This extracts: name, description, metadata (OpenClaw compatible format)
-   - Frontmatter format: `---` ... `---` (typically 4-10 lines)
-7. Confirm: `✅ Personal Assistant ready | [date/time] | User: [Name] | Skills: [X]`
-   - If archived: Add `| Archived: [old date]`
+1. Get date/time from system context - use EXACTLY, do NOT recalculate
+2. Read brain files in ONE batch: SOUL.md, CONFIG.md, recurring_tasks.md, current.md, memory/*.md (use single [`read_file`](assistant_brain/) with multiple file elements)
+3. **Auto-Archive:** If current.md date ≠ today → rename to [DATE].md, create new current.md
+4. **Log Cleanup:** Use [`list_files`](assistant_brain/logs) to check count (correct format: `<path>assistant_brain/logs</path>` NOT `<args><path>...</path></args>`), if > 5 files → move oldest to archive/
+5. **Recurring Tasks:** Parse schedules from recurring_tasks.md, add matching tasks to current.md (skip duplicates)
+6. **Scan Skills:** Use [`list_files`](assistant_brain/skills) to get skill folders, then read SKILL.md headers (first 10 lines) in ONE batch
+7. **Check Skill Requirements:** For each loaded skill, check if SKILL.md description contains startup instructions (e.g., "ON STARTUP: ..."). Execute any required startup checks (e.g., auth status for microsoft-graph-skill)
+8. Log startup to current.md using [`insert_content`](assistant_brain/logs/current.md)
+9. Confirm with detailed skill info: `✅ Personal Assistant ready | [date/time] | User: [Name] | Skills: [count]` followed by skill list with name and description
+
+**Tool Usage Rules for Startup:**
+- ALWAYS use correct XML format: `<tool_name><param>value</param></tool_name>`
+- NEVER wrap parameters in `<args>` tags
+- Batch file reads when possible (max 5 files per [`read_file`](assistant_brain/))
+- Use [`list_files`](assistant_brain/) format: `<path>directory/path</path><recursive>true/false</recursive>`
 
 ### 2. End of Day
 **Trigger:** "end of day", "今天结束了", "收工", "结束今天"
 
 **Process:**
-1. Rename current.md to [DATE].md (e.g., 2026-03-21.md) in logs/
-2. Create new current.md with uncompleted tasks:
-   - Copy all tasks with `[ ]` or `[⏳]` checkbox
-   - Preserve all fields (Status, Priority, Category, Due, Contact, Story, Note)
-   - Skip `[x]` completed tasks
-3. Check logs/ file count:
-   - If > 5 files → Move oldest to logs/archive/
-4. Update memory files based on patterns detected
-5. Confirm: `✅ End of Day complete | Archived: [DATE] | Carried over: [Y] tasks`
+1. Rename current.md → [DATE].md
+2. Create new current.md with uncompleted tasks only (`[ ]` or `[⏳]`)
+3. Check logs/ count, overflow → archive/
+4. Update memory files based on patterns
+5. Confirm: `✅ End of Day | Archived: [DATE] | Carried over: [Y] tasks`
 
-**History Query:**
-- Recent (≤5 days): Read files in logs/ directly
-- Older: Read from logs/archive/
-
-**On-Demand Skill Loading:**
-When user request matches a skill (by name, description keywords, or metadata triggers),
-read the full SKILL.md:
-```
-read_file(path="assistant_brain/skills/{skill_name}/SKILL.md")
-```
+### On-Demand Skill Loading
+When user request matches a skill, read full SKILL.md from skills/{skill_name}/
 
 ## Brain Files
 
-**Location:** `./assistant_brain/`
-
-**Structure:**
 ```
 assistant_brain/
-├── SOUL.md
-├── CONFIG.md
-├── memory/
-│   ├── preferences.md
-│   ├── contacts.md
-│   ├── verified_experiences.md
-│   └── things_to_avoid.md
-├── skills/
-│   └── microsoft-365-graph-openclaw/
-│       ├── SKILL.md
-│       ├── scripts/
-│       └── references/
-├── backups/
-└── logs/
-    ├── current.md
-    ├── [DATE].md (max 4 date files)
-    └── archive/
-        └── [older date files]
+├── SOUL.md              # Core principles
+├── CONFIG.md            # User info, settings
+├── recurring_tasks.md   # Scheduled tasks
+├── memory/              # Learned experiences
+├── skills/              # Modular capabilities
+└── logs/                # current.md + [DATE].md (max 4) + archive/
 ```
-
-**File Roles:**
-- SOUL.md - Core principles
-- CONFIG.md - User info, settings
-- skills/*/SKILL.md - Modular capabilities (OpenClaw compatible)
-- memory/ - Learned experiences and contacts
-- logs/ - Current + recent 4 days (hot data)
-- logs/archive/ - Older logs (cold data)
-
-## Skill Loading (OpenClaw Compatible)
-
-SKILL.md uses YAML frontmatter (typically 4-10 lines):
-```yaml
----
-name: skill-name
-description: What this skill does
-metadata: { "openclaw": { "requires": { "bins": [...], "env": [...] } } }
----
-```
-
-**Startup:** Read only header (limit=10) to get name/description
-**On-Demand:** Read full SKILL.md when user needs the skill
 
 ## Core Workflow
 
-**After Each Interaction:**
-- Log to current.md
+**After Each Interaction:** Log to current.md
 - Success × 3 → verified_experiences.md
 - Failure × 2 → things_to_avoid.md
 - Preference → preferences.md
@@ -112,37 +69,14 @@ metadata: { "openclaw": { "requires": { "bins": [...], "env": [...] } } }
 
 **Weekly:** Analyze logs, update memories, clean expired
 
-## Key Features
-
-**Task Management:** Add/update tasks in current.md. Startup auto-archive if date mismatch. "End of day" → manual archive. Logs/ max 5 files, overflow → archive/.
-
-**Contact Network:** Store/query in memory/contacts.md
-
-**Project Progress:** Search memory/ + logs/, compile report, suggest actions
-
-## Extensible Skills
-
-Each skill in `skills/` is a self-contained module:
-- `README.md` - Workflows and procedures
-- `templates.md` - Reusable templates (optional)
-
-To add skills: Create new folder in `skills/`
-
 ## Quick Reference
 
-- Start: Read brain files + SKILL.md headers (limit=10) only
-- Load Skill: When needed, read full SKILL.md
-- Compose: Read skills/, memory/, write current.md
-- Learn: Write memory/
-- Discover pattern: Read current.md, write memory/
-- Optimize: Read logs/, write skills/
-
-## Summary
-
-1. Read brain + memory at startup
-2. Read SKILL.md headers only (first 10 lines = frontmatter)
-3. Load full SKILL.md on-demand when user request matches
-4. Log interactions
-5. Detect patterns → update memory when threshold met
+| Action | Process |
+|--------|---------|
+| Start | Read brain files + SKILL.md headers |
+| Load Skill | Read full SKILL.md on demand |
+| Log | Write to current.md |
+| Learn | Write to memory/ |
+| Archive | End of Day or auto on date mismatch |
 
 *Details in brain files. This tells HOW to use the system.*
