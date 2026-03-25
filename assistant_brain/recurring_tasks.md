@@ -6,11 +6,12 @@ Tasks that automatically trigger on a schedule. Added to daily log on startup.
 
 ```yaml
 recurring_tasks:
-  # - name: "Weekly Report"
-  #   schedule: "every Friday at 5pm"
-  #   priority: High
-  #   category: Admin
-  #   note: "Submit weekly progress report"
+  - name: "Send Philippines L&K Spend Invoice to Mickeal Martinez"
+    schedule: "last week of every quarter"
+    priority: High
+    category: Admin
+    contact: "Mickeal Martinez <Mickeal.Martinez@ibm.com>"
+    note: "Submit quarterly invoice for Philippines L&K spend"
 ```
 
 ## Schedule Examples

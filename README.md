@@ -26,7 +26,7 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 
 1. Open your AI IDE (Claude, Cursor, etc.)
 2. Go to custom instructions / system prompt settings
-3. Paste the content of `Personal_Assistant_System_Prompt.md`
+3. Paste the content of `SYSTEM_PROMPT.md`
 4. Set your workspace to the BrainClaw folder
 
 ### Daily Use
@@ -44,7 +44,7 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  AI IDE (Claude / Cursor / etc.)                    │
 │  ┌───────────────────────────────────────────────┐  │
 │  │  Custom System Prompt                         │  │
-│  │  (Personal_Assistant_System_Prompt.md)        │  │
+│  │  (SYSTEM_PROMPT.md)                          │  │
 │  │                                               │  │
 │  │  "On startup, read brain files..."           │  │
 │  │  "Commands: hi, end of day..."               │  │
@@ -96,7 +96,7 @@ BrainClaw uses a smart keyword system to help you trace tasks back to their sour
 
 ```
 BrainClaw/
-├── Personal_Assistant_System_Prompt.md  # Entry point - open this first
+├── SYSTEM_PROMPT.md                    # Entry point - open this first
 ├── README.md                            # This file
 └── assistant_brain/
     ├── SOUL.md          # Core personality

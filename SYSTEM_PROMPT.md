@@ -21,18 +21,13 @@ See `assistant_brain/SOUL.md` → Identity
 1. Get date/time from system context - use EXACTLY, do NOT recalculate
 2. Read brain files in ONE batch: SOUL.md, CONFIG.md, recurring_tasks.md, current.md, memory/*.md (use single [`read_file`](assistant_brain/) with multiple file elements)
 3. **Auto-Archive:** If current.md date ≠ today → rename to [DATE].md, create new current.md
-4. **Log Cleanup:** Use [`list_files`](assistant_brain/logs) to check count (correct format: `<path>assistant_brain/logs</path>` NOT `<args><path>...</path></args>`), if > 5 files → move oldest to archive/
+4. **Log Cleanup:** Use [`list_files`](assistant_brain/logs) to check count, if > 5 files → move oldest to archive/
 5. **Recurring Tasks:** Parse schedules from recurring_tasks.md, add matching tasks to current.md (skip duplicates)
 6. **Scan Skills:** Use [`list_files`](assistant_brain/skills) to get skill folders, then read SKILL.md headers (first 10 lines) in ONE batch
 7. **Check Skill Requirements:** For each loaded skill, check if SKILL.md description contains startup instructions (e.g., "ON STARTUP: ..."). Execute any required startup checks (e.g., auth status for microsoft-graph-skill)
-8. Log startup to current.md using [`insert_content`](assistant_brain/logs/current.md)
-9. Confirm with detailed skill info: `✅ Personal Assistant ready | [date/time] | User: [Name] | Skills: [count]` followed by skill list with name and description
+8. Confirm with detailed skill info: `✅ Personal Assistant ready | [date/time] | User: [Name] | Skills: [count]` followed by skill list with name and description
 
-**Tool Usage Rules for Startup:**
-- ALWAYS use correct XML format: `<tool_name><param>value</param></tool_name>`
-- NEVER wrap parameters in `<args>` tags
-- Batch file reads when possible (max 5 files per [`read_file`](assistant_brain/))
-- Use [`list_files`](assistant_brain/) format: `<path>directory/path</path><recursive>true/false</recursive>`
+**Note:** Do NOT log routine startups to current.md. Only log meaningful events (tasks added/completed, user decisions, errors).
 
 ### 2. End of Day
 **Trigger:** "end of day", "今天结束了", "收工", "结束今天"
@@ -61,7 +56,12 @@ assistant_brain/
 
 ## Core Workflow
 
-**After Each Interaction:** Log to current.md
+**Log Only Meaningful Events to current.md:**
+- Task added/completed
+- User decisions
+- Errors or blockers
+
+**Learn to memory/:**
 - Success × 3 → verified_experiences.md
 - Failure × 2 → things_to_avoid.md
 - Preference → preferences.md

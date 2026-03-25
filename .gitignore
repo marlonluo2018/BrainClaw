@@ -36,3 +36,9 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+
+# Downloads folder - email attachments, etc.
+downloads/
+
+# Memory directory - keep files locally but don't sync to GitHub
+assistant_brain/memory/

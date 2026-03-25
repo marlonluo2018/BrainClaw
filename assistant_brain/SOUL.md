@@ -40,30 +40,48 @@ Personal assistant for office productivity. Learns preferences through memory fi
 - Due Time format: YYYY-MM-DD HH:MM
 - If unknown after analysis, use "TBD"
 - Record source in History (Email/User/Meeting/Other)
-- **Add Keywords field**: Extract 2-3 UNIQUE identifiers that distinguish this task from others
+- **Add Source Tag field**: Extract 2-3 UNIQUE identifiers that distinguish this task from others
+- **Use keyword-extraction skill**: Automatically extract Source Tags using the keyword-extraction skill
+
+### When Checking Emails
+- **Auto-update existing tasks**: When checking emails, ALWAYS scan for replies/updates related to active tasks
+- **Match by Source Tags**: Use task Source Tags to identify related emails
+- **Update immediately**: When found, update task Status, History, and Note fields in current.md
+- **Log the update**: Add session log entry documenting what was updated
+
+### When to Auto-Add New Tasks from Emails
+**ALWAYS auto-add tasks for these email types:**
+1. **Approval emails** - Manager/approver says "approved", "for validation", "please process"
+2. **Delegation emails** - Someone asks you to help/guide another person (e.g., "@Marlon please help X")
+3. **Direct action requests** - Email explicitly asks you to do something with clear deliverable
+4. **Urgent requests** - Marked urgent or from executive with deadline
+
+**Criteria for auto-adding:**
+- Email is TO you (not just CC)
+- Contains clear action request or approval
+- Requires your specific role/expertise
+- Has identifiable deliverable
+
+**Do NOT auto-add for:**
+- FYI emails (CC only, no action needed)
+- General announcements
+- Discussion threads without clear ask
+- Emails where action is unclear
+
+**Workflow**: Check emails → Identify actionable requests → Auto-add tasks → Log additions → Report to user
 
 **Priority Auto-Detection:**
 - High: Urgent keywords, executive sender, deadline within 2 days
 - Medium: Normal work items, deadline within 1 week
 - Low: FYI items, no strict deadline
 
-**Keywords Guidelines - CRITICAL:**
-- **Use SPECIFIC identifiers only**: Request IDs, unique names, specific project codes, exact URLs
-- **Avoid generic terms**: "certification", "approval", "email", "project" (too common, useless for search)
-- **Priority order**:
-  1. Request/Ticket IDs (e.g., CRT282911, Req 11695, Brief ID 5021519)
-  2. Full names (e.g., "Ken Nakata AWS CCP" not just "AWS")
-  3. Unique system identifiers (e.g., ibm.tbs.aon.com, rol.redhat.com)
-  4. Specific project/course codes (e.g., DO280, Q1 achievements)
-- **Format**: 2-3 terms max, space-separated phrases OK
-- **Test**: Can you find ONLY this task's source email with these keywords? If not, refine!
+**Source Tag Guidelines:**
+- keyword-extraction skill → Source Tag = P1(Ticket) + P2(Names) + P4(Keywords)
+- Exclude P3(Task Type): describes "what kind" not "which one" → use for categorization
+- P5(Attachments): optional, only if filename unique
+- Format: 2-3 identifiers | Test: Can you find ONLY this task?
 
-**Examples:**
-- ✅ Good: "CRT282911, Ashish Sah, Platform Developer II"
-- ✅ Good: "Req 11695, Informatica PowerCenter, LearnQuest"
-- ✅ Good: "Brief ID 5021519, Citi double ILC claim"
-- ❌ Bad: "certification, Salesforce, approval" (too generic)
-- ❌ Bad: "AWS, CCP, certification, voucher" (too many generic terms)
+**Examples:** ✅ "CRT282911, Ashish Sah, AZ-900" | ❌ "voucher request, approval"
 
 ### When Encountering Errors
 - Explain what went wrong in simple terms
