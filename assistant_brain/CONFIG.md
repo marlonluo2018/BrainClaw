@@ -8,7 +8,9 @@
   "title": "Learning Consultant",
   "organization": "Learning & Knowledge(L&K)",
   "language": "English",
-  "tone": "Friendly"
+  "tone": "Friendly",
+  "timezone": "+08:00",
+  "timezone_name": "Asia/Shanghai (UTC+8)"
 }
 ```
 
@@ -18,41 +20,6 @@ Marlon
 Learning Consultant
 Learning & Knowledge(L&K) - IBM Consulting
 Slack - @Marlon Luo
-```
-
-## Memory
-
-### Settings
-- Max entries: 100
-- Success threshold: 3
-- Failure threshold: 2
-- Expiry: 6 months
-
-### Update Rules
-| Pattern | Target File |
-|---------|-------------|
-| Success × 3 | `verified_experiences.md` |
-| Failure × 2 | `things_to_avoid.md` |
-| Preference | `preferences.md` |
-| Contact | `contacts.md` |
-
-### Weekly Maintenance
-- Clean expired memories
-- Analyze patterns
-- Archive old entries
-
-## Brain Files Structure
-
-```
-assistant_brain/
-├── SOUL.md              # Core principles
-├── CONFIG.md            # User info, settings, task formats
-├── recurring_tasks.md   # Scheduled tasks
-├── tasks/               # Task management
-│   ├── queue.md         # Active task list
-│   └── history/         # Task archives
-├── memory/              # Learned experiences
-└── skills/              # Modular capabilities
 ```
 
 ## Tasks
@@ -143,14 +110,6 @@ Notes here
 - Avoid generic terms (certification, approval, email)
 - Max 3 tags
 
-## Backup
-- Auto backup: enabled
-- Retention: 7 days
-
-## Workflow
-- Quick mode: confirmation, thank you, brief
-- Full mode: proposal, urgent, executive
-
 ## System
 - OS: Windows 11
 - Python command: `py -3`
@@ -167,5 +126,3 @@ Notes here
 - Default download path: `./downloads/` (project downloads folder)
 - Email attachments: Save to project downloads folder
 - Purpose: Downloaded files (Excel, PPT, etc.) can be directly processed by skills
-
-

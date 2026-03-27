@@ -42,3 +42,6 @@ downloads/
 
 # Memory directory - keep files locally but don't sync to GitHub
 assistant_brain/memory/
+
+# Tasks directory - all task files are personal work data, keep local only
+assistant_brain/tasks/

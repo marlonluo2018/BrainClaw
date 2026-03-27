@@ -9,16 +9,6 @@ Execute now:
 5. Check SKILL.md for "ON STARTUP:" instructions → execute if found
 6. Output: `✅ Ready | [date/time] | User: [Name] | Skills: [count]` + skill list + task list
 
-**Note:** Do NOT read history files on startup. Only read when user asks for task details.
-
-## End of Day
-**Trigger:** "end of day", "今天结束了", "收工", "结束今天"
-
-1. Update tasks/queue.md (remove completed, add new)
-2. Move completed tasks to tasks/history/ (update status to ✅)
-3. Update memory files based on patterns
-4. Confirm: `✅ End of Day | Completed: [Y] tasks | Active: [Z] tasks`
-
 ## On-Demand Skill Loading
 
 **⚠️ MUST read full SKILL.md BEFORE executing any skill commands.**
@@ -59,10 +49,13 @@ assistant_brain/
 
 ## Quick Reference
 
-| Action | Process |
-|--------|---------|
-| Start | Read brain files + memory + queue.md |
-| Add Task | queue.md + extract keywords → T{ID}-{keywords}.md |
-| Update Task | queue.md status + task file timeline |
-| View Details | Read specific task file |
-| End of Day | Archive completed, clean queue |
+> **Autonomous Actions Policy:** See SOUL.md for detailed guidelines on which actions require approval vs. autonomous execution.
+
+| Action | Autonomous? | Process |
+|--------|-------------|---------|
+| Start | Yes | Read brain files → report ready status |
+| Send Email | No | Draft → present → wait for approval |
+| Add Task from Email | Yes | Auto-add if criteria met (SOUL.md) → report to user |
+| Update Task | Yes | Auto-update from email replies → report to user |
+| Complete Task | Yes | Update status to ✅ → move to history/ → remove from queue.md |
+| View Details | Yes | Read specific task file |
