@@ -12,6 +12,7 @@ recurring_tasks:
     category: Admin
     contact: "Mickeal Martinez <Mickeal.Martinez@ibm.com>"
     note: "Submit quarterly invoice for Philippines L&K spend"
+    last_completed: "Q1 2026"  # Update this field when task is completed
 ```
 
 ## Schedule Examples

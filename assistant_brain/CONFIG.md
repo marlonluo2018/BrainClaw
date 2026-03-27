@@ -7,7 +7,6 @@
   "email": "luomn@cn.ibm.com",
   "title": "Learning Consultant",
   "organization": "Learning & Knowledge(L&K)",
-  "timezone": "Asia/Shanghai",
   "language": "English",
   "tone": "Friendly"
 }
@@ -22,49 +21,127 @@ Slack - @Marlon Luo
 ```
 
 ## Memory
+
+### Settings
 - Max entries: 100
 - Success threshold: 3
 - Failure threshold: 2
 - Expiry: 6 months
 
-## Logs
-- Max files in logs/: 5 (current.md + 4 date files)
-- Overflow destination: logs/archive/
-- Archive cleanup: manual (no auto-delete)
+### Update Rules
+| Pattern | Target File |
+|---------|-------------|
+| Success × 3 | `verified_experiences.md` |
+| Failure × 2 | `things_to_avoid.md` |
+| Preference | `preferences.md` |
+| Contact | `contacts.md` |
 
-**Task Queue Format:**
+### Weekly Maintenance
+- Clean expired memories
+- Analyze patterns
+- Archive old entries
 
-*Checkbox:*
-- `[ ]` Not completed
-- `[⏳]` In progress
-- `[x]` Completed
+## Brain Files Structure
 
-*Fields:*
-| Field | Required | Values |
-|-------|----------|--------|
-| **Title** | Yes | Task title (bold) |
-| Status | Yes | Not Started / In Progress / Pending Review / Waiting Info / Blocked / Completed |
-| Priority | Yes | High / Medium / Low |
-| Category | Yes | Email / Project / Admin / Meeting / Other |
-| Due Time | Yes* | YYYY-MM-DD HH:MM or TBD (*ask user if not specified) |
-| Contact | No | Related person |
-| Source Tag | No | 2-3 UNIQUE identifiers: Request IDs, full names, specific codes (NOT generic terms) |
-| History | Yes | Record of all updates (date + time, source, content) |
-| Note | No | Additional details |
+```
+assistant_brain/
+├── SOUL.md              # Core principles
+├── CONFIG.md            # User info, settings, task formats
+├── recurring_tasks.md   # Scheduled tasks
+├── tasks/               # Task management
+│   ├── queue.md         # Active task list
+│   └── history/         # Task archives
+├── memory/              # Learned experiences
+└── skills/              # Modular capabilities
+```
 
-*History Format:*
-- `YYYY-MM-DD HH:MM | Source | Content`
-- Source: Email / User / System / Meeting / Other
+## Tasks
 
-*Due Time:*
-- Format: `YYYY-MM-DD HH:MM`
-- If not specified: Ask user for due time
-- If unknown: Use `TBD`
+### Directory Structure
+```
+tasks/
+├── README.md              # System documentation
+├── queue.md               # Active task queue (table view)
+├── T001-xxx.md            # Active task details
+└── history/               # Completed task archives
+```
 
-*Source Tag Guidelines:*
-- Use SPECIFIC identifiers only (Request IDs, unique names, exact codes)
-- Avoid generic terms (certification, approval, email, project)
-- 2-3 terms max. See `SOUL.md` for detailed guidelines and examples.
+### File Naming
+```
+T{ID}-{keyword1}-{keyword2}.md
+```
+- **ID**: 3-digit incrementing number (T001, T002...)
+- **Source**: Use `Last Task ID` from queue.md header (increment from this)
+- **Keywords**: 2-4 keywords connected with `-`
+- **Examples**:
+  - ✅ `T001-rhcsa-voucher-sukriti.md` (project + item + person)
+  - ✅ `T002-q1-achievements.md` (concise)
+  - ❌ `T001.md` (missing keywords)
+  - ❌ `T001_process_rhcsa_voucher.md` (wrong separator)
+
+### Status System
+| Symbol | Status | Description |
+|--------|--------|-------------|
+| 📋 | Not Started | Needs action |
+| ⏳ | In Progress | Working / Waiting |
+| ✅ | Completed | Move to history/ |
+
+Flow: `📋 → ⏳ → ✅ → history/`
+
+### Priority System
+| Level | Meaning | Trigger |
+|-------|---------|---------|
+| P1 | High | Urgent / Near deadline |
+| P2 | Medium | Regular task |
+| P3 | Low | Can defer |
+
+### Queue Format (tasks/queue.md)
+List format (human-friendly):
+```
+## T{ID} {status} [{title}](T{ID}-xxx.md)
+- **Priority:** P{1-3}
+- **Due:** {date or TBD}
+- **Tags:** `tag1`, `tag2`
+```
+
+### Task Template
+```markdown
+# T{ID}: {Title}
+
+**Status:** 📋 Not Started
+**Created:** {YYYY-MM-DD}
+**Priority:** P{1-3}
+**Category:** {Email/Slack/Meeting/Other}
+**Due:** {Date or TBD}
+
+---
+
+## Contacts
+- **Requester:** Name (email)
+- **Approver:** Name (email)
+
+## Tags
+`tag1`, `tag2`
+
+---
+
+## Timeline
+- **{date}** [{source}]: {action}
+
+---
+
+## Current State
+- [ ] Todo item 1
+- [ ] Todo item 2
+
+## Notes
+Notes here
+```
+
+### Tag Guidelines
+- Use SPECIFIC identifiers (names, IDs, codes)
+- Avoid generic terms (certification, approval, email)
+- Max 3 tags
 
 ## Backup
 - Auto backup: enabled
@@ -78,6 +155,8 @@ Slack - @Marlon Luo
 - OS: Windows 11
 - Python command: `py -3`
 - Shell: PowerShell
+- PowerShell syntax: `;` for sequential, `-and` for conditional (no `&&`)
+- Bash syntax: `&&` for conditional chaining
 
 ## Paths
 - Windows: `%USERPROFILE%/assistant_brain/`
@@ -88,3 +167,5 @@ Slack - @Marlon Luo
 - Default download path: `./downloads/` (project downloads folder)
 - Email attachments: Save to project downloads folder
 - Purpose: Downloaded files (Excel, PPT, etc.) can be directly processed by skills
+
+
