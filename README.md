@@ -52,11 +52,12 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │                        ↓                            │
 │  ┌───────────────────────────────────────────────┐  │
 │  │  Brain Files (assistant_brain/)               │  │
-│  │  ├── SOUL.md      (personality)               │  │
-│  │  ├── CONFIG.md    (your settings)             │  │
+│  │  ├── SOUL.md      (identity & values)         │  │
+│  │  ├── POLICY.md    (operational strategies)    │  │
+│  │  ├── CONFIG.md    (system parameters)         │  │
 │  │  ├── memory/      (learned preferences)       │  │
 │  │  ├── skills/      (capabilities)              │  │
-│  │  └── logs/        (daily tasks)               │  │
+│  │  └── tasks/       (task queue & history)      │  │
 │  └───────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────┘
 ```
@@ -96,14 +97,18 @@ BrainClaw uses a smart keyword system to help you trace tasks back to their sour
 
 ```
 BrainClaw/
-├── SYSTEM_PROMPT.md                    # Entry point - open this first
+├── SYSTEM_PROMPT.md                    # Entry point - for AI IDE integration
+├── SYSTEM_PROMPT_STANDALONE.md         # Standalone version (no instructions)
 ├── README.md                            # This file
 └── assistant_brain/
-    ├── SOUL.md          # Core personality
-    ├── CONFIG.md        # Your settings
-    ├── memory/          # Learned experiences
-    ├── skills/          # Modular capabilities
-    └── logs/            # Daily activity logs
+    ├── SOUL.md           # Identity & values (unchanging)
+    ├── POLICY.md         # Operational strategies & decision rules
+    ├── CONFIG.md         # System parameters (user info, formats)
+    ├── recurring_tasks.md # Scheduled recurring tasks
+    ├── memory/           # Learned experiences
+    ├── skills/           # Modular capabilities
+    ├── tasks/            # Task queue & history
+    └── backups/          # Configuration backups
 ```
 
 ## Commands

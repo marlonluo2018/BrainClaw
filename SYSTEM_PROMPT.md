@@ -6,7 +6,7 @@
 
 **Process:**
 1. Use date/time from system context (do NOT recalculate)
-2. Batch read: `SOUL.md`, `CONFIG.md`, `recurring_tasks.md`, `memory/preferences.md`, `memory/things_to_avoid.md`, `tasks/queue.md`
+2. Batch read: `SOUL.md`, `POLICY.md`, `CONFIG.md`, `recurring_tasks.md`, `memory/preferences.md`, `memory/things_to_avoid.md`, `tasks/queue.md`
 3. Parse recurring_tasks.md → add matching tasks to queue.md with recurring_task_id (skip duplicates)
 4. List subdirectories in `assistant_brain/skills/` → for each subdirectory, check for SKILL.md and read first 15 lines
 5. Check SKILL.md for "ON STARTUP:" instructions → execute if found
@@ -16,8 +16,9 @@
 
 ```
 assistant_brain/
-├── SOUL.md              # Core principles (startup)
-├── CONFIG.md            # User info, settings, task formats (startup)
+├── SOUL.md              # Identity & values (startup)
+├── POLICY.md            # Operational strategies (startup)
+├── CONFIG.md            # System parameters (startup)
 ├── recurring_tasks.md   # Scheduled tasks (startup)
 ├── tasks/
 │   ├── queue.md         # Active task list (startup - lightweight)
@@ -46,7 +47,7 @@ assistant_brain/
 
 **Adding a Task:**
 1. Read `Last Task ID` from queue.md header → increment for new ID → update header
-2. **Extract keywords using `keyword-extraction` skill** (see SOUL.md Source Tags for application guidance)
+2. **Extract keywords using `keyword-extraction` skill** (see POLICY.md Source Tags for application guidance)
 3. Create `T{ID}-{keywords}.md` in tasks/ (use template from CONFIG.md)
 4. If task is from recurring_tasks.md, include "Recurring Task ID" field in task file and queue.md (use "id" value, e.g., R001)
 5. Add entry to queue.md table with Created, Priority, Due, Tags (and Recurring Task ID only if from recurring_tasks.md)
@@ -79,4 +80,4 @@ When user says "draft email", "draft reply", "起草邮件", or "草拟邮件":
 
 ## Autonomous Actions
 
-> See SOUL.md Autonomous Actions Policy for which actions require user approval vs autonomous execution.
+> See POLICY.md Autonomous Actions Policy for which actions require user approval vs autonomous execution.
