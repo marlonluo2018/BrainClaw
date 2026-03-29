@@ -4,10 +4,10 @@ Execute now:
 
 1. Use date/time from system context (do NOT recalculate)
 2. Batch read: `SOUL.md`, `CONFIG.md`, `recurring_tasks.md`, `memory/preferences.md`, `memory/things_to_avoid.md`, `tasks/queue.md`
-3. Parse recurring_tasks.md → add matching tasks to queue.md (skip duplicates)
-4. `list_files` on `assistant_brain/skills` → batch read SKILL.md headers (first 15 lines)
+3. Parse recurring_tasks.md → add matching tasks to queue.md with recurring_task_id (skip duplicates)
+4. List subdirectories in `assistant_brain/skills/` → for each subdirectory, check for SKILL.md and read first 15 lines
 5. Check SKILL.md for "ON STARTUP:" instructions → execute if found
-6. Output: `✅ Ready | [date/time] | User: [Name] | Skills: [count]` + skill list + task list
+6. Output: `✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name] | Shell: [Shell Type] | Skills: [count]` + skill list + task list
 
 ## On-Demand Skill Loading
 
@@ -26,7 +26,9 @@ assistant_brain/
 │   └── history/         # Completed archives (on-demand)
 ├── memory/
 │   ├── preferences.md   # User preferences (startup)
-│   └── things_to_avoid.md # Mistakes to avoid (startup)
+│   ├── things_to_avoid.md # Mistakes to avoid (startup)
+│   ├── contacts.md      # External contacts (on-demand)
+│   └── tracking.md      # Tracking information (on-demand)
 └── skills/              # Modular capabilities (on-demand)
 ```
 
@@ -36,26 +38,37 @@ assistant_brain/
 
 **Adding a Task:**
 1. Read `Last Task ID` from queue.md header → increment for new ID → update header
-2. **Extract keywords using `keyword-extraction` skill** → priority: P1-Ticket > P2-Person > P3-TaskType > P4-Keywords
+2. **Extract keywords using `keyword-extraction` skill** (see SOUL.md Source Tags for application guidance)
 3. Create `T{ID}-{keywords}.md` in tasks/ (use template from CONFIG.md)
-4. Add entry to queue.md table with Created, Priority, Due, Tags
-5. Confirm with user
+4. If task is from recurring_tasks.md, include "Recurring Task ID" field in task file and queue.md (use "id" value, e.g., R001)
+5. Add entry to queue.md table with Created, Priority, Due, Tags (and Recurring Task ID only if from recurring_tasks.md)
+6. Confirm with user
 
-**Updating a Task:** Update status in queue.md + add timeline entry in task file
+**Updating a Task:**
+1. Read current task file to see existing content
+2. Check if incoming information already exists in the file
+3. If new: Show user what will be added and ask for approval
+4. If duplicate: Notify user that info already exists (skip adding)
+5. After approval: Update status in queue.md + add new entry to task file
+6. ⚠️ NEVER update task files without checking for duplicates and notifying user
 
-**Completing a Task:** Update status to ✅ → move to history/ → remove from queue.md → add Completion section
+**Completing a Task:**
+1. Update status to ✅
+2. If task has "Recurring Task ID" (e.g., R001), find matching "id" in recurring_tasks.md and update its "last_completed" field
+3. Move to history/ → remove from queue.md → add Completion section
 
 **Task Matching:** When user mentions keyword → search queue.md → show matching tasks → read task file if details needed
 
-## Quick Reference
+## Draft Email Command
 
-> **Autonomous Actions Policy:** See SOUL.md for detailed guidelines on which actions require approval vs. autonomous execution.
+When user says "draft email", "draft reply", "起草邮件", or "草拟邮件":
 
-| Action | Autonomous? | Process |
-|--------|-------------|---------|
-| Start | Yes | Read brain files → report ready status |
-| Send Email | No | Draft → present → wait for approval |
-| Add Task from Email | Yes | Auto-add if criteria met (SOUL.md) → report to user |
-| Update Task | Yes | Auto-update from email replies → report to user |
-| Complete Task | Yes | Update status to ✅ → move to history/ → remove from queue.md |
-| View Details | Yes | Read specific task file |
+1. **Gather info** - Collect To, Subject, Body
+2. **Format draft** - Prepare content with signature
+3. **Present draft** - Show email with signature, offer suggestions, ask for approval
+4. **Iterate or send** - If changes requested → revise; If approved → send
+5. **Confirm** - Report email sent
+
+## Autonomous Actions
+
+> See SOUL.md Autonomous Actions Policy for which actions require user approval vs autonomous execution.

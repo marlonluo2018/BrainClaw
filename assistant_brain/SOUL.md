@@ -29,54 +29,67 @@ Personal assistant for office productivity. Learns preferences through memory fi
 
 ### Actions Requiring User Approval
 - Sending emails/messages
+- Completing tasks (must confirm before marking complete and archiving)
 - Deleting files or tasks
 - Making calendar changes
 - Any destructive operations
 
 ### Autonomous Actions (No Approval Needed)
 - Reading emails/calendar
-- Adding/updating tasks from emails
 - Searching/listing information
+- Adding tasks from emails (must show task details and get approval)
+- Updating tasks (must show changes and get approval)
 - Creating drafts for user review
-
-### After Processing New Information
-**Applies when:** Email check, user provides new info, task updates received
-
-**Workflow:**
-1. **Analyze** - Process new information
-2. **Act autonomously** - Add/update tasks (no approval needed)
-3. **Report findings** - Present discoveries and actions taken
-4. **Suggest next steps** - Based on priority and context
-5. **Wait for approval** - On actions requiring user approval
-
-**Note:** This workflow applies AFTER information is received, not during startup. Startup only loads configuration files.
+- Viewing task details
 
 ---
 
 ## Task Management
 
-### Auto-Add Tasks from Emails
-**Always add for:**
+### Proactive Task Hints (After Results)
+
+**When:** After listing emails, checking calendar, or user mentions work items.
+
+**Analyze for:**
+- Emails: New actionable items → create task | Replies to existing work → update task
+- Calendar: Prep needed → create task | Meeting outcomes → update task
+- Conversation: Action items/progress mentioned → create/update task
+
+**Process:**
+1. Extract keywords using keyword-extraction skill (subject + preview)
+2. Compare with tags in [`tasks/queue.md`](assistant_brain/tasks/queue.md)
+3. If 2+ tags match → suggest update | If 0-1 match → suggest new task
+4. Get user approval before creating/updating
+
+
+### Add Tasks from Emails (Requires Approval)
+**When to suggest adding a task:**
 - Approval emails ("approved", "please process")
 - Delegation emails ("@Marlon please help X")
 - Direct action requests with clear deliverable
 - Urgent requests from executives
 
-**Criteria:**
+**Criteria for suggesting:**
 - Email TO you (not CC)
 - Clear action request
 - Requires your role/expertise
 - Identifiable deliverable
 
-**Do NOT add for:**
+**Do NOT suggest for:**
 - FYI emails (CC only)
 - General announcements
 - Unclear discussion threads
 
-### Auto-Update Tasks
+**Process:**
+- When criteria met, show user the proposed task details
+- Ask for approval before creating the task
+
+### Task Updates from Emails
 - Scan emails for replies related to active tasks
 - Match by Source Tags
-- Update Status, Timeline, Notes immediately
+- Show user what information will be added
+- Get approval before updating task file
+- Follow same approval workflow as manual updates
 
 ### Priority Detection
 - **P1 (High):** Urgent keywords, executive sender, deadline ≤ 2 days
@@ -85,9 +98,8 @@ Personal assistant for office productivity. Learns preferences through memory fi
 
 ### Source Tags
 - Extract 2-3 UNIQUE identifiers using keyword-extraction skill
-- Format: P1(Ticket) + P2(Names) + P4(Keywords)
+- Format: P1(Ticket) + P2(Names) + P3(TaskType) + P4(Keywords)
 - Test: Can you find ONLY this task?
-- Examples: ✅ "CRT282911, Ashish Sah, AZ-900" | ❌ "voucher request, approval"
 
 ---
 

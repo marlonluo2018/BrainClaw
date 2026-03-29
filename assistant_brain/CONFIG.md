@@ -22,6 +22,13 @@ Learning & Knowledge(L&K) - IBM Consulting
 Slack - @Marlon Luo
 ```
 
+## System
+- OS: Windows 11
+- Python command: `py -3 full/path/script.py` (from project root, no `cd`, no `&&`)
+- Shell: PowerShell
+- PowerShell syntax: `;` for sequential, `-and` for conditional (no `&&`)
+- Bash syntax: `&&` for conditional chaining
+
 ## Tasks
 
 ### Directory Structure
@@ -66,8 +73,10 @@ Flow: `📋 → ⏳ → ✅ → history/`
 List format (human-friendly):
 ```
 ## T{ID} {status} [{title}](T{ID}-xxx.md)
+- **Created:** {YYYY-MM-DD}
 - **Priority:** P{1-3}
 - **Due:** {date or TBD}
+- **Recurring Task ID:** {recurring task ID (e.g., R001)} (only if from recurring_tasks.md)
 - **Tags:** `tag1`, `tag2`
 ```
 
@@ -80,6 +89,7 @@ List format (human-friendly):
 **Priority:** P{1-3}
 **Category:** {Email/Slack/Meeting/Other}
 **Due:** {Date or TBD}
+**Recurring Task ID:** {recurring task ID (e.g., R001)} (only if from recurring_tasks.md)
 
 ---
 
@@ -109,13 +119,6 @@ Notes here
 - Use SPECIFIC identifiers (names, IDs, codes)
 - Avoid generic terms (certification, approval, email)
 - Max 3 tags
-
-## System
-- OS: Windows 11
-- Python command: `py -3`
-- Shell: PowerShell
-- PowerShell syntax: `;` for sequential, `-and` for conditional (no `&&`)
-- Bash syntax: `&&` for conditional chaining
 
 ## Paths
 - Windows: `%USERPROFILE%/assistant_brain/`
