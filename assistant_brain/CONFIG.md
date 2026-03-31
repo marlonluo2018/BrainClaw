@@ -54,20 +54,20 @@ T{ID}-{keyword1}-{keyword2}.md
   - ❌ `T001_process_rhcsa_voucher.md` (wrong separator)
 
 ### Status System
-| Symbol | Status | Description |
-|--------|--------|-------------|
-| 📋 | Not Started | Needs action |
-| ⏳ | In Progress | Working / Waiting |
-| ✅ | Completed | Move to history/ |
+|| Symbol | Status | Description |
+||--------|--------|-------------|
+|| 📋 | Not Started | Needs action |
+|| ⏳ | In Progress | Working / Waiting |
+|| ✅ | Completed | Move to history/ |
 
 Flow: `📋 → ⏳ → ✅ → history/`
 
 ### Priority System
-| Level | Meaning | Trigger |
-|-------|---------|---------|
-| P1 | High | Urgent / Near deadline |
-| P2 | Medium | Regular task |
-| P3 | Low | Can defer |
+|| Level | Meaning |
+||-------|---------|
+|| P1 | High |
+|| P2 | Medium |
+|| P3 | Low |
 
 ### Queue Format (tasks/queue.md)
 List format (human-friendly):
