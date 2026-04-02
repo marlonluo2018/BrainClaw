@@ -52,9 +52,9 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │                        ↓                            │
 │  ┌───────────────────────────────────────────────┐  │
 │  │  Brain Files (assistant_brain/)               │  │
-│  │  ├── SOUL.md      (identity & values)         │  │
-│  │  ├── POLICY.md    (operational strategies)    │  │
-│  │  ├── CONFIG.md    (system parameters)         │  │
+│  │  ├── SOUL.md               (identity & values)         │  │
+│  │  ├── OPERATIONAL_RULES.md  (operational strategies)    │  │
+│  │  ├── CONFIG.md             (system parameters)         │  │
 │  │  ├── memory/      (learned preferences)       │  │
 │  │  ├── skills/      (capabilities)              │  │
 │  │  └── tasks/       (task queue & history)      │  │
@@ -101,9 +101,9 @@ BrainClaw/
 ├── SYSTEM_PROMPT_STANDALONE.md         # Standalone version (no instructions)
 ├── README.md                            # This file
 └── assistant_brain/
-    ├── SOUL.md           # Identity & values (unchanging)
-    ├── POLICY.md         # Operational strategies & decision rules
-    ├── CONFIG.md         # System parameters (user info, formats)
+    ├── SOUL.md               # Identity & values (unchanging)
+    ├── OPERATIONAL_RULES.md  # Operational strategies & decision rules
+    ├── CONFIG.md             # System parameters (user info, formats)
     ├── recurring_tasks.md # Scheduled recurring tasks
     ├── memory/           # Learned experiences
     ├── skills/           # Modular capabilities

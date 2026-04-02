@@ -37,7 +37,7 @@ recurring_tasks:
     cc: "Fei Ye <feiye@cn.ibm.com>"
     folder_link: "https://ibm.ent.box.com/folder/368947686653"
     note: "1) Upload previous month's L&K learning report to I&D sector Box folder; 2) Send email notification to contacts that folder has been updated with new data"
-    last_completed: "2026-03"  # When task was executed (March 2026)
-    last_period: "2026-02"  # Which month's report was sent (Feb 2026)
+    last_completed: "2026-04"  # When task was executed (April 2026)
+    last_period: "2026-03"  # Which month's report was sent (March 2026)
 ```
 

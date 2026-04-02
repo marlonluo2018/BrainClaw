@@ -33,8 +33,13 @@
 1. Extract keywords using keyword-extraction skill
 2. Compare with tags in `tasks/queue.md`
 3. Count only SPECIFIC identifier matches (names, emails, IDs, codes)
-4. If 2+ matches → suggest update | If 0-1 match → suggest new task
-5. Get user approval
+4. **Suggest user to review relevant emails:**
+   - If 2+ matches → "Email #X may relate to task TY, would you like to review?"
+   - If 0-1 match → "Email #X may need new task, would you like to review?"
+5. **If meeting invites found → Remind user to check calendar:**
+   - List meeting invite dates
+   - Suggest: "You have X meeting invites on [dates], would you like to check your calendar for those days?"
+6. Get user approval
 
 ### Add Tasks from Emails
 

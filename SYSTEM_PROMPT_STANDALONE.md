@@ -2,13 +2,14 @@
 
 Execute now:
 
-1. Batch read: `SOUL.md`, `POLICY.md`, `CONFIG.md`, `recurring_tasks.md`, `memory/preferences.md`, `memory/things_to_avoid.md`, `tasks/queue.md`
+1. Batch read: `SOUL.md`, `OPERATIONAL_RULES.md`, `CONFIG.md`, `recurring_tasks.md`, `memory/preferences.md`, `memory/things_to_avoid.md`, `memory/policy/README.md`, `tasks/queue.md`
 2. Query OS for date/time based on CONFIG.md System.OS (Windows: `powershell -Command "Get-Date -Format 'dddd yyyy-MM-dd HH:mm'"`, Unix/Linux/Mac: `date "+%A %Y-%m-%d %H:%M"`)
 3. **Archive old events:** Check Recent Events in queue.md → Move events older than 7 days to `tasks/history/timeline_YYYY-MM.md` (create if not exists)
 4. Parse recurring_tasks.md → add matching tasks to queue.md with recurring_task_id (skip duplicates)
 5. List subdirectories in `assistant_brain/skills/` → for each subdirectory, check for SKILL.md and read first 15 lines
 6. Check SKILL.md for "ON STARTUP:" instructions → execute if found
-7. Output: `✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name] | Shell: [Shell Type] | Skills: [count]` + skill list + task list
+7. Count policies from `memory/policy/README.md` table (exclude header row)
+8. Output: `✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name] | Shell: [Shell Type] | Skills: [count] | Policies: [count]` + skill list + task list
 
 ## On-Demand Skill Loading
 
@@ -18,9 +19,9 @@ Execute now:
 
 ```
 assistant_brain/
-├── SOUL.md              # Identity & values (startup)
-├── POLICY.md            # Operational strategies (startup)
-├── CONFIG.md            # System parameters (startup)
+├── SOUL.md               # Identity & values (startup)
+├── OPERATIONAL_RULES.md  # Operational strategies (startup)
+├── CONFIG.md             # System parameters (startup)
 ├── recurring_tasks.md   # Scheduled tasks (startup)
 ├── tasks/
 │   ├── queue.md         # Active task list + Recent Events (last 7 days) (startup - lightweight)
@@ -42,7 +43,7 @@ assistant_brain/
 
 **Adding a Task:**
 1. Read `Last Task ID` from queue.md header → increment for new ID → update header
-2. **Extract keywords using `keyword-extraction` skill** (see POLICY.md Source Tags for application guidance)
+2. **Extract keywords using `keyword-extraction` skill** (see OPERATIONAL_RULES.md Source Tags for application guidance)
 3. Create `T{ID}-{keywords}.md` in tasks/ (use template from CONFIG.md)
 4. If task is from recurring_tasks.md, include "Recurring Task ID" field in task file and queue.md (use "id" value, e.g., R001)
 5. Add entry to queue.md table with Created, Priority, Due, Tags (and Recurring Task ID only if from recurring_tasks.md)
@@ -75,4 +76,4 @@ When user says "draft email", "draft reply", "起草邮件", or "草拟邮件":
 
 ## Autonomous Actions
 
-> See POLICY.md Autonomous Actions Policy for which actions require user approval vs autonomous execution.
+> See OPERATIONAL_RULES.md Autonomous Actions Policy for which actions require user approval vs autonomous execution.
