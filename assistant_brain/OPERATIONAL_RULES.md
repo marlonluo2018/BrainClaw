@@ -25,7 +25,16 @@
 
 ## Task Management
 
-### Proactive Task Hints
+### Email Operations
+
+#### Email Display Format
+**When summarizing emails after list/search operations:**
+- ALWAYS include email reference numbers (e.g., #1, #2, #3)
+- Format: Use "#X" prefix in summary text
+- Purpose: Enable quick reference for follow-up actions (reply, forward, get details)
+- Example: "#17 Manjula (LearnQuest) - Azure APIM clarifications"
+
+#### Proactive Task Hints
 
 **When:** After listing emails, checking calendar, or user mentions work items.
 
@@ -41,7 +50,7 @@
    - Suggest: "You have X meeting invites on [dates], would you like to check your calendar for those days?"
 6. Get user approval
 
-### Add Tasks from Emails
+#### Add Tasks from Emails
 
 **When:** Approval emails, delegation emails, direct action requests, urgent executive requests
 
@@ -49,22 +58,57 @@
 
 **Skip:** FYI emails, general announcements, unclear discussion threads
 
-### Priority Detection
+### Task Operations
+
+#### Priority Detection
 - **P1 (High):** Urgent keywords, executive sender, deadline ≤ 2 days
 - **P2 (Medium):** Normal work, deadline ≤ 1 week
 - **P3 (Low):** FYI items, no strict deadline
 
-### Email Display Format
-**When summarizing emails after list/search operations:**
-- ALWAYS include email reference numbers (e.g., #1, #2, #3)
-- Format: Use "#X" prefix in summary text
-- Purpose: Enable quick reference for follow-up actions (reply, forward, get details)
-- Example: "#17 Manjula (LearnQuest) - Azure APIM clarifications"
+#### Task Workflow
 
-### Source Tags
-- Extract 2-3 UNIQUE identifiers using keyword-extraction skill
-- Format: P1(Ticket) + P2(Names) + P3(TaskType) + P4(Keywords)
-- Use SPECIFIC identifiers, avoid generic terms
+> **Format definitions in CONFIG.md** - Read for: status symbols, priority levels, file naming, templates
+
+**Adding a Task:**
+1. Read `Last Task ID` from queue.md header → increment for new ID → update header
+2. **Extract keywords using `keyword-extraction` skill**
+   - Extract 2-3 UNIQUE identifiers
+   - Format: P1(Ticket) + P2(Names) + P3(TaskType) + P4(Keywords)
+   - Use SPECIFIC identifiers, avoid generic terms
+3. **Identify Geography (Geo)** from context (email sender, requester location, organization)
+   - Examples: Philippines, India, China, Singapore, APAC, Global
+   - Helps prevent matching emails to wrong geographic region
+4. Create `T{ID}-{keywords}.md` in tasks/ (use template from CONFIG.md with Geo field)
+5. If task is from recurring_tasks.md, include "Recurring Task ID" field in task file and queue.md (use "id" value, e.g., R001)
+6. Add entry to queue.md table with Created, Priority, Due, Tags (and Recurring Task ID only if from recurring_tasks.md)
+7. Confirm with user
+
+**Updating a Task:**
+1. Read current task file to see existing content
+2. Check if incoming information already exists in the file
+3. If new: Show user what will be added and ask for approval
+4. If duplicate: Notify user that info already exists (skip adding)
+5. After approval: Update status in queue.md + add new entry to task file
+6. ⚠️ NEVER update task files without checking for duplicates and notifying user
+
+**Completing a Task:**
+1. Update status to ✅
+2. If task has "Recurring Task ID" (e.g., R001), find matching "id" in recurring_tasks.md and update its "last_completed" field
+3. Move to history/ → remove from queue.md → add Completion section
+
+**Task Matching:** When user mentions keyword → search queue.md → show matching tasks → read task file if details needed
+
+---
+
+## Draft Email Command
+
+When user says "draft email", "draft reply", "起草邮件", or "草拟邮件":
+
+1. **Gather info** - Collect To, Subject, Body
+2. **Format draft** - Prepare content with signature
+3. **Present draft** - Show email with signature, offer suggestions for improving the email content, ask for approval
+4. **Iterate or send** - If changes requested → revise; If approved → send
+5. **Confirm** - Report email sent
 
 ---
 
@@ -155,3 +199,18 @@ Record ALL task-related events in detail:
 2. Filter → Work-related only
 3. Show user → Ask for approval
 4. Record → If approved
+
+### things_to_avoid.md Format
+
+**Trigger:** Work mistake repeats 2+ times (not technical errors)
+
+**Entry Template:**
+```markdown
+## {Title}
+- Context: {When/where}
+- What went wrong: {What failed}
+- Correction: {Right way}
+- Count: {X}/2 [✓ VERIFIED when 2/2]
+```
+
+**Footer:** `Entries: {N} | Updated: {YYYY-MM-DD}`

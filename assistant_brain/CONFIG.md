@@ -16,7 +16,7 @@
 
 ## Email Signature
 ```
-Marlon
+Marlon Luo
 Learning Consultant
 Learning & Knowledge(L&K) - IBM Consulting
 Slack - @Marlon Luo
@@ -75,6 +75,7 @@ List format (human-friendly):
 ## T{ID} {status} [{title}](T{ID}-xxx.md)
 - **Created:** {YYYY-MM-DD}
 - **Priority:** P{1-3}
+- **Geo:** {Philippines/India/China/Singapore/APAC/Global}
 - **Due:** {date or TBD}
 - **Recurring Task ID:** {recurring task ID (e.g., R001)} (only if from recurring_tasks.md)
 - **Tags:** `tag1`, `tag2`
@@ -88,6 +89,7 @@ List format (human-friendly):
 **Created:** {YYYY-MM-DD}
 **Priority:** P{1-3}
 **Category:** {Email/Slack/Meeting/Other}
+**Geo:** {Philippines/India/China/Singapore/APAC/Global}
 **Due:** {Date or TBD}
 **Recurring Task ID:** {recurring task ID (e.g., R001)} (only if from recurring_tasks.md)
 

@@ -1,4 +1,3 @@
-
 # BrainClaw - Personal Assistant System
 
 **Bringing AI automation to non-technical office workers through AI IDEs.**
@@ -26,14 +25,16 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 
 1. Open your AI IDE (Claude, Cursor, etc.)
 2. Go to custom instructions / system prompt settings
-3. Paste the content of `SYSTEM_PROMPT.md`
+3. Paste the content of [`SYSTEM_PROMPT.md`](SYSTEM_PROMPT.md)
 4. Set your workspace to the BrainClaw folder
 
 ### Daily Use
 
 1. Open your AI IDE
-2. Say "hi" or "你好"
-3. The assistant loads and is ready to help
+2. Say **"start"** or **"启动"** to activate the full assistant
+3. The assistant loads brain files and is ready to help
+
+(Or just say "hi"/"你好" for a quick greeting without full startup)
 
 **No installation. No configuration. No command line.**
 
@@ -47,17 +48,18 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  (SYSTEM_PROMPT.md)                          │  │
 │  │                                               │  │
 │  │  "On startup, read brain files..."           │  │
-│  │  "Commands: hi, end of day..."               │  │
+│  │  "Commands: start, hi..."                    │  │
 │  └───────────────────────────────────────────────┘  │
 │                        ↓                            │
 │  ┌───────────────────────────────────────────────┐  │
 │  │  Brain Files (assistant_brain/)               │  │
 │  │  ├── SOUL.md               (identity & values)         │  │
-│  │  ├── OPERATIONAL_RULES.md  (operational strategies)    │  │
+│  │  ├── OPERATIONAL_RULES.md  (strategies & rules)        │  │
 │  │  ├── CONFIG.md             (system parameters)         │  │
-│  │  ├── memory/      (learned preferences)       │  │
-│  │  ├── skills/      (capabilities)              │  │
-│  │  └── tasks/       (task queue & history)      │  │
+│  │  ├── recurring_tasks.md    (scheduled tasks)           │  │
+│  │  ├── memory/      (learned preferences & policies)     │  │
+│  │  ├── skills/      (modular capabilities)               │  │
+│  │  └── tasks/       (task queue & history)               │  │
 │  └───────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────┘
 ```
@@ -66,19 +68,86 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 
 | Feature | Description |
 |---------|-------------|
-| **Task Management** | Detailed task tracking with Status, Priority, Category, Due Time, Contact, Keywords, History |
-| **Email Management** | Check, send, reply emails (via Microsoft Graph Skill) |
-| **Memory System** | Learns your preferences over time |
-| **Calendar** | Schedule management (with skills) |
-| **Extensible** | Add new capabilities through skills |
+| **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, Keywords, History, Parent-Child relationships |
+| **Email Management** | Check, send, reply, forward emails via Microsoft Graph Skill |
+| **Calendar Management** | Schedule meetings, check availability, manage events |
+| **Memory System** | Learns preferences, remembers contacts, tracks things to avoid, maintains policy index |
+| **Policy Management** | Structured policy files with indexing and reference system |
+| **Recurring Tasks** | Auto-create scheduled tasks (monthly reports, quarterly invoices, etc.) |
+| **Office Documents** | Create/edit Word, Excel, PowerPoint files via OfficeCLI skill |
+| **Keyword Extraction** | Automatically extract relevant keywords from emails and documents |
+| **Extensible Skills** | Add new capabilities through modular skill system |
 
-### Task Queue Features
+## Skills
 
-- **Rich Task Cards**: Each task includes Status, Priority, Category, Due Time, Contact, Keywords, History, Note
+BrainClaw includes 4+ built-in skills:
+
+| Skill | Purpose |
+|-------|---------|
+| **keyword-extraction** | Extract priority-ordered keywords from any text |
+| **microsoft-graph-skill** | Email, calendar, and user operations via Microsoft Graph API |
+| **OfficeCLI** | Create/edit Office documents (.docx, .xlsx, .pptx) with 7 specialized sub-skills |
+| **skill-creator** | Create new skills for any workflow or automation need |
+
+### OfficeCLI Sub-Skills
+- officecli-docx - Word documents (reports, letters, memos)
+- officecli-academic-paper - Research papers with TOC, equations, footnotes
+- officecli-pptx - Presentations and slide decks
+- officecli-pitch-deck - Investor decks with charts
+- morph-ppt - Cinematic presentations with morph animations
+- officecli-xlsx - Excel spreadsheets and financial models
+- officecli-data-dashboard - CSV to Excel dashboards with KPI cards and charts
+
+## Project Structure
+
+```
+BrainClaw/
+├── SYSTEM_PROMPT.md                    # Entry point - for AI IDE integration
+├── SYSTEM_PROMPT_STANDALONE.md         # Standalone version
+├── README.md                            # This file
+└── assistant_brain/
+    ├── SOUL.md               # Identity & values (unchanging core)
+    ├── OPERATIONAL_RULES.md  # Strategies & decision rules
+    ├── CONFIG.md             # System parameters (user info, formats)
+    ├── recurring_tasks.md    # Scheduled recurring tasks
+    ├── memory/           # Learned experiences
+    │   ├── preferences.md    # User preferences
+    │   ├── things_to_avoid.md # Mistakes to remember
+    │   ├── contacts.md       # External contacts
+    │   ├── tracking.md       # Cross-session monitoring
+    │   └── policy/           # Policy management
+    │       └── README.md     # Policy index
+    ├── skills/           # Modular capabilities
+    │   ├── keyword-extraction/
+    │   ├── microsoft-graph-skill/
+    │   ├── OfficeCLI/
+    │   └── skill-creator/
+    ├── tasks/            # Task queue & history
+    │   ├── queue.md          # Active task list + Recent Events (last 7 days)
+    │   ├── T0xx-xxx.md       # Active task details
+    │   └── history/          # Completed tasks & monthly timeline archives
+    └── backups/          # Configuration backups
+```
+
+## Commands
+
+| Command | Trigger | What it does |
+|---------|---------|--------------|
+| Startup | "start", "启动", "start assistant", "帮我", "help me" | Load brain files, skills, and show today's tasks |
+| Greeting | "hi", "hello", "你好", "在吗", "助手" | Quick greeting (lightweight, no full startup) |
+
+## Task Management Features
+
+BrainClaw provides enterprise-grade task tracking:
+
+- **Rich Task Cards**: Status, Priority, Category, Geo (geographic tracking), Due Time, Contact, Keywords, History, Notes
 - **Auto-Detection**: Automatically determines Due Time and Priority from context
 - **Smart Keywords**: 2-3 unique identifiers (Request IDs, full names, specific codes) for easy source tracing
 - **History Tracking**: Cumulative record of all task updates with timestamp and source
-- **Smart Carry-Over**: End of Day preserves uncompleted tasks with all fields
+- **Parent-Child Tasks**: Master tasks can have subtasks for complex project management
+- **Geographic Tracking**: Track tasks by region (Philippines, India, China, Singapore, APAC, Global)
+- **Recent Events**: Last 7 days overview in queue.md, with monthly archives
+- **Recurring Tasks**: Auto-create scheduled tasks (monthly reports, quarterly processes)
 
 ### Keywords System
 
@@ -93,36 +162,17 @@ BrainClaw uses a smart keyword system to help you trace tasks back to their sour
 - ✅ Good: `Req 11695, Informatica PowerCenter` → unique request
 - ❌ Bad: `certification, approval, Salesforce` → finds hundreds of emails
 
-## Project Structure
+## Memory System
 
-```
-BrainClaw/
-├── SYSTEM_PROMPT.md                    # Entry point - for AI IDE integration
-├── SYSTEM_PROMPT_STANDALONE.md         # Standalone version (no instructions)
-├── README.md                            # This file
-└── assistant_brain/
-    ├── SOUL.md               # Identity & values (unchanging)
-    ├── OPERATIONAL_RULES.md  # Operational strategies & decision rules
-    ├── CONFIG.md             # System parameters (user info, formats)
-    ├── recurring_tasks.md # Scheduled recurring tasks
-    ├── memory/           # Learned experiences
-    ├── skills/           # Modular capabilities
-    ├── tasks/            # Task queue & history
-    └── backups/          # Configuration backups
-```
+BrainClaw learns and remembers across sessions:
 
-## Commands
-
-| Command | Trigger | What it does |
-|---------|---------|--------------|
-| Startup | "hi", "你好" | Load brain files, show today's tasks |
-| End of Day | "end of day", "收工" | Archive today's log, carry over tasks |
-
-## Language Support
-
-- **Files**: English (for consistency)
-- **Commands**: English + Chinese
-- **User content**: Any language
+| Memory File | Purpose |
+|-------------|---------|
+| preferences.md | User preferences (timezone, tone, formats) |
+| things_to_avoid.md | Failed patterns to learn from |
+| contacts.md | External contacts (non-colleagues) |
+| tracking.md | Items requiring cross-session monitoring |
+| policy/ | Structured policy files with index |
 
 ## System Capabilities & Limitations
 
@@ -134,6 +184,9 @@ BrainClaw/
 | **Interactive Response** | Execute tasks when triggered by user (request-response pattern) |
 | **Modular Extension** | Add new capabilities through `skills/` without modifying core |
 | **Local Autonomy** | All data stays local; no external services required (except AI IDE) |
+| **Learning System** | Learns from interactions and updates memory files |
+| **Policy Management** | Structured policy tracking with reference system |
+| **Scheduled Tasks** | Recurring tasks auto-trigger on schedule |
 
 ### What It Cannot Do
 
@@ -147,11 +200,17 @@ BrainClaw/
 ### System Nature
 
 ```
-BrainClaw = Stateless Request-Response System
-         ≠ Stateful Continuously Running System
+BrainClaw = Stateful Request-Response System
+         ≠ Continuously Running System
 ```
 
 **Core Constraint: No process, only conversation.**
+
+## Language Support
+
+- **Files**: English (for consistency)
+- **Commands**: English + Chinese
+- **User content**: Any language
 
 ## Philosophy
 
@@ -161,7 +220,7 @@ BrainClaw bridges the gap between powerful AI tools and everyday office workers.
 
 ## Extending with Skills
 
-Skills are modular capabilities stored in `assistant_brain/skills/`. Each skill adds new abilities without requiring code changes. See `skill-creator` skill to build your own.
+Skills are modular capabilities stored in `assistant_brain/skills/`. Each skill adds new abilities without requiring code changes. Use the `skill-creator` skill to build your own.
 
 ---
 
