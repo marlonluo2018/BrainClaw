@@ -60,6 +60,13 @@
 
 ### Task Operations
 
+#### Task Display Format
+**When mentioning tasks in any response:**
+- ALWAYS format task IDs as clickable links: `[TID](tasks/TID-keywords.md)`
+- Format: `[T025](tasks/T025-pmp-renewal-futurenow-q2.md)`
+- Purpose: Enable quick access to task files
+- Apply to: All task mentions (in summaries, lists, queries, updates, completions)
+
 #### Priority Detection
 - **P1 (High):** Urgent keywords, executive sender, deadline ≤ 2 days
 - **P2 (Medium):** Normal work, deadline ≤ 1 week
@@ -78,10 +85,17 @@
 3. **Identify Geography (Geo)** from context (email sender, requester location, organization)
    - Examples: Philippines, India, China, Singapore, APAC, Global
    - Helps prevent matching emails to wrong geographic region
-4. Create `T{ID}-{keywords}.md` in tasks/ (use template from CONFIG.md with Geo field)
-5. If task is from recurring_tasks.md, include "Recurring Task ID" field in task file and queue.md (use "id" value, e.g., R001)
-6. Add entry to queue.md table with Created, Priority, Due, Tags (and Recurring Task ID only if from recurring_tasks.md)
-7. Confirm with user
+4. **Auto-detect stakeholders and suggest RACI roles:**
+   - Check email contacts (To, CC, From) against [`stakeholders/registry.md`](stakeholders/registry.md)
+   - Auto-suggest RACI roles based on:
+     - Email role: To/From = likely R or A, CC = likely I
+     - Stakeholder power: High Power = likely A (Accountable)
+     - Task type: Budget task → budget approver = A, Procurement task → procurement team = C
+   - Present suggested RACI matrix to user for confirmation
+5. Create `T{ID}-{keywords}.md` in tasks/ (use template from CONFIG.md with Geo field)
+6. If task is from recurring_tasks.md, include "Recurring Task ID" field in task file and queue.md (use "id" value, e.g., R001)
+7. Add entry to queue.md table with Created, Priority, Due, Tags (and Recurring Task ID only if from recurring_tasks.md)
+8. Confirm with user
 
 **Updating a Task:**
 1. Read current task file to see existing content
@@ -91,12 +105,34 @@
 5. After approval: Update status in queue.md + add new entry to task file
 6. ⚠️ NEVER update task files without checking for duplicates and notifying user
 
+**Marking Task as Blocked:**
+- Use 🔴 Blocked status when task cannot proceed due to external dependency
+- Always document in task file: what is blocking, who is responsible, expected resolution
+- **Before marking blocked:** Check task RACI matrix → remind to notify Accountable (A) stakeholder about blocker
+- Suggest: "Task blocked. [Stakeholder Name] (Accountable) should be notified. Draft email?"
+
 **Completing a Task:**
-1. Update status to ✅
-2. If task has "Recurring Task ID" (e.g., R001), find matching "id" in recurring_tasks.md and update its "last_completed" field
-3. Move to history/ → remove from queue.md → add Completion section
+1. **Before marking complete:** Check task RACI matrix → remind to notify Accountable (A) and Informed (I) stakeholders
+2. Suggest: "Task complete. Should I draft notification email to [Stakeholder Names]?"
+3. Update status to ✅
+4. If task has "Recurring Task ID" (e.g., R001), find matching "id" in recurring_tasks.md and update its "last_completed" field
+5. Move to history/ → remove from queue.md → add Completion section
 
 **Task Matching:** When user mentions keyword → search queue.md → show matching tasks → read task file if details needed
+
+---
+
+## Stakeholder Context
+
+**When to read stakeholder files:**
+- Before drafting emails to stakeholder
+- When task mentions stakeholder by name
+- When adding/updating tasks with stakeholders
+
+**How:**
+1. Read [`stakeholders/registry.md`](stakeholders/registry.md) → find stakeholder
+2. Read stakeholder's detailed file (e.g., `SH001-beng-paulino.md`)
+3. Use profile (power, style, interests, concerns) to inform actions
 
 ---
 
@@ -104,11 +140,12 @@
 
 When user says "draft email", "draft reply", "起草邮件", or "草拟邮件":
 
-1. **Gather info** - Collect To, Subject, Body
-2. **Format draft** - Prepare content with signature
-3. **Present draft** - Show email with signature, offer suggestions for improving the email content, ask for approval
-4. **Iterate or send** - If changes requested → revise; If approved → send
-5. **Confirm** - Report email sent
+1. **Read stakeholder context** - Check [`stakeholders/registry.md`](stakeholders/registry.md) for recipient profile (power level, communication style, interests, concerns)
+2. **Gather info** - Collect To, Subject, Body
+3. **Format draft** - Prepare content with appropriate tone based on stakeholder profile, add signature
+4. **Present draft** - Show email with signature, offer suggestions for improving the email content, ask for approval
+5. **Iterate or send** - If changes requested → revise; If approved → send
+6. **Confirm** - Report email sent
 
 ---
 
@@ -128,7 +165,7 @@ When user says "draft email", "draft reply", "起草邮件", or "草拟邮件":
 
 ### What to Record
 
-#### queue.md Recent Events (Last 7 Days)
+#### queue.md Recent Events (Configurable Window)
 
 | Event Type | Icon | Record? |
 |------------|------|---------|
@@ -153,7 +190,7 @@ Record ALL task-related events in detail:
 
 **queue.md Recent Events:**
 ```markdown
-- **{YYYY-MM-DD}**: {icon} {description} {task_link}
+- **{YYYY-MM-DD}**: {icon} {description} [[{filename.md}]]
 ```
 
 **Task File Timeline:**
@@ -165,7 +202,7 @@ Record ALL task-related events in detail:
 
 **User: "What did I do recently?"**
 1. Read queue.md Recent Events
-2. Show last 7 days activities (task creation/completion + non-task events)
+2. Show activities within Recent Events window (see CONFIG.md) (task creation/completion + non-task events)
 
 **User: "What happened with T019?"**
 1. Read queue.md Recent Events → find T019 creation/completion
@@ -174,7 +211,7 @@ Record ALL task-related events in detail:
 
 ### Archiving
 
-- Keep last 7 days in queue.md
+- Keep events within Recent Events window (see CONFIG.md, default: 14 days) in queue.md
 - Move older events to `tasks/history/timeline_YYYY-MM.md`
 - One file per month
 - Keep last 12 months

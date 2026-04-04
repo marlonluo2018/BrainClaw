@@ -117,6 +117,10 @@ BrainClaw/
     │   ├── tracking.md       # Cross-session monitoring
     │   └── policy/           # Policy management
     │       └── README.md     # Policy index
+    ├── stakeholders/     # Key stakeholder profiles
+    │   ├── README.md         # Module documentation
+    │   ├── registry.md       # Stakeholder index
+    │   └── SH0xx-xxx.md      # Individual stakeholder files
     ├── skills/           # Modular capabilities
     │   ├── keyword-extraction/
     │   ├── microsoft-graph-skill/

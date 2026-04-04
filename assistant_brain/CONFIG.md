@@ -28,13 +28,13 @@ Slack - @Marlon Luo
 - Shell: PowerShell
 - PowerShell syntax: `;` for sequential, `-and` for conditional (no `&&`)
 - Bash syntax: `&&` for conditional chaining
+- Recent Events Window: 14 days (events older than this are archived to timeline)
 
 ## Tasks
 
 ### Directory Structure
 ```
 tasks/
-├── README.md              # System documentation
 ├── queue.md               # Active task queue (table view)
 ├── T001-xxx.md            # Active task details
 └── history/               # Completed task archives
@@ -47,20 +47,18 @@ T{ID}-{keyword1}-{keyword2}.md
 - **ID**: 3-digit incrementing number (T001, T002...)
 - **Source**: Use `Last Task ID` from queue.md header (increment from this)
 - **Keywords**: 2-4 keywords connected with `-`
-- **Examples**:
-  - ✅ `T001-rhcsa-voucher-sukriti.md` (project + item + person)
-  - ✅ `T002-q1-achievements.md` (concise)
-  - ❌ `T001.md` (missing keywords)
-  - ❌ `T001_process_rhcsa_voucher.md` (wrong separator)
 
 ### Status System
 || Symbol | Status | Description |
 ||--------|--------|-------------|
 || 📋 | Not Started | Needs action |
-|| ⏳ | In Progress | Working / Waiting |
+|| ⏳ | In Progress | Actively working on task |
+|| 🔴 | Blocked | Waiting on external dependency / Unable to proceed |
 || ✅ | Completed | Move to history/ |
 
-Flow: `📋 → ⏳ → ✅ → history/`
+Flow: `📋 → ⏳ → (🔴 optional) → ✅ → history/`
+
+**Note:** 🔴 Blocked status distinguishes tasks waiting on others (blocked) from tasks being actively worked (in progress).
 
 ### Priority System
 || Level | Meaning |
@@ -98,6 +96,18 @@ List format (human-friendly):
 ## Contacts
 - **Requester:** Name (email)
 - **Approver:** Name (email)
+
+## Stakeholders
+
+### RACI Matrix
+*List stakeholders involved in this task and their role.*
+
+| Stakeholder | Role |
+|-------------|------|
+
+**Legend:** R=Responsible, A=Accountable, C=Consulted, I=Informed
+
+### Engagement Log
 
 ## Tags
 `tag1`, `tag2`
