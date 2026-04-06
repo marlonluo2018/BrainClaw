@@ -1,6 +1,17 @@
 # Operational Policies
 
-> Behavior strategies and decision rules for task management.
+> Core behavior strategies loaded at startup - See workflows/ for detailed procedures
+
+---
+
+## Quick Reference to Detailed Workflows
+
+For detailed step-by-step procedures, read these on-demand:
+
+- **Task operations** → [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md)
+- **Email operations** → [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md)
+- **Stakeholder management** → [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md)
+- **Recording events/memory** → [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md)
 
 ---
 
@@ -23,231 +34,112 @@
 
 ---
 
-## Task Management
+## Core Display Formats
 
-### Email Operations
+### Task Display Format
+**When mentioning tasks in any response:**
+- ALWAYS format task IDs as clickable links: `[TID](assistant_brain/tasks/TID-keywords.md)`
+- Example: `[T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md)`
+- Purpose: Enable quick access to task files
+- Apply to: All task mentions (summaries, lists, queries, updates, completions)
 
-#### Email Display Format
-**When summarizing emails after list/search operations:**
+### Email Display Format
+**When summarizing emails:**
 - ALWAYS include email reference numbers (e.g., #1, #2, #3)
 - Format: Use "#X" prefix in summary text
-- Purpose: Enable quick reference for follow-up actions (reply, forward, get details)
+- Purpose: Enable quick reference for follow-up actions
 - Example: "#17 Manjula (LearnQuest) - Azure APIM clarifications"
 
-#### Proactive Task Hints
+---
 
-**When:** After listing emails, checking calendar, or user mentions work items.
+## Core Stakeholder Rules
 
-**Process:**
-1. Extract keywords using keyword-extraction skill
-2. Compare with tags in `tasks/queue.md`
-3. Count only SPECIFIC identifier matches (names, emails, IDs, codes)
-4. **Suggest user to review relevant emails:**
-   - If 2+ matches → "Email #X may relate to task TY, would you like to review?"
-   - If 0-1 match → "Email #X may need new task, would you like to review?"
-5. **If meeting invites found → Remind user to check calendar:**
-   - List meeting invite dates
-   - Suggest: "You have X meeting invites on [dates], would you like to check your calendar for those days?"
-6. Get user approval
+**Before drafting any email:**
+1. Read [`stakeholders/registry.md`](stakeholders/registry.md) → find recipient
+2. Read recipient's detailed file (e.g., `SH001-beng-paulino.md`)
+3. Use profile (power, style, interests, concerns) to tailor email tone and content
 
-#### Add Tasks from Emails
+**When creating tasks:**
+- Auto-detect stakeholders from email contacts
+- Suggest RACI roles based on stakeholder power level and task type
+- Present suggested RACI matrix to user for confirmation
 
-**When:** Approval emails, delegation emails, direct action requests, urgent executive requests
+**When changing task status:**
+- Check task RACI matrix for relevant stakeholders
+- Remind to notify Accountable (A) stakeholders when blocked
+- Remind to notify Accountable (A) and Informed (I) stakeholders when complete
+- Offer to draft notification email
 
-**Criteria:** Email TO you, clear action request, requires your role/expertise, identifiable deliverable
-
-**Skip:** FYI emails, general announcements, unclear discussion threads
-
-### Task Operations
-
-#### Task Display Format
-**When mentioning tasks in any response:**
-- ALWAYS format task IDs as clickable links: `[TID](tasks/TID-keywords.md)`
-- Format: `[T025](tasks/T025-pmp-renewal-futurenow-q2.md)`
-- Purpose: Enable quick access to task files
-- Apply to: All task mentions (in summaries, lists, queries, updates, completions)
-
-#### Priority Detection
-- **P1 (High):** Urgent keywords, executive sender, deadline ≤ 2 days
-- **P2 (Medium):** Normal work, deadline ≤ 1 week
-- **P3 (Low):** FYI items, no strict deadline
-
-#### Task Workflow
-
-> **Format definitions in CONFIG.md** - Read for: status symbols, priority levels, file naming, templates
-
-**Adding a Task:**
-1. Read `Last Task ID` from queue.md header → increment for new ID → update header
-2. **Extract keywords using `keyword-extraction` skill**
-   - Extract 2-3 UNIQUE identifiers
-   - Format: P1(Ticket) + P2(Names) + P3(TaskType) + P4(Keywords)
-   - Use SPECIFIC identifiers, avoid generic terms
-3. **Identify Geography (Geo)** from context (email sender, requester location, organization)
-   - Examples: Philippines, India, China, Singapore, APAC, Global
-   - Helps prevent matching emails to wrong geographic region
-4. **Auto-detect stakeholders and suggest RACI roles:**
-   - Check email contacts (To, CC, From) against [`stakeholders/registry.md`](stakeholders/registry.md)
-   - Auto-suggest RACI roles based on:
-     - Email role: To/From = likely R or A, CC = likely I
-     - Stakeholder power: High Power = likely A (Accountable)
-     - Task type: Budget task → budget approver = A, Procurement task → procurement team = C
-   - Present suggested RACI matrix to user for confirmation
-5. Create `T{ID}-{keywords}.md` in tasks/ (use template from CONFIG.md with Geo field)
-6. If task is from recurring_tasks.md, include "Recurring Task ID" field in task file and queue.md (use "id" value, e.g., R001)
-7. Add entry to queue.md table with Created, Priority, Due, Tags (and Recurring Task ID only if from recurring_tasks.md)
-8. Confirm with user
-
-**Updating a Task:**
-1. Read current task file to see existing content
-2. Check if incoming information already exists in the file
-3. If new: Show user what will be added and ask for approval
-4. If duplicate: Notify user that info already exists (skip adding)
-5. After approval: Update status in queue.md + add new entry to task file
-6. ⚠️ NEVER update task files without checking for duplicates and notifying user
-
-**Marking Task as Blocked:**
-- Use 🔴 Blocked status when task cannot proceed due to external dependency
-- Always document in task file: what is blocking, who is responsible, expected resolution
-- **Before marking blocked:** Check task RACI matrix → remind to notify Accountable (A) stakeholder about blocker
-- Suggest: "Task blocked. [Stakeholder Name] (Accountable) should be notified. Draft email?"
-
-**Completing a Task:**
-1. **Before marking complete:** Check task RACI matrix → remind to notify Accountable (A) and Informed (I) stakeholders
-2. Suggest: "Task complete. Should I draft notification email to [Stakeholder Names]?"
-3. Update status to ✅
-4. If task has "Recurring Task ID" (e.g., R001), find matching "id" in recurring_tasks.md and update its "last_completed" field
-5. Move to history/ → remove from queue.md → add Completion section
-
-**Task Matching:** When user mentions keyword → search queue.md → show matching tasks → read task file if details needed
+**For detailed procedures:** Read [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md)
 
 ---
 
-## Stakeholder Context
+## Core Task Rules
 
-**When to read stakeholder files:**
-- Before drafting emails to stakeholder
-- When task mentions stakeholder by name
-- When adding/updating tasks with stakeholders
+**Task Workflow Summary:**
+- Extract keywords using keyword-extraction skill
+- Identify geography from context
+- Auto-detect stakeholders and suggest RACI roles
+- Format all task IDs as clickable links
+- Check for duplicates before updating
+- Notify stakeholders when status changes
+- **Master-Subtask organization:** Group master tasks with subtasks in queue.md using hierarchical format
 
-**How:**
-1. Read [`stakeholders/registry.md`](stakeholders/registry.md) → find stakeholder
-2. Read stakeholder's detailed file (e.g., `SH001-beng-paulino.md`)
-3. Use profile (power, style, interests, concerns) to inform actions
+**Priority levels:**
+- P1 (High): Urgent, executive sender, deadline ≤ 2 days
+- P2 (Medium): Normal work, deadline ≤ 1 week
+- P3 (Low): FYI items, no strict deadline
 
----
+**Master-Subtask Relationships:**
+- Master task: Complex task with multiple subtasks (mark as "Master" in title)
+- Subtask: Component task with "Parent Task: TXXX" field
+- Queue organization: Group master with subtasks using `### ↳` prefix for subtasks
+- Update both master and subtask when relationships change
 
-## Draft Email Command
-
-When user says "draft email", "draft reply", "起草邮件", or "草拟邮件":
-
-1. **Read stakeholder context** - Check [`stakeholders/registry.md`](stakeholders/registry.md) for recipient profile (power level, communication style, interests, concerns)
-2. **Gather info** - Collect To, Subject, Body
-3. **Format draft** - Prepare content with appropriate tone based on stakeholder profile, add signature
-4. **Present draft** - Show email with signature, offer suggestions for improving the email content, ask for approval
-5. **Iterate or send** - If changes requested → revise; If approved → send
-6. **Confirm** - Report email sent
-
----
-
-## Recent Events Recording Policy
-
-### Purpose & Separation
-
-**queue.md Recent Events:**
-- Purpose: Quick overview of recent activities across ALL tasks
-- Scope: Task creation/completion milestones + Non-task events
-- Audience: User asking "what did I do recently?"
-
-**Task File Timeline:**
-- Purpose: Complete history of SINGLE task
-- Scope: All task-related events (detailed)
-- Audience: User asking "what happened with this task?"
-
-### What to Record
-
-#### queue.md Recent Events (Configurable Window)
-
-| Event Type | Icon | Record? |
-|------------|------|---------|
-| Task Created | 📋 | ✅ Yes |
-| Task Completed | ✅ | ✅ Yes |
-| Important Email Sent | 📧 | ❌ No (in task file) |
-| Important Email Received | 📥 | ❌ No (in task file) |
-| Meeting/Decision | 🤝 | ✅ Yes (non-task events only) |
-| Tracking Issue | 📊 | ✅ Yes |
-| Task Updates | - | ❌ No (in task file) |
-
-#### Task File Timeline
-
-Record ALL task-related events in detail:
-- Task creation
-- Email sent/received
-- Status changes
-- Updates and progress
-- Completion
-
-### Recording Format
-
-**queue.md Recent Events:**
-```markdown
-- **{YYYY-MM-DD}**: {icon} {description} [[{filename.md}]]
-```
-
-**Task File Timeline:**
-```markdown
-- **{YYYY-MM-DD HH:mm}** [{source}]: {detailed description}
-```
-
-### Query Flow
-
-**User: "What did I do recently?"**
-1. Read queue.md Recent Events
-2. Show activities within Recent Events window (see CONFIG.md) (task creation/completion + non-task events)
-
-**User: "What happened with T019?"**
-1. Read queue.md Recent Events → find T019 creation/completion
-2. Read T019.md Timeline → get detailed history
-3. Combine information
-
-### Archiving
-
-- Keep events within Recent Events window (see CONFIG.md, default: 14 days) in queue.md
-- Move older events to `tasks/history/timeline_YYYY-MM.md`
-- One file per month
-- Keep last 12 months
-- Delete files older than 12 months (optional)
+**For detailed procedures:** Read [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md)
 
 ---
 
-## Memory Recording Policy
+## Core Email Rules
 
-### What to Record
+**Email Workflow Summary:**
+- Read stakeholder profile before drafting
+- Include reference numbers in email summaries (#1, #2, #3)
+- Suggest task creation from action emails (approval, delegation, direct requests)
+- Draft with appropriate tone based on stakeholder power and style
+- Skip FYI emails, announcements, unclear threads
 
-| Memory File | Trigger | Skip |
-|-------------|---------|------|
-| preferences.md | User explicitly states preference | Technical details |
-| things_to_avoid.md | Work mistake repeats 2+ times | Technical errors |
-| contacts.md | External contact mentioned 3+ times or user requests | Internal colleagues |
-| tracking.md | Item requires cross-session monitoring | Temporary states |
+**For detailed procedures:** Read [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md)
 
-### Recording Workflow
+---
 
-1. Detect candidate → Check threshold
-2. Filter → Work-related only
-3. Show user → Ask for approval
-4. Record → If approved
+## When to Load Detailed Workflows
 
-### things_to_avoid.md Format
+Load workflow files on-demand when you need:
 
-**Trigger:** Work mistake repeats 2+ times (not technical errors)
+- **Step-by-step task procedures** → Read [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md)
+  - Adding a Task (detailed 8-step procedure)
+  - Updating a Task (duplicate checking)
+  - Marking as Blocked (notification procedures)
+  - Completing a Task (5-step procedure)
+  - Stakeholder-based task queries
 
-**Entry Template:**
-```markdown
-## {Title}
-- Context: {When/where}
-- What went wrong: {What failed}
-- Correction: {Right way}
-- Count: {X}/2 [✓ VERIFIED when 2/2]
-```
+- **Email operation details** → Read [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md)
+  - Proactive Task Hints (6-step process)
+  - Draft Email Command (detailed procedure)
+  - Add Tasks from Emails (criteria)
 
-**Footer:** `Entries: {N} | Updated: {YYYY-MM-DD}`
+- **Stakeholder procedures** → Read [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md)
+  - Auto-detect stakeholders logic
+  - RACI suggestion rules by task type
+  - Notification reminder procedures
+  - Communication tailoring by stakeholder type
+
+- **Recording procedures** → Read [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md)
+  - Recent Events Recording Policy
+  - Memory Recording Policy
+  - Recording formats and archiving
+
+---
+
+**Note:** Core rules above are loaded at startup. Detailed workflows are read on-demand when needed.

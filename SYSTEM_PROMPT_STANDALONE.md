@@ -9,7 +9,7 @@ Execute now:
 5. List subdirectories in `assistant_brain/skills/` → for each subdirectory, check for SKILL.md and read first 15 lines
 6. Check SKILL.md for "ON STARTUP:" instructions → execute if found
 7. Count policies from `memory/policy/README.md` table (exclude header row)
-8. Output: `✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name] | Shell: [Shell Type] | Skills: [count] | Policies: [count]` + skill list (numbered with descriptions and triggers) + recent events (use `[TID](path)` format) + active task list (use `[TID](path)` format with priority, geo, due date)
+8. Output: `✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name] | Shell: [Shell Type] | Skills: [count] | Policies: [count]` + skill list (numbered with descriptions and triggers) + recent events (use `[TID](path)` format with title) + active task list (use `[TID](path)` format with title, status, priority, geo, due date)
 
 
 ## Brain Files
@@ -17,9 +17,18 @@ Execute now:
 ```
 assistant_brain/
 ├── SOUL.md               # Identity & values (startup)
-├── OPERATIONAL_RULES.md  # Operational strategies (startup)
+├── OPERATIONAL_RULES.md  # Core operational strategies (startup - lightweight, references workflows/)
 ├── CONFIG.md             # System parameters (startup)
 ├── recurring_tasks.md   # Scheduled tasks (startup)
+├── workflows/           # Detailed operational workflows (on-demand)
+│   ├── TASK_WORKFLOW.md        # Task operation procedures
+│   ├── EMAIL_WORKFLOW.md       # Email operation procedures
+│   ├── STAKEHOLDER_WORKFLOW.md # Stakeholder management procedures
+│   └── RECORDING_WORKFLOW.md   # Recording policies
+├── stakeholders/        # Stakeholder profiles (on-demand)
+│   ├── README.md               # Module documentation
+│   ├── registry.md             # Stakeholder index
+│   └── SH0xx-xxx.md            # Individual stakeholder files
 ├── tasks/
 │   ├── queue.md         # Active task list + Recent Events (see CONFIG.md) (startup - lightweight)
 │   ├── T0xx-xxx.md      # Active task details (on-demand)
@@ -30,7 +39,9 @@ assistant_brain/
 │   ├── preferences.md   # User preferences (startup)
 │   ├── things_to_avoid.md # Mistakes to avoid (startup)
 │   ├── contacts.md      # External contacts (on-demand)
-│   └── tracking.md      # Tracking information (on-demand)
+│   ├── tracking.md      # Tracking information (on-demand)
+│   └── policy/          # Business policies (on-demand)
+│       └── README.md    # Policy index
 └── skills/              # Modular capabilities (on-demand)
 ```
 

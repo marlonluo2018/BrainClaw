@@ -108,9 +108,18 @@ BrainClaw/
 ├── README_CN.md                         # 中文说明（本文件）
 └── assistant_brain/
     ├── SOUL.md               # 身份与价值观（不变的核心）
-    ├── OPERATIONAL_RULES.md  # 策略与决策规则
+    ├── OPERATIONAL_RULES.md  # 核心策略（引用 workflows/）
     ├── CONFIG.md             # 系统参数（用户信息、格式）
     ├── recurring_tasks.md    # 定期任务定义
+    ├── workflows/        # 详细操作工作流
+    │   ├── TASK_WORKFLOW.md        # 任务操作流程
+    │   ├── EMAIL_WORKFLOW.md       # 邮件操作流程
+    │   ├── STAKEHOLDER_WORKFLOW.md # 利益相关方管理流程
+    │   └── RECORDING_WORKFLOW.md   # 记录策略
+    ├── stakeholders/     # 关键利益相关方档案
+    │   ├── README.md         # 模块文档
+    │   ├── registry.md       # 利益相关方索引
+    │   └── SH0xx-xxx.md      # 单个利益相关方文件
     ├── memory/           # 学到的经验
     │   ├── preferences.md    # 用户偏好
     │   ├── things_to_avoid.md # 需要记住的错误

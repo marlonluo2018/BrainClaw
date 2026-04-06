@@ -107,9 +107,18 @@ BrainClaw/
 ├── README.md                            # This file
 └── assistant_brain/
     ├── SOUL.md               # Identity & values (unchanging core)
-    ├── OPERATIONAL_RULES.md  # Strategies & decision rules
+    ├── OPERATIONAL_RULES.md  # Core operational strategies (references workflows/)
     ├── CONFIG.md             # System parameters (user info, formats)
     ├── recurring_tasks.md    # Scheduled recurring tasks
+    ├── workflows/        # Detailed operational workflows
+    │   ├── TASK_WORKFLOW.md        # Task operation procedures
+    │   ├── EMAIL_WORKFLOW.md       # Email operation procedures
+    │   ├── STAKEHOLDER_WORKFLOW.md # Stakeholder management procedures
+    │   └── RECORDING_WORKFLOW.md   # Recording policies
+    ├── stakeholders/     # Key stakeholder profiles
+    │   ├── README.md         # Module documentation
+    │   ├── registry.md       # Stakeholder index
+    │   └── SH0xx-xxx.md      # Individual stakeholder files
     ├── memory/           # Learned experiences
     │   ├── preferences.md    # User preferences
     │   ├── things_to_avoid.md # Mistakes to remember
@@ -117,10 +126,6 @@ BrainClaw/
     │   ├── tracking.md       # Cross-session monitoring
     │   └── policy/           # Policy management
     │       └── README.md     # Policy index
-    ├── stakeholders/     # Key stakeholder profiles
-    │   ├── README.md         # Module documentation
-    │   ├── registry.md       # Stakeholder index
-    │   └── SH0xx-xxx.md      # Individual stakeholder files
     ├── skills/           # Modular capabilities
     │   ├── keyword-extraction/
     │   ├── microsoft-graph-skill/

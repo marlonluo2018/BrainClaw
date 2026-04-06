@@ -34,10 +34,12 @@ Slack - @Marlon Luo
 
 ### Directory Structure
 ```
-tasks/
+assistant_brain/tasks/
 ├── queue.md               # Active task queue (table view)
 ├── T001-xxx.md            # Active task details
 └── history/               # Completed task archives
+    ├── timeline_YYYY-MM.md    # Monthly event archives
+    └── T0xx-xxx.md            # Completed task archives
 ```
 
 ### File Naming
