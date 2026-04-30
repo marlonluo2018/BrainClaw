@@ -48,102 +48,131 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  (SYSTEM_PROMPT.md)                          │  │
 │  │                                               │  │
 │  │  "On startup, read brain files..."           │  │
-│  │  "Commands: start, hi..."                    │  │
+│  │  "Load skill index from README.md..."        │  │
 │  └───────────────────────────────────────────────┘  │
 │                        ↓                            │
 │  ┌───────────────────────────────────────────────┐  │
 │  │  Brain Files (assistant_brain/)               │  │
-│  │  ├── SOUL.md               (identity & values)         │  │
-│  │  ├── OPERATIONAL_RULES.md  (strategies & rules)        │  │
-│  │  ├── CONFIG.md             (system parameters)         │  │
-│  │  ├── recurring_tasks.md    (scheduled tasks)           │  │
-│  │  ├── memory/      (learned preferences & policies)     │  │
-│  │  ├── skills/      (modular capabilities)               │  │
-│  │  └── tasks/       (task queue & history)               │  │
+│  │  ├── SOUL.md               (identity & values)│  │
+│  │  ├── OPERATIONAL_RULES.md  (strategies)       │  │
+│  │  ├── CONFIG.md             (parameters)       │  │
+│  │  ├── workflows/            (orchestration)    │  │
+│  │  │   ├── TASK_WORKFLOW.md                     │  │
+│  │  │   ├── EMAIL_WORKFLOW.md                    │  │
+│  │  │   ├── STAKEHOLDER_WORKFLOW.md              │  │
+│  │  │   └── RECORDING_WORKFLOW.md                │  │
+│  │  ├── skills/               (capabilities)     │  │
+│  │  │   ├── README.md         (skill index)      │  │
+│  │  │   ├── task/            (domain skill)      │  │
+│  │  │   ├── email/           (domain skill)      │  │
+│  │  │   ├── stakeholder/     (domain skill)      │  │
+│  │  │   └── ...                                  │  │
+│  │  ├── tasks/                (task queue)       │  │
+│  │  ├── memory/               (preferences)      │  │
+│  │  └── policy/               (business rules)   │  │
 │  └───────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────┘
 ```
 
 ## What Can It Do?
 
-| Feature | Description |
-|---------|-------------|
-| **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, Keywords, History, Parent-Child relationships |
-| **Email Management** | Check, send, reply, forward emails via Microsoft Graph Skill |
-| **Calendar Management** | Schedule meetings, check availability, manage events |
-| **Memory System** | Learns preferences, remembers contacts, tracks things to avoid, maintains policy index |
-| **Policy Management** | Structured policy files with indexing and reference system |
-| **Recurring Tasks** | Auto-create scheduled tasks (monthly reports, quarterly invoices, etc.) |
-| **Office Documents** | Create/edit Word, Excel, PowerPoint files via OfficeCLI skill |
-| **Keyword Extraction** | Automatically extract relevant keywords from emails and documents |
-| **Extensible Skills** | Add new capabilities through modular skill system |
+|| Feature | Description |
+||---------|-------------|
+|| **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, Keywords, History, Parent-Child relationships |
+|| **Email Management** | Check, send, reply, forward emails via Microsoft Graph Skill |
+|| **Calendar Management** | Schedule meetings, check availability, manage events |
+|| **Memory System** | Learns preferences, remembers contacts, tracks things to avoid, maintains policy index |
+|| **Policy Management** | Structured policy files with indexing and reference system |
+|| **Recurring Tasks** | Auto-create scheduled tasks (monthly reports, quarterly invoices, etc.) |
+|| **Office Documents** | Create/edit Excel spreadsheets via minimax-xlsx skill |
+|| **Keyword Extraction** | Automatically extract relevant keywords from emails and documents |
+|| **Extensible Skills** | Add new capabilities through modular skill system |
 
-## Skills
+## Skills (4 User Skills)
 
-BrainClaw includes 4+ built-in skills:
+Users can directly invoke these skills for specific tasks:
 
-| Skill | Purpose |
-|-------|---------|
-| **keyword-extraction** | Extract priority-ordered keywords from any text |
-| **microsoft-graph-skill** | Email, calendar, and user operations via Microsoft Graph API |
-| **OfficeCLI** | Create/edit Office documents (.docx, .xlsx, .pptx) with 7 specialized sub-skills |
-| **skill-creator** | Create new skills for any workflow or automation need |
+|| Skill | Purpose |
+||------|---------|
+|| **keyword-extraction** | Extract core keywords from any text |
+|| **skill-creator** | Create new OpenClaw-compatible skills |
+|| **minimax-xlsx** | Handle Excel/spreadsheet files (.xlsx, .csv) |
+|| **microsoft-graph-skill** | Microsoft Graph API for email, calendar |
 
-### OfficeCLI Sub-Skills
-- officecli-docx - Word documents (reports, letters, memos)
-- officecli-academic-paper - Research papers with TOC, equations, footnotes
-- officecli-pptx - Presentations and slide decks
-- officecli-pitch-deck - Investor decks with charts
-- morph-ppt - Cinematic presentations with morph animations
-- officecli-xlsx - Excel spreadsheets and financial models
-- officecli-data-dashboard - CSV to Excel dashboards with KPI cards and charts
+**Note:** Additional internal skills (task, email, stakeholder, recording) support workflows behind the scenes and are not shown to users.
 
 ## Project Structure
+
+Files marked with ⭐ are loaded at **startup**. Others are loaded **on-demand**.
 
 ```
 BrainClaw/
 ├── SYSTEM_PROMPT.md                    # Entry point - for AI IDE integration
 ├── SYSTEM_PROMPT_STANDALONE.md         # Standalone version
 ├── README.md                            # This file
+├── README_CN.md                         # Chinese documentation
 └── assistant_brain/
-    ├── SOUL.md               # Identity & values (unchanging core)
-    ├── OPERATIONAL_RULES.md  # Core operational strategies (references workflows/)
-    ├── CONFIG.md             # System parameters (user info, formats)
-    ├── recurring_tasks.md    # Scheduled recurring tasks
-    ├── workflows/        # Detailed operational workflows
-    │   ├── TASK_WORKFLOW.md        # Task operation procedures
-    │   ├── EMAIL_WORKFLOW.md       # Email operation procedures
-    │   ├── STAKEHOLDER_WORKFLOW.md # Stakeholder management procedures
-    │   └── RECORDING_WORKFLOW.md   # Recording policies
-    ├── stakeholders/     # Key stakeholder profiles
-    │   ├── README.md         # Module documentation
-    │   ├── registry.md       # Stakeholder index
-    │   └── SH0xx-xxx.md      # Individual stakeholder files
-    ├── memory/           # Learned experiences
-    │   ├── preferences.md    # User preferences
-    │   ├── things_to_avoid.md # Mistakes to remember
-    │   ├── contacts.md       # External contacts
-    │   ├── tracking.md       # Cross-session monitoring
-    │   └── policy/           # Policy management
-    │       └── README.md     # Policy index
-    ├── skills/           # Modular capabilities
-    │   ├── keyword-extraction/
-    │   ├── microsoft-graph-skill/
-    │   ├── OfficeCLI/
-    │   └── skill-creator/
-    ├── tasks/            # Task queue & history
-    │   ├── queue.md          # Active task list + Recent Events (last 7 days)
-    │   ├── T0xx-xxx.md       # Active task details
-    │   └── history/          # Completed tasks & monthly timeline archives
-    └── backups/          # Configuration backups
+    ├── SOUL.md               ⭐ # Identity & values (unchanging core)
+    ├── OPERATIONAL_RULES.md  ⭐ # Core operational strategies
+    ├── CONFIG.md             ⭐ # System parameters (user info, formats)
+    ├── recurring_tasks.md    ⭐ # Scheduled recurring tasks
+    ├── policy/
+    │   └── README.md         ⭐ # Policy index
+    ├── workflows/               # Detailed operational workflows (on-demand)
+    │   ├── TASK_WORKFLOW.md
+    │   ├── EMAIL_WORKFLOW.md
+    │   ├── STAKEHOLDER_WORKFLOW.md
+    │   └── RECORDING_WORKFLOW.md
+    ├── stakeholders/
+    │   ├── registry.md       ⭐ # Stakeholder index
+    │   └── SH0xx-xxx.md          # Individual stakeholder files (on-demand)
+    ├── memory/
+    │   ├── preferences.md    ⭐ # User preferences
+    │   ├── things_to_avoid.md ⭐ # Mistakes to remember
+    │   ├── contacts.md           # External contacts (on-demand)
+    │   └── tracking.md           # Cross-session monitoring (on-demand)
+    ├── skills/                  # Modular capabilities
+    │   ├── README.md         ⭐ # Skill index
+    │   ├── _TEMPLATE_/           # Skill template
+    │   ├── task/                 # Task domain skill (create/update/complete)
+    │   ├── email/                # Email domain skill (compose/info-detect)
+    │   ├── stakeholder/          # Stakeholder domain skill (match/raci-suggest)
+    │   ├── recording/            # Recording domain skill (event-record)
+    │   ├── keyword-extraction/   # Standalone tool (on-demand)
+    │   ├── microsoft-graph-skill/ # Standalone tool (on-demand)
+    │   ├── minimax-xlsx/         # Standalone tool (on-demand)
+    │   └── skill-creator/        # Standalone tool (on-demand)
+    └── tasks/                   # Task queue & history
+        ├── queue.md          ⭐ # Active tasks + Recent Events (last 14 days)
+        ├── T0xx-xxx.md           # Active task details (on-demand)
+        └── history/              # Completed tasks & monthly archives (on-demand)
 ```
+
+### Startup Files (⭐)
+
+The following files are loaded during startup to initialize the assistant:
+
+||| File | Purpose |
+|||------|---------|
+||| `SOUL.md` | Core identity and principles |
+||| `OPERATIONAL_RULES.md` | Behavior strategies and policies |
+||| `CONFIG.md` | User settings and format definitions |
+||| `memory/preferences.md` | User preferences |
+||| `memory/things_to_avoid.md` | Mistakes to avoid |
+||| `tasks/queue.md` | Active tasks and recent events |
+||| `recurring_tasks.md` | Recurring task definitions |
+||| `stakeholders/registry.md` | Stakeholder database |
+||| `policy/README.md` | Policy index |
+||| `skills/README.md` | Skill index |
+
+All other files (workflow files, skill implementations, detailed stakeholder profiles, etc.) are loaded **on-demand** when needed for specific operations.
 
 ## Commands
 
-| Command | Trigger | What it does |
-|---------|---------|--------------|
-| Startup | "start", "启动", "start assistant", "帮我", "help me" | Load brain files, skills, and show today's tasks |
-| Greeting | "hi", "hello", "你好", "在吗", "助手" | Quick greeting (lightweight, no full startup) |
+|| Command | Trigger | What it does |
+||---------|---------|--------------|
+|| Startup | "start", "启动", "start assistant", "帮我", "help me" | Load brain files, show today's status |
+|| Greeting | "hi", "hello", "你好", "在吗", "助手" | Quick greeting (lightweight, no full startup) |
 
 ## Task Management Features
 
@@ -155,7 +184,7 @@ BrainClaw provides enterprise-grade task tracking:
 - **History Tracking**: Cumulative record of all task updates with timestamp and source
 - **Parent-Child Tasks**: Master tasks can have subtasks for complex project management
 - **Geographic Tracking**: Track tasks by region (Philippines, India, China, Singapore, APAC, Global)
-- **Recent Events**: Last 7 days overview in queue.md, with monthly archives
+- **Recent Events**: Last 14 days overview in queue.md, with monthly archives
 - **Recurring Tasks**: Auto-create scheduled tasks (monthly reports, quarterly processes)
 
 ### Keywords System
@@ -175,36 +204,59 @@ BrainClaw uses a smart keyword system to help you trace tasks back to their sour
 
 BrainClaw learns and remembers across sessions:
 
-| Memory File | Purpose |
-|-------------|---------|
-| preferences.md | User preferences (timezone, tone, formats) |
-| things_to_avoid.md | Failed patterns to learn from |
-| contacts.md | External contacts (non-colleagues) |
-| tracking.md | Items requiring cross-session monitoring |
-| policy/ | Structured policy files with index |
+|| Memory File | Purpose |
+||-------------|---------|
+|| preferences.md | User preferences (timezone, tone, formats) |
+|| things_to_avoid.md | Failed patterns to learn from |
+|| contacts.md | External contacts (non-colleagues) |
+|| tracking.md | Items requiring cross-session monitoring |
+
+## Architecture: Workflows & Skills
+
+BrainClaw uses a layered architecture for better organization:
+
+```
+OPERATIONAL_RULES.md (Core policies)
+            ↓
+    ┌───────────────────┐
+    │    Workflows      │  ← Orchestration (WHEN to do WHAT)
+    │  - TASK           │
+    │  - EMAIL          │
+    │  - STAKEHOLDER    │
+    └────────┬──────────┘
+             ↓
+    ┌───────────────────┐
+    │     Skills        │  ← Implementation (HOW to do)
+    │  - task/create    │
+    │  - email/compose  │
+    │  - ...            │
+    └───────────────────┘
+```
+
+**Key Principle**: Skills are loaded **on-demand** only. At startup, only the skill index (`skills/README.md`) is read. Full skill files are loaded when actually needed.
 
 ## System Capabilities & Limitations
 
 ### What It Can Do
 
-| Capability | Description |
-|------------|-------------|
-| **State Persistence** | File-based storage keeps memory, logs, and config across sessions |
-| **Interactive Response** | Execute tasks when triggered by user (request-response pattern) |
-| **Modular Extension** | Add new capabilities through `skills/` without modifying core |
-| **Local Autonomy** | All data stays local; no external services required (except AI IDE) |
-| **Learning System** | Learns from interactions and updates memory files |
-| **Policy Management** | Structured policy tracking with reference system |
-| **Scheduled Tasks** | Recurring tasks auto-trigger on schedule |
+|| Capability | Description |
+||------------|-------------|
+|| **State Persistence** | File-based storage keeps memory, logs, and config across sessions |
+|| **Interactive Response** | Execute tasks when triggered by user (request-response pattern) |
+|| **Modular Extension** | Add new capabilities through `skills/` without modifying core |
+|| **Local Autonomy** | All data stays local; no external services required (except AI IDE) |
+|| **Learning System** | Learns from interactions and updates memory files |
+|| **Policy Management** | Structured policy tracking with reference system |
+|| **Scheduled Tasks** | Recurring tasks auto-trigger on schedule |
 
 ### What It Cannot Do
 
-| Limitation | Reason |
-|------------|--------|
-| **Autonomous Execution** | No independent process; requires user presence |
-| **Background Operations** | No daemon; no continuous monitoring |
-| **Remote Access** | No API endpoint; cannot be triggered from IM or external systems |
-| **Async Execution** | No scheduled tasks; no delayed actions; no event-driven execution |
+|| Limitation | Reason |
+||------------|--------|
+|| **Autonomous Execution** | No independent process; requires user presence |
+|| **Background Operations** | No daemon; no continuous monitoring |
+|| **Remote Access** | No API endpoint; cannot be triggered from IM or external systems |
+|| **Async Execution** | No scheduled tasks; no delayed actions; no event-driven execution |
 
 ### System Nature
 

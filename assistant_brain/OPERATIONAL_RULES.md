@@ -1,145 +1,105 @@
-# Operational Policies
+# Operational Rules
 
-> Core behavior strategies loaded at startup - See workflows/ for detailed procedures
+> Core behavior strategies - See workflows/ for procedures, skills/ for implementations
 
 ---
 
-## Quick Reference to Detailed Workflows
+## Date/Time Query
 
-For detailed step-by-step procedures, read these on-demand:
+**MUST query OS for LOCAL time with weekday:**
+- Windows: `powershell -Command "Get-Date -Format 'dddd yyyy-MM-dd HH:mm'"`
+- Unix/Linux/Mac: `date "+%A %Y-%m-%d %H:%M"`
 
-- **Task operations** → [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md)
-- **Email operations** → [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md)
-- **Stakeholder management** → [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md)
-- **Recording events/memory** → [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md)
+**Output format:** `[weekday] [YYYY-MM-DD] [HH:mm]` (e.g., "Thursday 2026-04-09 11:15")
+
+### Relative Date Calculation
+
+> ⚠️ **CRITICAL:** When user mentions relative dates → MUST execute PowerShell to calculate BEFORE using in commands. NO mental arithmetic!
+
+**Trigger patterns:** "Friday", "yesterday", "last week", "昨天", "上周", "3 days ago", etc.
+
+**Mandatory process:**
+1. Detect relative date in user request → **STOP**
+2. Execute PowerShell command to calculate exact date
+3. Use PowerShell output (do NOT calculate mentally)
+4. Proceed with operation using calculated date
+
+**Common patterns (Windows):**
+```powershell
+# Yesterday
+powershell -Command "(Get-Date).AddDays(-1).ToString('yyyy-MM-dd')"
+
+# Last Friday (most recent)
+powershell -Command "$d=Get-Date; $days=($d.DayOfWeek.value__+2)%7; if($days -eq 0){$days=7}; $d.AddDays(-$days).ToString('yyyy-MM-dd')"
+
+# N days ago (e.g., 3)
+powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
+```
+
+---
+
+## Skills Architecture
+
+**Two-layer design:**
+- **I/O Layer**: External system interactions (microsoft-graph-skill)
+- **Business Logic Layer**: Analysis, decision-making, composition (email, task, stakeholder, recording skills)
+
+**Pattern:** Workflows call I/O skills for data access, business logic skills for processing.
+
+---
+
+## Workflow Reference
+
+| Operation | Trigger Commands | Workflow | Skills Used |
+|-----------|------------------|----------|-------------|
+| Email operations | "check email", "list emails", "show emails", "emails from", "process email", "draft email", "reply", "forward" | [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md) | outlook-skill, email/info-detect, email/compose, keyword-extraction |
+| Task operations | "create task", "update task", "complete task", "block task" | [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md) | task/create, task/update, task/complete, task/queue-update |
+| Stakeholder management | "match stakeholder", "suggest RACI", "notify stakeholder" | [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md) | stakeholder/match, stakeholder/raci-suggest |
+| Event recording | "record event", "archive events" | [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md) | recording/event-record |
+
+**⚠️ CRITICAL:** ALWAYS load and follow the workflow BEFORE executing operations. Do NOT skip workflow loading.
 
 ---
 
 ## Autonomous Actions Policy
 
-### Actions Requiring User Approval
+### Requires User Approval
 - Sending emails/messages
 - Completing tasks
 - Deleting files or tasks
 - Making calendar changes
 - Any destructive operations
 
-### Autonomous Actions (No Approval Needed)
+### Autonomous (No Approval Needed)
 - Reading emails/calendar
 - Searching/listing information
-- Adding tasks from emails (must show details and get approval)
-- Updating tasks (must show changes and get approval)
-- Creating drafts for user review
 - Viewing task details
+- Creating drafts for review
 
 ---
 
-## Core Display Formats
+## Display Formats
 
-### Task Display Format
-**When mentioning tasks in any response:**
-- ALWAYS format task IDs as clickable links: `[TID](assistant_brain/tasks/TID-keywords.md)`
-- Example: `[T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md)`
-- Purpose: Enable quick access to task files
-- Apply to: All task mentions (summaries, lists, queries, updates, completions)
+> For startup Active Tasks display format (priority ordering, P1 warnings, master/subtask hierarchy), see [`CONFIG.md` → Startup Display Format](../CONFIG.md)
 
-### Email Display Format
-**When summarizing emails:**
-- ALWAYS include email reference numbers (e.g., #1, #2, #3)
-- Format: Use "#X" prefix in summary text
-- Purpose: Enable quick reference for follow-up actions
-- Example: "#17 Manjula (LearnQuest) - Azure APIM clarifications"
+### Task References
+**Always format task IDs as clickable links:**
+```
+[T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md)
+```
 
 ---
 
-## Core Stakeholder Rules
+## Task Formats
 
-**Before drafting any email:**
-1. Read [`stakeholders/registry.md`](stakeholders/registry.md) → find recipient
-2. Read recipient's detailed file (e.g., `SH001-beng-paulino.md`)
-3. Use profile (power, style, interests, concerns) to tailor email tone and content
-
-**When creating tasks:**
-- Auto-detect stakeholders from email contacts
-- Suggest RACI roles based on stakeholder power level and task type
-- Present suggested RACI matrix to user for confirmation
-
-**When changing task status:**
-- Check task RACI matrix for relevant stakeholders
-- Remind to notify Accountable (A) stakeholders when blocked
-- Remind to notify Accountable (A) and Informed (I) stakeholders when complete
-- Offer to draft notification email
-
-**For detailed procedures:** Read [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md)
+> **See [`tasks/FORMATS.md`](tasks/FORMATS.md) for all task format specifications:**
+> - Directory structure & file naming
+> - Status symbols (📋 ⏳ 🔴 ✅) & priority levels (P1/P2/P3)
+> - Queue format & task template
+> - Tag guidelines & master-subtask organization
+>
+> **Load on-demand:** When creating or updating tasks
 
 ---
 
-## Core Task Rules
-
-**Task Workflow Summary:**
-- Extract keywords using keyword-extraction skill
-- Identify geography from context
-- Auto-detect stakeholders and suggest RACI roles
-- Format all task IDs as clickable links
-- Check for duplicates before updating
-- Notify stakeholders when status changes
-- **Master-Subtask organization:** Group master tasks with subtasks in queue.md using hierarchical format
-
-**Priority levels:**
-- P1 (High): Urgent, executive sender, deadline ≤ 2 days
-- P2 (Medium): Normal work, deadline ≤ 1 week
-- P3 (Low): FYI items, no strict deadline
-
-**Master-Subtask Relationships:**
-- Master task: Complex task with multiple subtasks (mark as "Master" in title)
-- Subtask: Component task with "Parent Task: TXXX" field
-- Queue organization: Group master with subtasks using `### ↳` prefix for subtasks
-- Update both master and subtask when relationships change
-
-**For detailed procedures:** Read [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md)
-
----
-
-## Core Email Rules
-
-**Email Workflow Summary:**
-- Read stakeholder profile before drafting
-- Include reference numbers in email summaries (#1, #2, #3)
-- Suggest task creation from action emails (approval, delegation, direct requests)
-- Draft with appropriate tone based on stakeholder power and style
-- Skip FYI emails, announcements, unclear threads
-
-**For detailed procedures:** Read [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md)
-
----
-
-## When to Load Detailed Workflows
-
-Load workflow files on-demand when you need:
-
-- **Step-by-step task procedures** → Read [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md)
-  - Adding a Task (detailed 8-step procedure)
-  - Updating a Task (duplicate checking)
-  - Marking as Blocked (notification procedures)
-  - Completing a Task (5-step procedure)
-  - Stakeholder-based task queries
-
-- **Email operation details** → Read [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md)
-  - Proactive Task Hints (6-step process)
-  - Draft Email Command (detailed procedure)
-  - Add Tasks from Emails (criteria)
-
-- **Stakeholder procedures** → Read [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md)
-  - Auto-detect stakeholders logic
-  - RACI suggestion rules by task type
-  - Notification reminder procedures
-  - Communication tailoring by stakeholder type
-
-- **Recording procedures** → Read [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md)
-  - Recent Events Recording Policy
-  - Memory Recording Policy
-  - Recording formats and archiving
-
----
-
-**Note:** Core rules above are loaded at startup. Detailed workflows are read on-demand when needed.
+**Note:** This file contains core policies only. For step-by-step procedures, read the relevant workflow file. For implementation details, read the relevant skill file.

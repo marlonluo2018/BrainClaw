@@ -1,127 +1,109 @@
 # Task Workflow
 
-> Detailed procedures for task operations
+> Task operations workflow - orchestrates skills for task management
+>
+> **Format Reference:** See [`../tasks/FORMATS.md`](../tasks/FORMATS.md) for task templates, status symbols, priority levels, and other format specifications (load on-demand when creating/updating tasks)
 
 ---
 
-## Priority Detection
+## Create Task
 
-- **P1 (High):** Urgent keywords, executive sender, deadline ≤ 2 days
-- **P2 (Medium):** Normal work, deadline ≤ 1 week
-- **P3 (Low):** FYI items, no strict deadline
+**Trigger:** User requests new task, email action item detected
 
----
-
-## Adding a Task
-
-> **Format definitions in CONFIG.md** - Read for: status symbols, priority levels, file naming, templates
-
-1. Read `Last Task ID` from queue.md header → increment for new ID → update header
-2. **Extract keywords using `keyword-extraction` skill**
-   - Extract 2-3 UNIQUE identifiers
-   - Format: P1(Ticket) + P2(Names) + P3(TaskType) + P4(Keywords)
-   - Use SPECIFIC identifiers, avoid generic terms
-3. **Identify Geography (Geo)** from context (email sender, requester location, organization)
-   - Examples: Philippines, India, China, Singapore, APAC, Global
-   - Helps prevent matching emails to wrong geographic region
-4. **Auto-detect stakeholders and suggest RACI roles:**
-   - Check email contacts (To, CC, From) against [`stakeholders/registry.md`](../stakeholders/registry.md)
-   - Auto-suggest RACI roles based on:
-     - Email role: To/From = likely R or A, CC = likely I
-     - Stakeholder power: High Power = likely A (Accountable)
-     - Task type: Budget task → budget approver = A, Procurement task → procurement team = C
-   - Present suggested RACI matrix to user for confirmation
-5. Create `T{ID}-{keywords}.md` in tasks/ (use template from CONFIG.md with Geo field)
-6. If task is from recurring_tasks.md, include "Recurring Task ID" field in task file and queue.md (use "id" value, e.g., R001)
-7. Add entry to queue.md table with Created, Priority, Due, Tags (and Recurring Task ID only if from recurring_tasks.md)
-8. Confirm with user
+**Steps:**
+1. Read queue.md header → Get "Last Task ID" and increment by 1 for new task ID
+2. Call `keyword-extraction` → Get keywords from content
+3. Call `stakeholder` (operation: match) → Match contacts to stakeholders, get RACI suggestions
+4. Present RACI matrix to user for confirmation
+5. Call `task` (operation: create) → Create task file with new task ID and confirmed details (uses format from tasks/FORMATS.md) + Add entry to queue.md + Update "Last Task ID" in queue.md header
+5. Call `recording` (operation: event-record, type: task_created) → Record in Recent Events
+6. Confirm with user
 
 ---
 
-## Master Tasks and Subtasks
+## Update Task
 
-**Creating a Master Task:**
-1. Follow standard "Adding a Task" procedure
-2. Add "(Master)" to task title
-3. Add "**Subtasks:**" field listing subtask IDs in both task file and queue.md
-4. Place in "Master Task with Subtasks" section of queue.md
+**Trigger:** User provides new info, email relates to existing task
 
-**Creating a Subtask:**
-1. Follow standard "Adding a Task" procedure
-2. Add "**Parent Task:** TXXX" field in both task file and queue.md
-3. Place under master task in queue.md using `### ↳` prefix
-4. Update master task's "**Subtasks:**" field to include this subtask ID
-
-**Updating Relationships:**
-- Adding subtask: Update master's "**Subtasks:**" field + place subtask under master in queue.md
-- Removing subtask: Update master's "**Subtasks:**" field + move/archive subtask
-- Converting to master: Add "(Master)" + "**Subtasks:**" field + move to "Master Task with Subtasks" section
-
-**Queue.md Organization:**
-- Standalone tasks: `##` heading in "Standalone Tasks" section
-- Master tasks: `##` heading in "Master Task with Subtasks" section
-- Subtasks: `### ↳` heading directly under master task
-- Keep master and all subtasks grouped together
+**Steps:**
+1. Read current task file
+2. Check for duplicates (information already exists?)
+3. If duplicate → Notify user and skip
+4. If new → Show changes and get approval
+5. Call `task` (operation: update) → Update task file and timeline + Update queue.md entry
+6. If significant change → Call `email` (operation: info-detect) to check stakeholder notification need
+7. Notify user of changes
 
 ---
 
-## Updating a Task
+## Complete Task
 
-1. Read current task file to see existing content
-2. Check if incoming information already exists in the file
-3. If new: Show user what will be added and ask for approval
-4. If duplicate: Notify user that info already exists (skip adding)
-5. After approval: Update status in queue.md + add new entry to task file
-6. ⚠️ NEVER update task files without checking for duplicates and notifying user
+**Trigger:** User confirms task done
 
----
-
-## Marking Task as Blocked
-
-- Use 🔴 Blocked status when task cannot proceed due to external dependency
-- Always document in task file: what is blocking, who is responsible, expected resolution
-- **Before marking blocked:** Check task RACI matrix → remind to notify Accountable (A) stakeholder about blocker
-- Suggest: "Task blocked. [Stakeholder Name] (Accountable) should be notified. Draft email?"
+**Steps:**
+1. Call `task` (operation: complete) → Get stakeholders to notify (A + I roles), move task file to history/ + Remove from queue.md
+2. Ask user: "Draft notification email to [stakeholders]?"
+3. If yes → Call `email` (operation: compose) for each stakeholder
+4. Call `recording` (operation: event-record, type: task_completed) → Record completion
+5. If recurring task → Update recurring_tasks.md last_completed
 
 ---
 
-## Completing a Task
+## Block Task
 
-1. **Before marking complete:** Check task RACI matrix → remind to notify Accountable (A) and Informed (I) stakeholders
-2. Suggest: "Task complete. Should I draft notification email to [Stakeholder Names]?"
-3. Update status to ✅
-4. If task has "Recurring Task ID" (e.g., R001), find matching "id" in recurring_tasks.md and update its "last_completed" field
-5. Move to history/ → remove from queue.md → add Completion event to Recent Events using format: `- **YYYY-MM-DD**: ✅ Completed [[./history/T###-xxx.md]] (Task Title)`
+**Trigger:** Task cannot proceed due to dependency
+
+**Steps:**
+1. Call `task` (operation: update) → Set status 🔴 Blocked + Update queue.md status
+2. Call `recording` (operation: event-record, type: task_blocked) → Record in Recent Events
+3. Read task RACI matrix → Identify Accountable (A) stakeholder
+4. Automatically call `email` (operation: compose) → Draft notification email to Accountable stakeholder
+5. Present drafted email: "Task blocked. Notification email drafted for [Stakeholder] (Accountable):"
+6. If approved → Follow [EMAIL_WORKFLOW: Draft Email](../workflows/EMAIL_WORKFLOW.md#draft-email-newreplyforward) to send
+7. If declined → Skip notification (but record blocker reason in task)
 
 ---
 
-## Task Matching
+## Master-Subtask Operations
 
-When user mentions keyword → search queue.md → show matching tasks → read task file if details needed
+### Create Master Task
+1. Follow Create Task workflow
+2. Add "(Master)" to title
+3. Add "**Subtasks:**" field
+
+### Create Subtask
+1. Follow Create Task workflow
+2. Add "**Parent Task: TXXX" field
+3. Call `task` (operation: create) → Place under master with `### ↳` prefix
+4. Call `task` (operation: update) on master → Add subtask to Subtasks field
+
+### Update Relationships
+- **Add subtask**: Update master's Subtasks field + queue placement
+- **Remove subtask**: Update master + move/archive subtask
+- **Convert to master**: Add (Master) + Subtasks field + move section
 
 ---
 
-## Stakeholder-Based Task Queries
+## Task Queries
 
-When user asks about tasks for a specific stakeholder:
-- "Show tasks for [stakeholder name]"
-- "What tasks is [stakeholder] involved in?"
-- "List all tasks where [stakeholder] is Accountable"
+### By Keyword
+1. Search queue.md for keyword
+2. Show matching tasks with links
+3. If details needed → Read specific task file
 
-**Process:**
-1. Search all active task files (T###-xxx.md) for stakeholder name in Stakeholders section
-2. Extract: Task ID, Title, Status, Stakeholder's Role (R/A/C/I)
-3. Group by status: ⏳ In Progress → 📋 Not Started → 🔴 Blocked
-4. Display format:
-   ```
-   Tasks for [Stakeholder Name]:
-   
-   In Progress (⏳):
-   - [T025](../tasks/T025-pmp-renewal-futurenow-q2.md): PMP Renewal - Role: A (Accountable)
-   
-   Not Started (📋):
-   - [T019](../tasks/T019-q2-budget-python-beng-lani.md): Q2 Budget Master - Role: A (Accountable)
-   
-   Total: 2 tasks (1 in progress, 1 not started)
-   ```
-5. If user wants details → offer to read specific task files
+### By Stakeholder
+1. Search all task files for stakeholder name in Stakeholders section
+2. Group by status: ⏳ In Progress → 📋 Not Started → 🔴 Blocked
+3. Display with RACI role
+
+---
+
+## Skills Used
+
+|| Skill | Operations Used | Purpose |
+||-------|-----------------|---------|
+|| `keyword-extraction` | - | Extract task keywords |
+|| `stakeholder` | match, raci-suggest | Match contacts, suggest RACI |
+|| `task` | create, update, complete | Task lifecycle management |
+|| `recording` | event-record | Record events |
+|| `email` | compose, info-detect | Notification emails, detection |

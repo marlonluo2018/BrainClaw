@@ -5,6 +5,7 @@
 {
   "name": "Marlon Luo",
   "email": "luomn@cn.ibm.com",
+  "email_display_name": "Meng Ning Luo",
   "title": "Learning Consultant",
   "organization": "Learning & Knowledge(L&K)",
   "language": "English",
@@ -32,107 +33,43 @@ Slack - @Marlon Luo
 
 ## Tasks
 
-### Directory Structure
+> **See [`tasks/FORMATS.md`](tasks/FORMATS.md) for task formats, templates, and data structures**
+
+### Startup Display Format
+
+**Load tasks from:** [`tasks/queue.md`](tasks/queue.md)
+
+**Format (one line per task):**
 ```
-assistant_brain/tasks/
-├── queue.md               # Active task queue (table view)
-├── T001-xxx.md            # Active task details
-└── history/               # Completed task archives
-    ├── timeline_YYYY-MM.md    # Monthly event archives
-    └── T0xx-xxx.md            # Completed task archives
-```
-
-### File Naming
-```
-T{ID}-{keyword1}-{keyword2}.md
-```
-- **ID**: 3-digit incrementing number (T001, T002...)
-- **Source**: Use `Last Task ID` from queue.md header (increment from this)
-- **Keywords**: 2-4 keywords connected with `-`
-
-### Status System
-|| Symbol | Status | Description |
-||--------|--------|-------------|
-|| 📋 | Not Started | Needs action |
-|| ⏳ | In Progress | Actively working on task |
-|| 🔴 | Blocked | Waiting on external dependency / Unable to proceed |
-|| ✅ | Completed | Move to history/ |
-
-Flow: `📋 → ⏳ → (🔴 optional) → ✅ → history/`
-
-**Note:** 🔴 Blocked status distinguishes tasks waiting on others (blocked) from tasks being actively worked (in progress).
-
-### Priority System
-|| Level | Meaning |
-||-------|---------|
-|| P1 | High |
-|| P2 | Medium |
-|| P3 | Low |
-
-### Queue Format (tasks/queue.md)
-List format (human-friendly):
-```
-## T{ID} {status} [{title}](T{ID}-xxx.md)
-- **Created:** {YYYY-MM-DD}
-- **Priority:** P{1-3}
-- **Geo:** {Philippines/India/China/Singapore/APAC/Global}
-- **Due:** {date or TBD}
-- **Recurring Task ID:** {recurring task ID (e.g., R001)} (only if from recurring_tasks.md)
-- **Tags:** `tag1`, `tag2`
+[TID](path) Status Title (Priority, Geo, Due: date)
 ```
 
-### Task Template
-```markdown
-# T{ID}: {Title}
+**Display rules:**
+1. **Priority ordering:** P1 first → P2 → P3
+2. **P1 tasks due today/overdue:** Prefix with ⚠️
+3. **ALL top-level tasks (standalone, P1, master):** Must have bullet point `-` prefix
+4. **Master tasks:** Show "(Master)" suffix, then subtasks below with `↳` prefix
+5. **Subtasks:** Indented with `  - ↳` format (2 spaces + bullet + arrow), no priority/geo/due details
+6. **Blank line** between priority groups
 
-**Status:** 📋 Not Started
-**Created:** {YYYY-MM-DD}
-**Priority:** P{1-3}
-**Category:** {Email/Slack/Meeting/Other}
-**Geo:** {Philippines/India/China/Singapore/APAC/Global}
-**Due:** {Date or TBD}
-**Recurring Task ID:** {recurring task ID (e.g., R001)} (only if from recurring_tasks.md)
+**Format template:**
+```
+## ✅ Active Tasks ({count} total)
 
----
+- ⚠️ [TID](path) Status Title (P1, Geo, Due: YYYY-MM-DD)
 
-## Contacts
-- **Requester:** Name (email)
-- **Approver:** Name (email)
+- [TID](path) Status Title (P2, Geo, Due: date)
+- [TID](path) Status Title (P2, Geo, Due: date)
 
-## Stakeholders
-
-### RACI Matrix
-*List stakeholders involved in this task and their role.*
-
-| Stakeholder | Role |
-|-------------|------|
-
-**Legend:** R=Responsible, A=Accountable, C=Consulted, I=Informed
-
-### Engagement Log
-
-## Tags
-`tag1`, `tag2`
-
----
-
-## Timeline
-- **{date}** [{source}]: {action}
-
----
-
-## Current State
-- [ ] Todo item 1
-- [ ] Todo item 2
-
-## Notes
-Notes here
+- [TID](path) Status Title (Master) (P2, Geo, Due: date)
+  - ↳ [TID](path) Status Subtask title
+  - ↳ [TID](path) Status Subtask title
 ```
 
-### Tag Guidelines
-- Use SPECIFIC identifiers (names, IDs, codes)
-- Avoid generic terms (certification, approval, email)
-- Max 3 tags
+**Key formatting points:**
+- Top-level tasks: `- [TID](path) Status Title (Priority, Geo, Due: date)`
+- P1 due today/overdue: `- ⚠️ [TID](path) Status Title (P1, Geo, Due: date)`
+- Subtasks: `  - ↳ [TID](path) Status Title` (indented 2 spaces)
 
 ## Paths
 - Windows: `%USERPROFILE%/assistant_brain/`

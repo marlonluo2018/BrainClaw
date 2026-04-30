@@ -48,57 +48,62 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  (SYSTEM_PROMPT.md)                          │  │
 │  │                                               │  │
 │  │  "启动时，读取 brain 文件..."                 │  │
-│  │  "命令: start, hi..."                        │  │
+│  │  "从 README.md 加载技能索引..."               │  │
 │  └───────────────────────────────────────────────┘  │
 │                        ↓                            │
 │  ┌───────────────────────────────────────────────┐  │
 │  │  Brain 文件 (assistant_brain/)               │  │
-│  │  ├── SOUL.md               (身份与价值观)              │  │
-│  │  ├── OPERATIONAL_RULES.md  (策略与规则)                │  │
-│  │  ├── CONFIG.md             (系统参数)                  │  │
-│  │  ├── recurring_tasks.md    (定期任务)                  │  │
-│  │  ├── memory/      (学到的偏好与政策)                    │  │
-│  │  ├── skills/      (模块化能力)                          │  │
-│  │  └── tasks/       (任务队列与历史)                      │  │
+│  │  ├── SOUL.md               (身份与价值观)     │  │
+│  │  ├── OPERATIONAL_RULES.md  (策略)             │  │
+│  │  ├── CONFIG.md             (参数)             │  │
+│  │  ├── workflows/            (编排层)           │  │
+│  │  │   ├── TASK_WORKFLOW.md                     │  │
+│  │  │   ├── EMAIL_WORKFLOW.md                    │  │
+│  │  │   ├── STAKEHOLDER_WORKFLOW.md              │  │
+│  │  │   └── RECORDING_WORKFLOW.md                │  │
+│  │  ├── skills/               (能力模块)         │  │
+│  │  │   ├── README.md         (技能索引)         │  │
+│  │  │   ├── task/            (领域技能)          │  │
+│  │  │   ├── email/           (领域技能)          │  │
+│  │  │   ├── stakeholder/     (领域技能)          │  │
+│  │  │   └── ...                                  │  │
+│  │  ├── tasks/                (任务队列)         │  │
+│  │  ├── memory/               (偏好记忆)         │  │
+│  │  └── policy/               (业务规则)         │  │
 │  └───────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────┘
 ```
 
 ## 功能概览
 
-| 功能 | 描述 |
-|------|------|
-| **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、关键字、历史、父子关系 |
-| **邮件管理** | 通过 Microsoft Graph Skill 检查、发送、回复、转发邮件 |
-| **日历管理** | 安排会议、检查可用性、管理事件 |
-| **记忆系统** | 学习偏好、记住联系人、追踪需避免的错误、维护政策索引 |
-| **政策管理** | 结构化政策文件，带索引和参考系统 |
-| **定期任务** | 自动创建定期任务（月度报告、季度发票等） |
-| **Office 文档** | 通过 OfficeCLI skill 创建/编辑 Word、Excel、PowerPoint 文件 |
-| **关键词提取** | 自动从邮件和文档中提取相关关键词 |
-| **可扩展技能** | 通过模块化技能系统添加新能力 |
+|| 功能 | 描述 |
+||------|------|
+|| **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、关键字、历史、父子关系 |
+|| **邮件管理** | 通过 Microsoft Graph Skill 检查、发送、回复、转发邮件 |
+|| **日历管理** | 安排会议、检查可用性、管理事件 |
+|| **记忆系统** | 学习偏好、记住联系人、追踪需避免的错误、维护政策索引 |
+|| **政策管理** | 结构化政策文件，带索引和参考系统 |
+|| **定期任务** | 自动创建定期任务（月度报告、季度发票等） |
+|| **Office 文档** | 通过 minimax-xlsx skill 创建/编辑 Excel 电子表格 |
+|| **关键词提取** | 自动从邮件和文档中提取相关关键词 |
+|| **可扩展技能** | 通过模块化技能系统添加新能力 |
 
-## 技能
+## 技能（4 个用户技能）
 
-BrainClaw 包含 4+ 个内置技能：
+用户可直接调用这些技能执行特定任务：
 
-| 技能 | 用途 |
-|------|------|
-| **keyword-extraction** | 从任何文本中提取优先级排序的关键词 |
-| **microsoft-graph-skill** | 通过 Microsoft Graph API 进行邮件、日历和用户操作 |
-| **OfficeCLI** | 创建/编辑 Office 文档（.docx、.xlsx、.pptx），包含 7 个专业子技能 |
-| **skill-creator** | 为任何工作流或自动化需求创建新技能 |
+|| 技能 | 用途 |
+||------|------|
+|| **keyword-extraction** | 从任何文本中提取核心关键词 |
+|| **skill-creator** | 创建新的 OpenClaw 兼容技能 |
+|| **minimax-xlsx** | 处理 Excel/电子表格文件（.xlsx、.csv） |
+|| **microsoft-graph-skill** | Microsoft Graph API 用于邮件、日历 |
 
-### OfficeCLI 子技能
-- officecli-docx - Word 文档（报告、信件、备忘录）
-- officecli-academic-paper - 带目录、公式、脚注的研究论文
-- officecli-pptx - 演示文稿和幻灯片
-- officecli-pitch-deck - 带图表的投资者演示文稿
-- morph-ppt - 带变形动画的电影级演示文稿
-- officecli-xlsx - Excel 电子表格和财务模型
-- officecli-data-dashboard - CSV 转 Excel 仪表板，带 KPI 卡片和图表
+**注意**：其他内部技能（task、email、stakeholder、recording）在后台支持工作流，不向用户显示。
 
 ## 项目结构
+
+标记 ⭐ 的文件在**启动时加载**。其他文件**按需加载**。
 
 ```
 BrainClaw/
@@ -107,44 +112,67 @@ BrainClaw/
 ├── README.md                            # 英文说明
 ├── README_CN.md                         # 中文说明（本文件）
 └── assistant_brain/
-    ├── SOUL.md               # 身份与价值观（不变的核心）
-    ├── OPERATIONAL_RULES.md  # 核心策略（引用 workflows/）
-    ├── CONFIG.md             # 系统参数（用户信息、格式）
-    ├── recurring_tasks.md    # 定期任务定义
-    ├── workflows/        # 详细操作工作流
-    │   ├── TASK_WORKFLOW.md        # 任务操作流程
-    │   ├── EMAIL_WORKFLOW.md       # 邮件操作流程
-    │   ├── STAKEHOLDER_WORKFLOW.md # 利益相关方管理流程
-    │   └── RECORDING_WORKFLOW.md   # 记录策略
-    ├── stakeholders/     # 关键利益相关方档案
-    │   ├── README.md         # 模块文档
-    │   ├── registry.md       # 利益相关方索引
-    │   └── SH0xx-xxx.md      # 单个利益相关方文件
-    ├── memory/           # 学到的经验
-    │   ├── preferences.md    # 用户偏好
-    │   ├── things_to_avoid.md # 需要记住的错误
-    │   ├── contacts.md       # 外部联系人
-    │   ├── tracking.md       # 跨会话监控
-    │   └── policy/           # 政策管理
-    │       └── README.md     # 政策索引
-    ├── skills/           # 模块化能力
-    │   ├── keyword-extraction/
-    │   ├── microsoft-graph-skill/
-    │   ├── OfficeCLI/
-    │   └── skill-creator/
-    ├── tasks/            # 任务队列与历史
-    │   ├── queue.md          # 活跃任务列表 + 近期事件（最近7天）
-    │   ├── T0xx-xxx.md       # 活跃任务详情
-    │   └── history/          # 已完成任务与月度时间线归档
-    └── backups/          # 配置备份
+    ├── SOUL.md               ⭐ # 身份与价值观（不变的核心）
+    ├── OPERATIONAL_RULES.md  ⭐ # 核心策略
+    ├── CONFIG.md             ⭐ # 系统参数（用户信息、格式）
+    ├── recurring_tasks.md    ⭐ # 定期任务定义
+    ├── policy/
+    │   └── README.md         ⭐ # 政策索引
+    ├── workflows/               # 详细操作工作流（按需加载）
+    │   ├── TASK_WORKFLOW.md
+    │   ├── EMAIL_WORKFLOW.md
+    │   ├── STAKEHOLDER_WORKFLOW.md
+    │   └── RECORDING_WORKFLOW.md
+    ├── stakeholders/
+    │   ├── registry.md       ⭐ # 利益相关方索引
+    │   └── SH0xx-xxx.md          # 单个利益相关方文件（按需加载）
+    ├── memory/
+    │   ├── preferences.md    ⭐ # 用户偏好
+    │   ├── things_to_avoid.md ⭐ # 需要记住的错误
+    │   ├── contacts.md           # 外部联系人（按需加载）
+    │   └── tracking.md           # 跨会话监控（按需加载）
+    ├── skills/                  # 模块化能力
+    │   ├── README.md         ⭐ # 技能索引
+    │   ├── _TEMPLATE_/           # 技能模板
+    │   ├── task/                 # 任务域技能（按需加载）
+    │   ├── email/                # 邮件域技能（按需加载）
+    │   ├── stakeholder/          # 利益相关方域技能（按需加载）
+    │   ├── recording/            # 记录域技能（按需加载）
+    │   ├── keyword-extraction/   # 独立工具（按需加载）
+    │   ├── microsoft-graph-skill/ # 独立工具（按需加载）
+    │   ├── minimax-xlsx/         # 独立工具（按需加载）
+    │   └── skill-creator/        # 独立工具（按需加载）
+    └── tasks/                   # 任务队列与历史
+        ├── queue.md          ⭐ # 活跃任务 + 近期事件（最近14天）
+        ├── T0xx-xxx.md           # 活跃任务详情（按需加载）
+        └── history/              # 已完成任务与月度归档（按需加载）
 ```
+
+### 启动时加载的文件 (⭐)
+
+以下文件在启动时加载，用于初始化助理：
+
+||| 文件 | 用途 |
+|||------|------|
+||| `SOUL.md` | 核心身份与原则 |
+||| `OPERATIONAL_RULES.md` | 行为策略与政策 |
+||| `CONFIG.md` | 用户设置与格式定义 |
+||| `memory/preferences.md` | 用户偏好 |
+||| `memory/things_to_avoid.md` | 需避免的错误 |
+||| `tasks/queue.md` | 活跃任务与近期事件 |
+||| `recurring_tasks.md` | 定期任务定义 |
+||| `stakeholders/registry.md` | 利益相关方数据库 |
+||| `policy/README.md` | 政策索引 |
+||| `skills/README.md` | 技能索引 |
+
+其他所有文件（工作流文件、技能实现、详细利益相关方档案等）在需要特定操作时**按需加载**。
 
 ## 命令
 
-| 命令 | 触发词 | 功能 |
-|------|--------|------|
-| 启动 | "start", "启动", "start assistant", "帮我", "help me" | 加载 brain 文件、技能，显示今日任务 |
-| 问候 | "hi", "hello", "你好", "在吗", "助手" | 快速问候（轻量级，无需完整启动） |
+|| 命令 | 触发词 | 功能 |
+||------|--------|------|
+|| 启动 | "start", "启动", "start assistant", "帮我", "help me" | 加载 brain 文件，显示今日状态 |
+|| 问候 | "hi", "hello", "你好", "在吗", "助手" | 快速问候（轻量级，无需完整启动） |
 
 ## 任务管理特性
 
@@ -156,7 +184,7 @@ BrainClaw 提供企业级任务追踪：
 - **历史追踪**：累加记录所有任务更新，包含时间戳和来源
 - **父子任务**：主任务可以有子任务，用于复杂项目管理
 - **地理追踪**：按区域追踪任务（Philippines, India, China, Singapore, APAC, Global）
-- **近期事件**：queue.md 中最近7天概览，带月度归档
+- **近期事件**：queue.md 中最近14天概览，带月度归档
 - **定期任务**：自动创建定期任务（月度报告、季度流程）
 
 ### 关键字系统
@@ -176,36 +204,59 @@ BrainClaw 使用智能关键字系统帮助你追溯任务来源：
 
 BrainClaw 跨会话学习和记忆：
 
-| 记忆文件 | 用途 |
-|----------|------|
-| preferences.md | 用户偏好（时区、语气、格式） |
-| things_to_avoid.md | 从失败模式中学习 |
-| contacts.md | 外部联系人（非同事） |
-| tracking.md | 需要跨会话监控的项目 |
-| policy/ | 结构化政策文件带索引 |
+|| 记忆文件 | 用途 |
+||----------|------|
+|| preferences.md | 用户偏好（时区、语气、格式） |
+|| things_to_avoid.md | 从失败模式中学习 |
+|| contacts.md | 外部联系人（非同事） |
+|| tracking.md | 需要跨会话监控的项目 |
+
+## 架构：工作流与技能
+
+BrainClaw 采用分层架构，更好地组织代码：
+
+```
+OPERATIONAL_RULES.md (核心策略)
+            ↓
+    ┌───────────────────┐
+    │    Workflows      │  ← 编排层（何时做、做什么）
+    │  - TASK           │
+    │  - EMAIL          │
+    │  - STAKEHOLDER    │
+    └────────┬──────────┘
+             ↓
+    ┌───────────────────┐
+    │     Skills        │  ← 实现层（如何做）
+    │  - task/create    │
+    │  - email/compose  │
+    │  - ...            │
+    └───────────────────┘
+```
+
+**核心原则**：技能**按需加载**。启动时只读取技能索引（`skills/README.md`），完整技能文件在实际需要时才加载。
 
 ## 系统能力与限制
 
 ### 能做到的
 
-| 能力 | 描述 |
-|------|------|
-| **状态持久化** | 基于文件的存储，跨会话保持记忆、日志和配置 |
-| **交互式响应** | 用户触发后执行任务（请求-响应模式） |
-| **模块化扩展** | 通过 `skills/` 添加新能力，无需修改核心代码 |
-| **本地自治** | 所有数据留在本地；无需外部服务（除 AI IDE 本身） |
-| **学习系统** | 从交互中学习并更新记忆文件 |
-| **政策管理** | 结构化政策追踪带参考系统 |
-| **定期任务** | 定期任务按计划自动触发 |
+|| 能力 | 描述 |
+||------|------|
+|| **状态持久化** | 基于文件的存储，跨会话保持记忆、日志和配置 |
+|| **交互式响应** | 用户触发后执行任务（请求-响应模式） |
+|| **模块化扩展** | 通过 `skills/` 添加新能力，无需修改核心代码 |
+|| **本地自治** | 所有数据留在本地；无需外部服务（除 AI IDE 本身） |
+|| **学习系统** | 从交互中学习并更新记忆文件 |
+|| **政策管理** | 结构化政策追踪带参考系统 |
+|| **定期任务** | 定期任务按计划自动触发 |
 
 ### 不能做到的
 
-| 限制 | 原因 |
-|------|------|
-| **自主执行** | 没有独立进程；需要用户在场 |
-| **后台运行** | 没有守护进程；无法持续监控 |
-| **远程接入** | 没有 API 端点；无法从 IM 或外部系统触发 |
-| **异步执行** | 没有定时任务；没有延迟执行；没有事件驱动执行 |
+|| 限制 | 原因 |
+||------|------|
+|| **自主执行** | 没有独立进程；需要用户在场 |
+|| **后台运行** | 没有守护进程；无法持续监控 |
+|| **远程接入** | 没有 API 端点；无法从 IM 或外部系统触发 |
+|| **异步执行** | 没有定时任务；没有延迟执行；没有事件驱动执行 |
 
 ### 系统本质
 

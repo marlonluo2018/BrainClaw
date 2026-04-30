@@ -1,94 +1,95 @@
 # Stakeholder Workflow
 
-> Detailed procedures for stakeholder management
+> Stakeholder management workflow - orchestrates skills for stakeholder operations
 
 ---
 
-## When to Read Stakeholder Files
+## Match Stakeholders
 
-- Before drafting emails to stakeholder
-- When task mentions stakeholder by name
-- When adding/updating tasks with stakeholders
+**Trigger:** Creating task, drafting email, user asks about stakeholder
+
+**Steps:**
+1. Call `stakeholder` (operation: match) with contacts
+2. Get matched stakeholders with RACI suggestions
+3. Present to user for confirmation
+4. If new contact appears 3+ times → Suggest adding to registry
 
 ---
 
-## How to Read Stakeholder Files
+## Suggest RACI
 
-1. Read [`stakeholders/registry.md`](../stakeholders/registry.md) → find stakeholder
+**Trigger:** Task creation, RACI query
+
+**Steps:**
+1. Call `stakeholder` (operation: raci-suggest) with task type and stakeholders
+2. Present RACI matrix with justifications
+3. Get user confirmation
+4. Apply to task file
+
+---
+
+## Before Drafting Email
+
+**Applies to:** All email types (new, reply, forward) - See [EMAIL_WORKFLOW: Draft Email](../workflows/EMAIL_WORKFLOW.md#draft-email-newreplyforward)
+
+**Steps:**
+1. Read `stakeholders/registry.md` → Find recipient
 2. Read stakeholder's detailed file (e.g., `SH001-beng-paulino.md`)
-3. Use profile (power, style, interests, concerns) to inform actions
+3. Use profile (power, style, interests, concerns) for tone
+4. This context is used by `email` (operation: compose) to tailor tone and content
 
 ---
 
-## Auto-Detect Stakeholders (When Creating Tasks)
+## Notify Stakeholders
 
-**Process:**
-1. Check email contacts (To, CC, From) against [`stakeholders/registry.md`](../stakeholders/registry.md)
-2. Auto-suggest RACI roles based on:
-   - **Email role:** To/From = likely R or A, CC = likely I
-   - **Stakeholder power:** High Power = likely A (Accountable)
-   - **Task type:** Budget task → budget approver = A, Procurement task → procurement team = C
-3. Present suggested RACI matrix to user for confirmation
+### When Task Blocked
+1. Automatically triggered when task status → 🔴 Blocked (see [TASK_WORKFLOW: Block Task](../workflows/TASK_WORKFLOW.md#block-task))
+2. Read task RACI matrix → Find Accountable (A) stakeholder
+3. Call `email` (operation: compose) → Auto-draft notification with blocker details
+4. Present drafted email to user for approval
+5. If approved → Send via [EMAIL_WORKFLOW](../workflows/EMAIL_WORKFLOW.md#draft-email-newreplyforward)
 
-**RACI Suggestion Rules by Task Type:**
-- **Budget tasks** → High-power stakeholder (e.g., Beng PAULINO) = Accountable
-- **Procurement tasks** → Procurement team (e.g., ASEAN Procurement Operations) = Consulted
-- **Training tasks** → User (Marlon Luo) = Responsible, Practice Leaders = Informed
-
----
-
-## Stakeholder Notification Reminders
-
-### When Marking Task as Blocked
-
-**Before marking blocked:**
-1. Check task RACI matrix
-2. Find Accountable (A) stakeholder
-3. Remind user: "Task blocked. [Stakeholder Name] (Accountable) should be notified. Draft email?"
-4. Offer to draft notification email
-
-### When Completing Task
-
-**Before marking complete:**
-1. Check task RACI matrix
+### When Task Complete
+1. Read task RACI matrix
 2. Find Accountable (A) and Informed (I) stakeholders
-3. Suggest: "Task complete. Should I draft notification email to [Stakeholder Names]?"
-4. Offer to draft notification emails
-
-### When Updating Task (Significant Changes)
-
-**For major updates (blockers, milestones, key decisions):**
-1. Check if update is significant
-2. Check RACI matrix for relevant stakeholders
-3. Suggest adding entry to Engagement Log
-4. Offer to draft notification if needed
+3. Offer to draft notification emails
+4. Call `email` (operation: compose) for each stakeholder
 
 ---
 
-## Stakeholder-Based Queries
+## Communication Styles
 
-See [`TASK_WORKFLOW.md`](TASK_WORKFLOW.md#stakeholder-based-task-queries) for detailed query procedures.
+|| Stakeholder Type | Tone | Format |
+||------------------|------|--------|
+|| Decision Maker (High Power) | Formal, executive | Brief, ROI focus |
+|| Influencer (Medium Power) | Professional, collaborative | Balanced detail |
+|| Executor (Low Power) | Clear, supportive | Detailed instructions |
+|| Information Recipient | Brief, informative | Summary with links |
 
 ---
 
-## Tailoring Communication by Stakeholder Type
+## Stakeholder Queries
 
-### Decision Makers (High Power, Accountable)
-- **Tone:** Formal, executive-level
-- **Content:** Executive summary, clear recommendations, ROI focus
-- **Format:** Brief (3-4 paragraphs max), business impact highlighted
+**"Show tasks for [stakeholder]":**
+1. Search all task files for stakeholder in RACI section
+2. Extract: Task ID, Title, Status, RACI Role
+3. Group by status
+4. Display in format:
+   ```
+   Tasks for [Stakeholder Name]:
+   
+   In Progress (⏳):
+   - [T025](../tasks/T025-xxx.md): Task Title - Role: A
+   
+   Not Started (📋):
+   - [T019](../tasks/T019-xxx.md): Task Title - Role: C
+   ```
 
-### Influencers (Medium Power, High Interest)
-- **Tone:** Professional, collaborative
-- **Content:** Detailed but organized, seek input
-- **Format:** Balanced detail, technical depth as appropriate
+---
 
-### Executors (Low Power, Assigned Tasks)
-- **Tone:** Clear, supportive
-- **Content:** Step-by-step guidance, actionable items
-- **Format:** Detailed instructions, resources provided
+## Skills Used
 
-### Stakeholders (Information Recipients)
-- **Tone:** Brief, informative
-- **Content:** Relevant highlights, optional details
-- **Format:** Summary with links to details if needed
+|| Skill | Operations Used | Purpose |
+||-------|-----------------|---------|
+|| `stakeholder` | match, raci-suggest | Match contacts, suggest RACI roles |
+|| `email` | compose | Draft stakeholder-tailored emails |

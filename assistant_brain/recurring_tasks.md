@@ -43,5 +43,6 @@ recurring_tasks:
     note: "1) Upload previous month's L&K learning report to I&D sector Box folder; 2) Send email notification to contacts that folder has been updated with new data"
     last_completed: "2026-04"  # When task was executed (April 2026)
     last_period: "2026-03"  # Which month's report was sent (March 2026)
+
 ```
 

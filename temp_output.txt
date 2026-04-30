@@ -1,0 +1,8 @@
+C:\Users\MengNingLuo\AppData\Local\Programs\Python\Python310\lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Data Validation extension is not supported and will be removed
+  warn(msg)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\MengNingLuo\AppData\Local\Programs\Python\Python310\lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2011' in position 32511: character maps to <undefined>
+=== 2026 Highlights ===

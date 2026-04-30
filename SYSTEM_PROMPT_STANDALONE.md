@@ -2,54 +2,44 @@
 
 Execute now:
 
-1. Batch read: `SOUL.md`, `OPERATIONAL_RULES.md`, `CONFIG.md`, `recurring_tasks.md`, `memory/preferences.md`, `memory/things_to_avoid.md`, `memory/policy/README.md`, `tasks/queue.md`
-2. Query OS for date/time based on CONFIG.md System.OS (Windows: `powershell -Command "Get-Date -Format 'dddd yyyy-MM-dd HH:mm'"`, Unix/Linux/Mac: `date "+%A %Y-%m-%d %H:%M"`)
-3. **Archive old events:** Check Recent Events in queue.md → Move events older than assistant_brain/CONFIG.md "Recent Events Window" (default: 14 days) to `tasks/history/timeline_YYYY-MM.md` (create if not exists)
-4. Parse recurring_tasks.md → add matching tasks to queue.md with recurring_task_id (skip duplicates)
-5. List subdirectories in `assistant_brain/skills/` → for each subdirectory, check for SKILL.md and read first 15 lines
-6. Check SKILL.md for "ON STARTUP:" instructions → execute if found
-7. Count policies from `memory/policy/README.md` table (exclude header row)
-8. Output: `✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name] | Shell: [Shell Type] | Skills: [count] | Policies: [count]` + skill list (numbered with descriptions and triggers) + recent events (use `[TID](path)` format with title) + active task list (use `[TID](path)` format with title, status, priority, geo, due date)
+1. **Load core files:** Batch read `SOUL.md`, `OPERATIONAL_RULES.md`, `CONFIG.md`, `memory/preferences.md`, `memory/things_to_avoid.md`
+2. **Load task context:** Read `tasks/queue.md`, `recurring_tasks.md`
+3. **Load stakeholder context:** Read `stakeholders/registry.md`
+4. **Load policy index:** Read `policy/README.md`
+5. **CRITICAL:** Query OS for LOCAL date/time with weekday (see `OPERATIONAL_RULES.md` for command)
+6. **Archive old events:** Move events older than CONFIG.md "Recent Events Window" (default: 14 days) to `tasks/history/timeline_YYYY-MM.md`
+7. **Parse recurring tasks:** Add matching tasks to queue.md (skip duplicates)
+8. **Load skill index:** Read `skills/README.md` to get skill metadata
+   - If file missing: scan all SKILL.md files and create README.md
+9. Output startup status (see `OPERATIONAL_RULES.md` "Display Formats" section for formatting rules):
+   - **Header:** `✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name]`
+   - **Skills:** Display count and list from "## User Skills" section in skills/README.md
+   - **Policies & Stakeholders:** Display counts
+   - **Recent events:** Status emoji + action word + `[TID](path)` + title
+   - **Active tasks:** Organized hierarchically (standalone, master with subtasks, P1 highlighted)
 
+## On-Demand Loading
 
-## Brain Files
+> **⚠️ CRITICAL RULE: ALWAYS load workflow/skill BEFORE using it. NEVER execute operations without loading the corresponding file first.**
 
-```
-assistant_brain/
-├── SOUL.md               # Identity & values (startup)
-├── OPERATIONAL_RULES.md  # Core operational strategies (startup - lightweight, references workflows/)
-├── CONFIG.md             # System parameters (startup)
-├── recurring_tasks.md   # Scheduled tasks (startup)
-├── workflows/           # Detailed operational workflows (on-demand)
-│   ├── TASK_WORKFLOW.md        # Task operation procedures
-│   ├── EMAIL_WORKFLOW.md       # Email operation procedures
-│   ├── STAKEHOLDER_WORKFLOW.md # Stakeholder management procedures
-│   └── RECORDING_WORKFLOW.md   # Recording policies
-├── stakeholders/        # Stakeholder profiles (on-demand)
-│   ├── README.md               # Module documentation
-│   ├── registry.md             # Stakeholder index
-│   └── SH0xx-xxx.md            # Individual stakeholder files
-├── tasks/
-│   ├── queue.md         # Active task list + Recent Events (see CONFIG.md) (startup - lightweight)
-│   ├── T0xx-xxx.md      # Active task details (on-demand)
-│   └── history/
-│       ├── timeline_YYYY-MM.md          # Monthly event archives (on-demand)
-│       └── T0xx-xxx.md                   # Completed task archives (on-demand)
-├── memory/
-│   ├── preferences.md   # User preferences (startup)
-│   ├── things_to_avoid.md # Mistakes to avoid (startup)
-│   ├── contacts.md      # External contacts (on-demand)
-│   ├── tracking.md      # Tracking information (on-demand)
-│   └── policy/          # Business policies (on-demand)
-│       └── README.md    # Policy index
-└── skills/              # Modular capabilities (on-demand)
-```
+### Workflows
+**When to load:** Before performing multi-step operations
 
-## On-Demand Skill Loading
+**Process:**
+1. Identify operation type (task, email, stakeholder, recording)
+2. **READ** `workflows/XXX_WORKFLOW.md` **completely** - DO NOT skip this step
+3. Follow step sequence, calling skills as needed
 
-**⚠️ MUST read full SKILL.md BEFORE executing any skill commands.**
+### Skills
+**When to load:** When workflow calls a skill OR user triggers directly
 
-1. Identify matching skill from user request
-2. **READ** `assistant_brain/skills/{skill_name}/SKILL.md` completely
-3. Check for: auth requirements, command syntax, critical formats, warnings
-4. Execute with correct parameters
+**⚠️ IMPORTANT:** 
+- Do NOT load skills at startup
+- Do NOT execute skill operations without reading SKILL.md first
+
+**Process:**
+1. **READ** `skills/{skill-name}/SKILL.md` **completely** - DO NOT skip this step
+2. Check: inputs required, outputs expected, processing logic
+3. Execute with correct parameters
+4. Return outputs to caller (workflow or user)
+
