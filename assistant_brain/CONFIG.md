@@ -18,8 +18,7 @@
 ## Email Signature
 ```
 Marlon Luo
-Learning Consultant
-Learning & Knowledge(L&K) - IBM Consulting
+Learning Consultant, Delivery Shared Services, L&K
 Slack - @Marlon Luo
 ```
 

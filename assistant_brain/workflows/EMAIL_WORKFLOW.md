@@ -1,6 +1,6 @@
 # Email Workflow
 
-> **ALWAYS load [`outlook-skill/SKILL.md`](../skills/outlook-skill/SKILL.md) before executing any email operation.**
+> **ALWAYS load the email skill before executing any email operation.**
 
 ---
 
@@ -9,8 +9,8 @@
 **Triggers:** "check email", "any new emails", "what's new", "show recent", "emails from [time]"
 
 **Steps:**
-1. **Load skill** → Read [`outlook-skill/SKILL.md`](../skills/outlook-skill/SKILL.md)
-2. **Fetch emails** → Use outlook-skill to list recent emails (Inbox + Sent Items)
+1. **Load skill** → Load the email skill
+2. **Fetch emails** → List recent emails (Inbox + Sent Items)
 3. **Extract keywords & geo** → For each email, identify:
    - Keywords (names, topics, ticket IDs)
    - Geo: `@ph.ibm.com`→Philippines, `@cn.ibm.com`→China, `@in.ibm.com`→India, or explicit mentions
@@ -55,9 +55,11 @@ Task [TID](path) - Title:
 **Triggers:** "find emails about [topic]", "find all emails from [person]", "search for [keyword]"
 
 **Steps:**
-1. **Load skill** → Read [`outlook-skill/SKILL.md`](../skills/outlook-skill/SKILL.md)
-2. **Search** → Use outlook-skill to find emails by subject/sender/recipient/body across Inbox + Sent Items
-3. **Present** → Show results with entry_id for further operations
+1. **Load skill** → Load the email skill
+2. **Start narrow** → Search with a small recent window first (usually 7-14 days) using the most specific available keywords, names, IDs, geo, or exact subject fragments
+3. **Widen only if needed** → If the first search does not find the email, expand the date range gradually and make the query more specific before broadening further
+4. **Escalate search method** → If direct search is still noisy or incomplete, use find-thread or find-related from a confirmed result
+5. **Present** → Show results with entry_id for further operations
 
 ---
 
@@ -66,8 +68,8 @@ Task [TID](path) - Title:
 **Triggers:** "find thread", "find conversation", "show whole conversation", "find replies"
 
 **Steps:**
-1. **Load skill** → Read [`outlook-skill/SKILL.md`](../skills/outlook-skill/SKILL.md)
-2. **Find thread** → Use outlook-skill to pull all emails sharing the same ConversationID
+1. **Load skill** → Load the email skill
+2. **Find thread** → Pull all emails sharing the same ConversationID
 3. **Present** → Show thread chronologically, with folder markers (📥/📤)
 
 ---
@@ -77,8 +79,8 @@ Task [TID](path) - Title:
 **Triggers:** "find related", "related emails", "what else is related to this", "find similar"
 
 **Steps:**
-1. **Load skill** → Read [`outlook-skill/SKILL.md`](../skills/outlook-skill/SKILL.md)
-2. **Find related** → Use outlook-skill multi-strategy search:
+1. **Load skill** → Load the email skill
+2. **Find related** → Multi-strategy search:
    - Thread (same conversation)
    - Sender (same person within time window)
    - Keyword (shared subject terms)
@@ -91,15 +93,24 @@ Task [TID](path) - Title:
 **Triggers:** "draft email", "compose", "write email", "reply", "reply all", "forward", "send to [person]"
 
 **Steps:**
-1. **Load skill** → Read [`outlook-skill/SKILL.md`](../skills/outlook-skill/SKILL.md)
+1. **Load skill** → Load the email skill
 2. **Get context** → Read original email if reply/forward
 3. **Choose reply mode:**
    - **Default: `replyall`** — keeps all original recipients, `--to`/`--cc` append
    - **Narrow: `reply`** — sender only, `--to`/`--cc` specify exact extras
 4. **Check stakeholder** → Look up recipient in [`stakeholders/registry.md`](../stakeholders/registry.md)
-5. **Draft** → Use appropriate tone (formal for decision makers, professional for others)
+5. **Draft** → Apply tone based on stakeholder type (see table below)
 6. **Add signature** → From [`CONFIG.md`](../CONFIG.md)
 7. **Present for approval** → NEVER send without user confirmation
+
+**Tone Guidelines:**
+
+| Stakeholder Type | Tone | Format |
+|------------------|------|--------|
+| Decision Maker (High Power) | Formal, executive | Brief (3-4 paragraphs), ROI focus |
+| Influencer (Medium Power) | Professional, collaborative | Balanced detail |
+| Executor (Low Power) | Clear, supportive | Detailed instructions |
+| Unknown | Professional, neutral | Standard format |
 
 ---
 
@@ -108,9 +119,9 @@ Task [TID](path) - Title:
 **Triggers:** "batch forward", "forward to multiple people", "mass forward"
 
 **Steps:**
-1. **Load skill** → Read [`outlook-skill/SKILL.md`](../skills/outlook-skill/SKILL.md)
+1. **Load skill** → Load the email skill
 2. **Prepare CSV** → Create recipient list with "email" column
-3. **Execute** → Use outlook-skill to BCC-forward to all recipients
+3. **Execute** → BCC-forward to all recipients
 4. **Confirm** → Report batch completion
 
 ---
@@ -144,7 +155,7 @@ Task [TID](path) - Title:
 
 3. **When looking up task emails later:**
    - Read the task file → get entry_ids from Email References table
-   - Use outlook-skill `get-email` for each to get current state
+   - Use email skill `get-email` for each to get current state
    - This bypasses searching entirely — O(1) email lookup
 
 ---

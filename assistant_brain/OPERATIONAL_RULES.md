@@ -41,21 +41,21 @@ powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 ## Skills Architecture
 
 **Two-layer design:**
-- **I/O Layer**: External system interactions (microsoft-graph-skill)
-- **Business Logic Layer**: Analysis, decision-making, composition (email, task, stakeholder, recording skills)
+- **Workflow Layer**: Orchestration, business logic, guidelines (workflow .md files)
+- **I/O Layer**: External system interactions (skills with code/scripts)
 
-**Pattern:** Workflows call I/O skills for data access, business logic skills for processing.
+**Pattern:** Workflows contain all business logic and call I/O skills for data access.
 
 ---
 
 ## Workflow Reference
 
-| Operation | Trigger Commands | Workflow | Skills Used |
-|-----------|------------------|----------|-------------|
-| Email operations | "check email", "list emails", "show emails", "emails from", "process email", "draft email", "reply", "forward" | [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md) | outlook-skill, email/info-detect, email/compose, keyword-extraction |
-| Task operations | "create task", "update task", "complete task", "block task" | [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md) | task/create, task/update, task/complete, task/queue-update |
-| Stakeholder management | "match stakeholder", "suggest RACI", "notify stakeholder" | [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md) | stakeholder/match, stakeholder/raci-suggest |
-| Event recording | "record event", "archive events" | [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md) | recording/event-record |
+| Operation | Trigger Commands | Workflow |
+|-----------|------------------|----------|
+| Email operations | "check email", "list emails", "show emails", "emails from", "process email", "draft email", "reply", "forward" | [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md) |
+| Task operations | "create task", "update task", "complete task", "block task" | [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md) |
+| Stakeholder management | "match stakeholder", "suggest RACI", "notify stakeholder" | [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md) |
+| Event recording | "record event", "archive events" | [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md) |
 
 **⚠️ CRITICAL:** ALWAYS load and follow the workflow BEFORE executing operations. Do NOT skip workflow loading.
 

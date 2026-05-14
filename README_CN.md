@@ -180,7 +180,7 @@ BrainClaw/
 | `recurring_tasks.md` | 定期任务定义 |
 | `stakeholders/registry.md` | 利益相关方数据库 |
 | `policy/README.md` | 政策索引 |
-| `skills/README.md` | 技能索引 |
+| `skills/*/SKILL.md` frontmatter | 技能触发词与描述 |
 
 其他所有文件（工作流文件、技能实现、详细利益相关方档案等）在需要特定操作时**按需加载**。
 

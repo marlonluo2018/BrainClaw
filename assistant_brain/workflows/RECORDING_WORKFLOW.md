@@ -1,6 +1,6 @@
 # Recording Workflow
 
-> Event and memory recording workflow - orchestrates skills for documentation
+> Event and memory recording workflow
 
 ---
 
@@ -10,21 +10,22 @@
 
 **Steps:**
 1. Determine event type
-2. Call `recording` (operation: event-record) with appropriate parameters
+2. Record to appropriate location using format below
 3. Confirm recording location
 
-### Event Types & Locations
+### Event Types & Formats
 
-|| Event Type | Icon | Location |
-||------------|------|----------|
-|| Task Created | 📋 | queue.md Recent Events |
-|| Task Completed | ✅ | queue.md Recent Events |
-|| Task Blocked | 🔴 | queue.md Recent Events |
-|| Meeting/Decision | 🤝 | queue.md Recent Events |
-|| Tracking Issue | 📊 | queue.md Recent Events |
-|| Task Update | - | Task file Timeline only |
+| Event Type | Icon | Location | Format |
+|------------|------|----------|--------|
+| Task Created | 📋 | queue.md Recent Events | `- **{date}**: 📋 Created [{TID}](path) - {title}` |
+| Task Completed | ✅ | queue.md Recent Events | `- **{date}**: ✅ Completed [{TID}](path) - {title}` |
+| Task Blocked | 🔴 | queue.md Recent Events | `- **{date}**: 🔴 Blocked [{TID}](path) - {title}` |
+| Meeting/Decision | 🤝 | queue.md Recent Events | `- **{date}**: 🤝 {description}` |
+| Tracking Issue | 📊 | queue.md Recent Events | `- **{date}**: 📊 {description}` |
+| Task Update | - | Task file Timeline only | `- **{date}** [{source}]: {description}` |
 
 ### What NOT to Record in queue.md
+
 - Email sent/received → Task file only
 - Task updates → Task file only
 - Minor progress → Task file only
@@ -50,14 +51,15 @@
 
 ### Memory Types
 
-|| File | Trigger | Skip |
-||------|---------|------|
-|| preferences.md | User explicitly states preference | Technical details |
-|| things_to_avoid.md | Work mistake repeats 2+ times | Technical errors |
-|| contacts.md | External contact mentioned 3+ times | Internal colleagues |
-|| tracking.md | Item requires cross-session monitoring | Temporary states |
+| File | Trigger | Skip |
+|------|---------|------|
+| preferences.md | User explicitly states preference | Technical details |
+| things_to_avoid.md | Work mistake repeats 2+ times | Technical errors |
+| contacts.md | External contact mentioned 3+ times | Internal colleagues |
+| tracking.md | Item requires cross-session monitoring | Temporary states |
 
 ### Recording Steps
+
 1. Detect candidate → Check threshold
 2. Filter → Work-related only
 3. Show user → Ask for approval
@@ -70,6 +72,7 @@
 **Trigger:** Work mistake repeats 2+ times
 
 **Entry Template:**
+
 ```markdown
 ## {Title}
 - Context: {When/where}
@@ -83,18 +86,12 @@
 ## Query Flow
 
 ### "What did I do recently?"
+
 1. Read queue.md Recent Events
 2. Show activities within window
 
 ### "What happened with T019?"
+
 1. Read queue.md Recent Events → Find T019 creation/completion
 2. Read T019.md Timeline → Get detailed history
 3. Combine information
-
----
-
-## Skills Used
-
-|| Skill | Operations Used | Purpose |
-||-------|-----------------|---------|
-|| `recording` | event-record | Record events to queue.md or task timeline |

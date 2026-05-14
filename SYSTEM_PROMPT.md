@@ -12,11 +12,10 @@
 5. **CRITICAL:** Query OS for LOCAL date/time with weekday (see `assistant_brain/OPERATIONAL_RULES.md` for command)
 6. **Archive old events:** Move events older than `assistant_brain/CONFIG.md` "Recent Events Window" to `assistant_brain/tasks/history/timeline_YYYY-MM.md`
 7. **Parse recurring tasks:** Add matching tasks to queue.md (skip duplicates)
-8. **Load skill index:** Read `assistant_brain/skills/README.md` to get skill metadata
-   - If file missing: scan all SKILL.md files and create README.md
+8. **Scan skills:** Glob `assistant_brain/skills/*/SKILL.md` → read only YAML frontmatter (name, description, triggers) from each file
 9. Output startup status (see `assistant_brain/OPERATIONAL_RULES.md` "Display Formats" section for formatting rules):
    - **Header:** `✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name]`
-   - **Skills:** Display count and list from "## User Skills" section in assistant_brain/skills/README.md
+   - **Skills:** Display count and list from scanned frontmatter
    - **Policies & Stakeholders:** Display counts
    - **Recent events:** Status emoji + action word + `[TID](path)` + title
    - **Active tasks:** Organized hierarchically (standalone, master with subtasks, P1 highlighted)

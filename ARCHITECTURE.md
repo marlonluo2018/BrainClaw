@@ -426,7 +426,7 @@ policy/
    ## Function   # For user skills
    ```
 
-4. **Update `skills/README.md`**
+4. **Add YAML frontmatter to SKILL.md** (name, description, triggers)
 
 **Example**: Adding `calendar` workflow skill
 ```markdown
@@ -550,7 +550,7 @@ Always format IDs as clickable links:
 - Use specific keywords
 - Avoid generic terms
 - Document in SKILL.md frontmatter
-- Update skills/README.md
+- Frontmatter is scanned at startup for trigger routing
 
 ### 7.3 Workflow Steps
 
@@ -585,7 +585,7 @@ Always format IDs as clickable links:
 6. Query OS for local date/time
 7. Archive old events
 8. Parse recurring tasks
-9. Load skill index (skills/README.md)
+9. Scan skill frontmatter (skills/*/SKILL.md)
 10. Output startup status
 ```
 
@@ -624,7 +624,7 @@ Always format IDs as clickable links:
 
 | Issue | Solution |
 |-------|----------|
-| Skill not found | Check skills/README.md index |
+| Skill not found | Check skills/*/SKILL.md frontmatter triggers |
 | Workflow not loaded | Read workflow file before execution |
 | Memory not persisting | Check recording threshold |
 | Task ID conflict | Verify Last Task ID in queue.md header |
