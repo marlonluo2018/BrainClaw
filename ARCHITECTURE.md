@@ -174,7 +174,7 @@ Workflows define **step-by-step procedures** for multi-step operations.
 | Workflow | Purpose | Skills Used |
 |----------|---------|-------------|
 | `TASK_WORKFLOW.md` | Task CRUD operations | task (create/update/complete), stakeholder (match) |
-| `EMAIL_WORKFLOW.md` | Email processing & drafting | email (compose/info-detect), microsoft-graph-skill |
+| `EMAIL_WORKFLOW.md` | Email processing & drafting | email (compose/info-detect), outlook-skill |
 | `STAKEHOLDER_WORKFLOW.md` | Stakeholder matching & RACI | stakeholder (match/raci-suggest), email (compose) |
 | `RECORDING_WORKFLOW.md` | Event & memory recording | recording (event-record) |
 
@@ -202,17 +202,18 @@ Workflows define **step-by-step procedures** for multi-step operations.
 | **Example** | "Create Task" workflow | `task/create` skill |
 
 **Workflow Responsibilities:**
-- Define operation sequence
-- Call appropriate skills at each step
+- Define operation sequence in abstract terms
+- Reference skills, not hardcode CLI commands
 - Handle decision points (if/else)
 - Coordinate between skills
 - Present results to user
 
 **Skill Responsibilities:**
-- Implement specific functionality
+- Implement specific functionality with concrete CLI commands
 - Process inputs and generate outputs
 - Handle errors and edge cases
 - Return results to caller
+- Self-contained: skills are project-agnostic (e.g., outlook-skill works standalone)
 
 **Example - Creating a Task:**
 
@@ -268,10 +269,51 @@ skills/
 
 | Skill | Purpose |
 |------|---------|
+| `outlook-skill` | Native Outlook email via COM — find, thread, compose, batch-forward |
 | `keyword-extraction` | Extract keywords from text |
 | `skill-creator` | Create new skills |
 | `minimax-xlsx` | Excel/spreadsheet operations |
-| `microsoft-graph-skill` | Microsoft Graph API |
+
+### 4.5 Outlook Skill Architecture
+
+The `outlook-skill` is a self-contained Python application that interfaces with Microsoft Outlook via COM. It is **decoupled from BrainClaw** — the skill has its own config, backend, and CLI and can run standalone.
+
+```
+skills/outlook-skill/
+├── SKILL.md                  # Command reference & triggers for AI
+├── scripts/
+│   └── outlook_skill.py      # CLI entry point (all commands)
+├── backend/
+│   ├── config.py             # Centralized configuration
+│   ├── email_search/         # Search engine
+│   │   ├── unified_search.py # find, find-thread, find-related
+│   │   ├── server_search.py  # Outlook SQL/AdvancedSearch
+│   │   ├── email_listing.py  # find-recent
+│   │   └── search_common.py  # Shared extraction utilities
+│   ├── email_composition.py  # Compose & reply
+│   ├── outlook_session/      # COM session management
+│   └── ...
+└── .gitignore
+```
+
+**CLI Commands:**
+
+| Command | Purpose | Scope |
+|---------|---------|-------|
+| `find-recent` | Recent emails | Inbox (default) |
+| `find` | Search by subject/sender/body | Inbox (default) |
+| `find-thread` | All emails in conversation | Inbox + Sent Items (auto) |
+| `find-related` | Cross-thread discovery | Inbox + Sent Items (auto) |
+| `get-email` | Full email by entry_id | — |
+| `compose` / `reply` | Send emails | — |
+| `batch-forward` | Mass BCC forward | — |
+
+**Design Principles:**
+- **Decoupled**: No imports from BrainClaw. Works standalone with `py -3 scripts/outlook_skill.py`.
+- **Workflow-agnostic**: Workflows reference skills abstractly ("use outlook-skill to find emails"); exact CLI commands are in SKILL.md.
+- **Command convention**: All search uses `find-*` prefix (`find`, `find-recent`, `find-thread`, `find-related`).
+- **Scope strategy**: Regular search defaults to Inbox only (sent emails are tracked in tasks); thread/related auto-include Sent Items.
+- **Event detection**: Meeting invites detected via Outlook `MeetingStatus`; event announcements via subject/sender heuristics.
 
 #### SKILL.md Template
 
@@ -457,9 +499,11 @@ policy/
 |-------|---------------|---------|
 | System Prompt | Startup & loading rules | When to load what |
 | Brain Files | Knowledge & settings | SOUL, CONFIG, memory |
-| Workflows | Step-by-step procedures | TASK_WORKFLOW |
-| Skills | Implementation logic | task/create SKILL.md |
+| Workflows | Orchestration (WHAT to do) | TASK_WORKFLOW, EMAIL_WORKFLOW |
+| Skills | Implementation (HOW to do) | outlook-skill CLI, task/create |
 | Data | Persistence | Task files, registry |
+
+**Key principle**: Workflows reference skills abstractly ("use outlook-skill to find thread"). Exact CLI commands live in `SKILL.md`. This keeps skills self-contained and project-agnostic.
 
 ### 6.2 On-Demand Loading
 
