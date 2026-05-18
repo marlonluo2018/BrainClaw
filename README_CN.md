@@ -25,16 +25,16 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 
 1. 打开你的 AI IDE（Claude、Cursor 等）
 2. 进入自定义指令 / 系统提示词设置
-3. 粘贴 [`SYSTEM_PROMPT.md`](SYSTEM_PROMPT.md) 的内容
+3. 粘贴 [`CLAUDE.md`](CLAUDE.md) 的内容（Claude Code 会自动加载；其他 IDE 需要手动粘贴）
 4. 将工作区设置为 BrainClaw 文件夹
 
 ### 日常使用
 
 1. 打开你的 AI IDE
-2. 说 **"start"** 或 **"启动"** 来激活完整助理
+2. 说 **"start"**、**"启动"** 或 **"start assistant"** 来激活完整助理
 3. 助理加载 brain 文件，准备协助
 
-（或者只说 "hi"/"你好" 来快速问候，无需完整启动）
+（"hi"/"你好" 等问候语，以及 "帮我"/"help me" 等模糊用语**不会**自动启动助理 — 必须使用上述显式触发词。）
 
 **无需安装。无需配置。无需命令行。**
 
@@ -44,7 +44,7 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 ┌──────────────────────────────────────────────────────────────┐
 │  AI IDE (Claude / Cursor / etc.)                             │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │  系统提示词  (SYSTEM_PROMPT.md)                        │  │
+│  │  系统提示词  (CLAUDE.md)                               │  │
 │  │  "启动时，读取 brain 文件..."                          │  │
 │  └────────────────────────────────────────────────────────┘  │
 │                        ↓                                     │
@@ -53,17 +53,17 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  ├── SOUL.md               (身份与价值观)              │  │
 │  │  ├── OPERATIONAL_RULES.md  (策略)                      │  │
 │  │  ├── CONFIG.md             (参数)                      │  │
-│  │  ├── workflows/            (编排层)                    │  │
+│  │  ├── workflows/            (编排 + 业务逻辑)           │  │
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
 │  │  │   ├── STAKEHOLDER_WORKFLOW.md                       │  │
-│  │  │   └── RECORDING_WORKFLOW.md                         │  │
-│  │  ├── skills/               (能力模块)                  │  │
-│  │  │   ├── README.md         (技能索引)                  │  │
-│  │  │   ├── task/             (领域技能)                  │  │
-│  │  │   ├── email/            (领域技能)                  │  │
+│  │  │   ├── RECORDING_WORKFLOW.md                         │  │
+│  │  │   └── VIEWS_WORKFLOW.md                             │  │
+│  │  ├── skills/               (I/O — 外部系统)            │  │
 │  │  │   ├── outlook-skill/    (Outlook COM 后端)          │  │
-│  │  │   └── ...                                           │  │
+│  │  │   ├── xlsx/             (Excel 读写)                │  │
+│  │  │   ├── pptx/             (PowerPoint 读写)           │  │
+│  │  │   └── skill-creator/    (新技能脚手架)              │  │
 │  │  ├── tasks/                (任务队列)                  │  │
 │  │  ├── memory/               (偏好记忆)                  │  │
 │  │  └── policy/               (业务规则)                  │  │
@@ -75,29 +75,28 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 
 | 功能 | 描述 |
 |------|------|
-| **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、RACI 利益相关方、父子关系 |
-| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件（无云端依赖） |
+| **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、RACI 利益相关方、父子关系、结构化 `Asks`（我欠的 / 别人欠我的）|
+| **视图引擎** | `status T###`(或直接 `T###`) / `待我处理` / `等待` / `before {人}` / `review` —— 跨任务揭示逾期、欠回复、述职素材 |
+| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。匹配到任务时 AI 自动抽取 ask/decision/deadline 写入任务的结构化区块 |
 | **邮件线程追踪** | 通过 Outlook ConversationID 跨文件夹查找完整对话线程 |
 | **关联邮件发现** | 多策略搜索（线程 + 发件人 + 关键词）实现跨线程发现 |
-| **记忆系统** | 学习偏好、记住联系人、追踪需避免的错误、维护政策索引 |
+| **记忆系统** | 用户偏好、认知盲点模式、外部联系人、成就（述职事实库）|
+| **成就自动捕获** | 任务完成时 AI 从 `[decision]` / `[milestone]` / `[delivery]` 标签的 Timeline 抽取述职素材 |
 | **政策管理** | 结构化政策文件，带索引和参考系统 |
-| **定期任务** | 自动创建定期任务（月度报告、季度发票等） |
-| **Office 文档** | 通过 minimax-xlsx skill 创建/编辑 Excel 电子表格 |
-| **关键词提取** | 自动从邮件和文档中提取相关关键词 |
+| **定期任务** | 自动创建定期任务（月度报告、季度流程） |
+| **Office 文档** | 通过 `xlsx` 和 `pptx` skill 处理 Excel / PowerPoint |
 | **可扩展技能** | 通过模块化技能系统添加新能力 |
 
 ## 技能
 
-| 技能 | 类型 | 用途 |
-|------|------|------|
-| **outlook-skill** | 用户 | 原生 Outlook 邮件 — 查找、线程、关联、撰写、回复、批量转发 |
-| **keyword-extraction** | 用户 | 从任何文本中提取核心关键词 |
-| **skill-creator** | 用户 | 创建新技能 |
-| **minimax-xlsx** | 用户 | 处理 Excel/电子表格文件（.xlsx、.csv） |
-| **task** | 工作流 | 任务生命周期（创建/更新/完成） |
-| **email** | 工作流 | 邮件撰写与信息检测 |
-| **stakeholder** | 工作流 | 利益相关方匹配与 RACI |
-| **recording** | 工作流 | 事件记录 |
+技能仅用于与外部系统交互（I/O）。业务逻辑（任务生命周期、RACI、事件记录、邮件撰写规则）直接写在 workflow 文件里。
+
+| 技能 | 用途 | 外部系统 |
+|------|------|----------|
+| **outlook-skill** | 查找、线程、关联、撰写、回复、批量转发 | Microsoft Outlook (COM) |
+| **xlsx** | Excel/电子表格文件读写 | `.xlsx`、`.csv` |
+| **pptx** | PowerPoint 文件读写 | `.pptx` |
+| **skill-creator** | 新技能脚手架 | (元) |
 
 ## 邮件命令
 
@@ -119,8 +118,7 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 
 ```
 BrainClaw/
-├── SYSTEM_PROMPT.md                    # 入口 - AI IDE 集成版
-├── SYSTEM_PROMPT_STANDALONE.md         # 独立版
+├── CLAUDE.md                           # 系统提示词（单一可信源）
 ├── README.md                           # 英文说明
 ├── README_CN.md                        # 中文说明（本文件）
 ├── ARCHITECTURE.md                     # 系统架构
@@ -128,39 +126,36 @@ BrainClaw/
     ├── SOUL.md               ⭐ # 身份与价值观（不变的核心）
     ├── OPERATIONAL_RULES.md  ⭐ # 核心策略
     ├── CONFIG.md             ⭐ # 系统参数（用户信息、格式）
+    ├── views_config.md       ⭐ # 视图命令的阈值与默认值
     ├── recurring_tasks.md    ⭐ # 定期任务定义
     ├── policy/
     │   └── README.md         ⭐ # 政策索引
-    ├── workflows/               # 详细操作工作流（按需加载）
+    ├── workflows/               # 编排 + 业务逻辑（按需加载）
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── STAKEHOLDER_WORKFLOW.md
-    │   └── RECORDING_WORKFLOW.md
+    │   ├── RECORDING_WORKFLOW.md
+    │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
     ├── stakeholders/
     │   ├── registry.md       ⭐ # 利益相关方索引
     │   └── SH0xx-xxx.md          # 单个利益相关方文件（按需加载）
-    ├── memory/
-    │   ├── preferences.md    ⭐ # 用户偏好
-    │   ├── things_to_avoid.md ⭐ # 需要记住的错误
-    │   ├── contacts.md           # 外部联系人（按需加载）
-    │   └── tracking.md           # 跨会话监控（按需加载）
-    ├── skills/                  # 模块化能力
-    │   ├── README.md         ⭐ # 技能索引
-    │   ├── _TEMPLATE_/           # 技能模板
-    │   ├── task/                 # 任务域技能
-    │   ├── email/                # 邮件域技能
-    │   ├── stakeholder/          # 利益相关方域技能
-    │   ├── recording/            # 记录域技能
+    ├── memory/                  # 用户衍生数据（系统从用户身上学到的）
+    │   ├── preferences.md       ⭐ # 用户偏好（语气、时间格式等）
+    │   ├── things_to_avoid.md   ⭐ # 认知盲点模式 + 战术 Don'ts
+    │   ├── achievements.md         # 述职事实库（任务完成时自动喂养）
+    │   ├── contacts.md             # 外部联系人（按需加载）
+    │   └── tracking.md             # 已退役 — 功能转入任务的 Asks 区块
+    ├── skills/                  # 与外部系统交互的 I/O
     │   ├── outlook-skill/        # Outlook COM — Python 后端 + CLI
     │   │   ├── SKILL.md          #   命令参考
     │   │   ├── scripts/          #   CLI 入口点
     │   │   └── backend/          #   搜索、撰写、会话管理
-    │   ├── keyword-extraction/   # 独立工具（按需加载）
-    │   ├── minimax-xlsx/         # 独立工具（按需加载）
-    │   └── skill-creator/        # 独立工具（按需加载）
+    │   ├── xlsx/                 # Excel 文件读写
+    │   ├── pptx/                 # PowerPoint 文件读写
+    │   └── skill-creator/        # 新技能脚手架
     └── tasks/                   # 任务队列与历史
         ├── queue.md          ⭐ # 活跃任务 + 近期事件
-        ├── FORMITS.md            # 任务格式规范
+        ├── FORMATS.md            # 任务格式规范
         ├── T0xx-xxx.md           # 活跃任务详情（按需加载）
         └── history/              # 已完成任务与月度归档
 ```
@@ -175,7 +170,8 @@ BrainClaw/
 | `OPERATIONAL_RULES.md` | 行为策略与政策 |
 | `CONFIG.md` | 用户设置与格式定义 |
 | `memory/preferences.md` | 用户偏好 |
-| `memory/things_to_avoid.md` | 需避免的错误 |
+| `memory/things_to_avoid.md` | 认知盲点模式 + 战术 Don'ts |
+| `views_config.md` | 视图命令的阈值与默认值 |
 | `tasks/queue.md` | 活跃任务与近期事件 |
 | `recurring_tasks.md` | 定期任务定义 |
 | `stakeholders/registry.md` | 利益相关方数据库 |
@@ -186,10 +182,20 @@ BrainClaw/
 
 ## 命令
 
-| 命令 | 触发词 | 功能 |
-|------|--------|------|
-| 启动 | "start", "启动", "start assistant", "帮我", "help me" | 加载 brain 文件，显示今日状态 |
-| 问候 | "hi", "hello", "你好", "在吗", "助手" | 快速问候（轻量级，无需完整启动） |
+> 直接用日常说法即可 —— 下面是例子,不是死板的命令。 AI 按意图匹配,不要求精确关键词。
+
+| 想干啥 | 你可以这样说 | 系统怎么响应 |
+|--------|------------|------------|
+| **启动助理** | "start"、"启动"、"start assistant" | 加载 brain 文件,渲染按国家 → 优先级分组的完整任务列表,标记 overdue |
+| **只想打招呼** | "hi"、"你好"、"help me"、"帮我" | 仅快速问候 — 模糊用语不会自动启动 |
+| **某个任务啥状态** | "T033"、"T033 状态"、"查 T033"、"T033 怎么样了"、"看下 T033"、"status T033" | 一屏:当前卡点、欠的、近期决策 |
+| **我欠谁啥** | "待我处理"、"我欠谁啥"、"我答应过啥"、"我有啥没回的"、"owed" | 跨任务汇总我的承诺,按对方分组,逾期优先 |
+| **谁卡着我 / 谁没回** | "等待"、"我在等谁"、"啥事卡着"、"谁还没回我"、"waiting" | 跨任务汇总,按对方分组,按等待时长排序 |
+| **会前预备** | "见 Beng 之前"、"明天和 Mridul 开会前"、"下午要见 X"、"before Beng" | 拉所有该人相关任务 + 议程草稿 |
+| **述职 / 总结** | "述职"、"半年述职"、"Q2 做了啥"、"总结这半年"、"年度总结"、"review Q2 2026" | bullet 概要 + narrative 草稿,从 achievements.md 整理 |
+| **看完整任务清单** | "全部任务"、"完整队列"、"show all" | 重新渲染启动同款分组任务列表 |
+| **任务操作** | "新建任务"、"完成 T033"、"block T040"、"create/update/complete/block task" | 任务生命周期 |
+| **邮件操作** | "查邮件"、"找 Beng 的邮件"、"draft email"、"reply"、"forward" | 邮件生命周期(现在自动抽取写入任务) |
 
 ## 任务管理特性
 
@@ -223,38 +229,41 @@ BrainClaw 跨会话学习和记忆：
 
 | 记忆文件 | 用途 |
 |----------|------|
-| preferences.md | 用户偏好（时区、语气、格式） |
-| things_to_avoid.md | 从失败模式中学习 |
-| contacts.md | 外部联系人（非同事） |
-| tracking.md | 需要跨会话监控的项目 |
+| `memory/preferences.md` | 用户偏好（时区、语气、时间格式）|
+| `memory/things_to_avoid.md` | **Patterns**(认知盲点)+ **Tactical Don'ts**(输出格式错误)|
+| `memory/achievements.md` | 述职事实库 — 任务完成时自动喂养;季度 × 类别两轴结构 |
+| `memory/contacts.md` | 外部联系人（非同事）|
+| `memory/tracking.md` | **已退役** — 功能转入任务的 `## Asks` 区块 + `owed`/`waiting` 视图 |
+| `views_config.md` | (不是 memory — 系统配置) 视图命令的阈值和默认值。位于 `assistant_brain/` 根目录,不在 memory/ 下。 |
 
 ## 架构：工作流与技能
 
 BrainClaw 采用分层架构，更好地组织代码：
 
 ```
-SYSTEM_PROMPT.md (启动规则)
+CLAUDE.md (启动规则)
         ↓
 OPERATIONAL_RULES.md (核心策略)
         ↓
-┌───────────────────┐
-│    Workflows      │  ← 编排层：做什么、何时做
-│  - TASK           │     与实现细节解耦
-│  - EMAIL          │     抽象引用技能
-│  - STAKEHOLDER    │
-│  - RECORDING      │
-└────────┬──────────┘
-         ↓
-┌───────────────────┐
-│     Skills        │  ← 实现层：如何做
-│  - task/SKILL.md  │     CLI 命令、处理逻辑
-│  - outlook-skill/ │     自包含、项目无关
-│  - email/SKILL.md │
-│  - ...            │
-└───────────────────┘
+┌──────────────────────────────────────────┐
+│  Workflows（编排 + 业务逻辑）            │  ← 所有业务逻辑都在这里
+│  - TASK_WORKFLOW                         │     RACI 规则、关键词提取、
+│  - EMAIL_WORKFLOW                        │     事件记录、邮件撰写规范、
+│  - STAKEHOLDER_WORKFLOW                  │     成就抽取、视图(status/owed/
+│  - RECORDING_WORKFLOW                    │     waiting/before/...) 等
+│  - VIEWS_WORKFLOW                        │
+└──────────────┬───────────────────────────┘
+               ↓ （仅在需要 I/O 时调用）
+┌──────────────────────────────────────────┐
+│  Skills（I/O — 外部系统）                │
+│  - outlook-skill/  Outlook COM           │
+│  - xlsx/           Excel 文件            │
+│  - pptx/           PowerPoint 文件       │
+│  - skill-creator/  元技能                │
+└──────────────────────────────────────────┘
 ```
 
-**核心原则**：工作流以抽象术语描述操作（"使用 outlook-skill 查找邮件"）。技能包含实际 CLI 命令。技能**按需加载**。
+**核心原则**：业务逻辑全部用 markdown 写在 workflow 中，让 AI 直接读懂并执行。只有真正需要代码访问外部系统时才用 skill。两者都**按需加载**。
 
 ## 系统能力与限制
 

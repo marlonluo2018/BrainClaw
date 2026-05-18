@@ -15,13 +15,6 @@
 }
 ```
 
-## Email Signature
-```
-Marlon Luo
-Learning Consultant, Delivery Shared Services, L&K
-Slack - @Marlon Luo
-```
-
 ## System
 - OS: Windows 11
 - Python command: `py -3 full/path/script.py` (from project root, no `cd`, no `&&`)
@@ -36,39 +29,91 @@ Slack - @Marlon Luo
 
 ### Startup Display Format
 
-**Load tasks from:** [`tasks/queue.md`](tasks/queue.md)
+> **Focus-driven, beautified for scan-ability.** Startup uses markdown headings to create clear visual sections: a prominent `# ✅ Ready` anchor (separates startup from prior thinking), then sectioned task buckets with priority-driven hierarchy. Source data is queue.md only — no individual task file reads.
 
-**Format (one line per task):**
+**Output skeleton (rendered as markdown):**
+
+```markdown
+## ✅ Ready | {weekday} {YYYY-MM-DD HH:mm} | User: {Name} | OS: {OS}
+
+Skills: `{skill_name_1}` · `{skill_name_2}` · `{skill_name_3}` · ...
+Policies: `{policy_name_1}` · `{policy_name_2}` · `{policy_name_3}` · ...
+Stakeholders: `{name_1}` · `{name_2}` · `{name_3}` · ... (+N more if > 10)
+Tasks: {N} active · {N} overdue · {N} owed · {N} waiting
+
+---
+
+### {flag} {Country} ({N})
+
+**P1 · {N}**
+- {status_icon} [TID](path) {Title} — Due {date}
+  - → {person}: {what}
+  - ← {person}: {what}
+- {status_icon} [TID](path) {Title} — was due {date} (**{N}d overdue**)
+
+**P2 · {N}**
+- {status_icon} [TID](path) {Title} — Due {date}
+- {status_icon} [TID](path) {Title} (Master) — Due {date}
+  - ↳ {status_icon} [TID](path) {Subtask Title} — Due {date}
+    - → {person}: {what} (blocker note)
+    - ← {person}: {what}
+  - ↳ {status_icon} [TID](path) {Subtask Title} — P1 · was due {date} (**{N}d overdue**)
+
+**P3 · {N}**
+- {status_icon} [TID](path) {Title} — Due {date}
+
+### {flag} {Country} ({N})
+
+(repeat per country)
+
+---
+
+→ `status T###` · `待我处理` · `等待` · `before {person}` · `review`
 ```
-[TID](path) Status Title (Priority, Geo, Due: date)
-```
 
-**Display rules:**
-1. **Priority ordering:** P1 first → P2 → P3
-2. **P1 tasks due today/overdue:** Prefix with ⚠️
-3. **ALL top-level tasks (standalone, P1, master):** Must have bullet point `-` prefix
-4. **Master tasks:** Show "(Master)" suffix, then subtasks below with `↳` prefix
-5. **Subtasks:** Indented with `  - ↳` format (2 spaces + bullet + arrow), no priority/geo/due details
-6. **Blank line** between priority groups
+**Rules:**
 
-**Format template:**
-```
-## ✅ Active Tasks ({count} total)
+1. **Ready line is single-line h2** (`## ✅ Ready | {date} | User: {Name} | OS: {OS}`). Visual anchor confirming startup is complete. Use `|` separator.
+2. **Four info lines** under Ready:
+   - `Skills: \`name1\` · \`name2\` · ...` — list each skill name (from `skills/*/SKILL.md` frontmatter), backtick-wrapped
+   - `Policies: \`name1\` · \`name2\` · ...` — list each policy name (from `policy/README.md` index)
+   - `Stakeholders: \`name1\` · \`name2\` · ...` — list each stakeholder display name (from `stakeholders/registry.md`). If more than 10, show the first 10 followed by "(+N more)"
+   - `Tasks: {N} active · {N} overdue` — counts from queue.md
+3. **Two horizontal rules `---`**: after counts line, and before footer command bar. Three visual zones: Ready · Tasks · Commands.
+4. **Primary grouping = country** (h3 with national flag emoji). Country ordering: by total task count, descending. Ties broken alphabetically.
+5. **Secondary grouping inside country = priority** as bold sub-labels (`**P1 · N**`, `**P2 · N**`, `**P3 · N**`). Not headings — keeps the page compact. Order: P1 → P2 → P3. Skip priority groups that are empty within a country.
+6. **Task rows.** Each task starts with one line. Format:
+   `- {status_icon} [TID](path) {Title} — Due {date}`
+   - `{status_icon}` is `📋` (Not Started) / `⏳` (In Progress) / `🔴` (Blocked).
+   - For overdue rows: replace `Due {date}` with `was due {date} (**{N}d overdue**)`. Bold the Nd.
+   - **Country and Priority are NOT repeated** on each row — they're implied by the section the row appears in.
+   - If task has pending asks, they appear as indented sub-lines immediately below (see rule 14).
+7. **Master tasks** appear in their own priority section with `(Master)` suffix on the title. Subtasks listed below as indented `↳` lines.
+8. **Subtasks render as a nested markdown list** under the master. The line MUST start with two literal spaces, then a hyphen, a space, the `↳` arrow, and a space — followed by the task content. Without this nested-list syntax, markdown collapses the subtask into the master line. Subtask content format: `{status_icon} [TID](path) {Title} — Due {date}`.
+   - Within same country and priority as master: priority/country implied, omit them on the row.
+   - When subtask priority **differs** from master: explicitly include the subtask's priority. Example: P1 subtask under P2 master → content becomes `{status_icon} [TID](path) {Title} — P1 · was due {date} (**{N}d overdue**)`.
+   - Subtasks always belong structurally under their master — they are NOT repeated in their own priority section, even if priority differs.
+9. **Overdue is shown inline** (bold `(**Nd overdue**)` on the task row) — no separate Overdue section. The overdue count appears in the top counts line for triage at a glance.
+10. **Metadata separator `·`** (middot U+00B7) within a task row; `|` only on the Ready line.
+11. **Command footer**: arrow `→` prefix, commands in backticks (renders as code, indicates "type this"), middot separator. Common shortest path: `status T###` first.
+12. **Pending asks shown inline** under each task that has them. This gives immediate visibility into what's blocking progress and what you're waiting on.
+13. **Source: queue.md + active task file Asks sections.** Queue.md provides the task list structure; each active task file is scanned for its `## Asks` section to populate inline pending lines.
+14. **Asks rendering rules:**
+    - Asks appear as indented sub-lines under their task (one extra indent level beyond the task row).
+    - Format: `- → {person}: {what}` (owed by me, unchecked `[ ]` items only) / `- ← {person}: {what}` (owed to me).
+    - For subtasks: asks indent one level deeper than the `↳` line (4 spaces total from root).
+    - If a task has zero pending asks (both sections empty or all owed-by-me checked off), show no sub-lines — task stays single-line.
+    - Parenthetical notes (e.g., blocker conditions) from the task file are preserved: `- → LearnQuest: Request voucher codes (after PO completed)`.
+    - Info line counts: `{N} owed` = total unchecked owed-by-me items across all tasks; `{N} waiting` = total owed-to-me items across all tasks.
 
-- ⚠️ [TID](path) Status Title (P1, Geo, Due: YYYY-MM-DD)
+**Country flag mapping** (extend as needed):
+- 🇨🇳 China · 🇮🇳 India · 🇵🇭 Philippines · 🇸🇬 Singapore · 🌏 APAC · 🌐 Global
 
-- [TID](path) Status Title (P2, Geo, Due: date)
-- [TID](path) Status Title (P2, Geo, Due: date)
+### `show all` (on-demand full task list)
 
-- [TID](path) Status Title (Master) (P2, Geo, Due: date)
-  - ↳ [TID](path) Status Subtask title
-  - ↳ [TID](path) Status Subtask title
-```
+When the user says `show all`, `show queue`, or `全部任务` — re-render the **same output as startup** (see "Startup Display Format" above), including inline pending asks. Source is queue.md + active task file Asks sections.
 
-**Key formatting points:**
-- Top-level tasks: `- [TID](path) Status Title (Priority, Geo, Due: date)`
-- P1 due today/overdue: `- ⚠️ [TID](path) Status Title (P1, Geo, Due: date)`
-- Subtasks: `  - ↳ [TID](path) Status Title` (indented 2 spaces)
+`show all` is effectively a "redisplay startup task list" shortcut for use mid-session.
 
 ## Paths
 - Windows: `%USERPROFILE%/assistant_brain/`

@@ -88,20 +88,31 @@ Task [TID](path) - Title:
 
 ---
 
-## Draft / Reply / Forward
+## Compose New Email
 
-**Triggers:** "draft email", "compose", "write email", "reply", "reply all", "forward", "send to [person]"
+**Triggers:** "draft email", "compose", "write email", "new email", "send to [person]"
 
 **Steps:**
 1. **Load skill** → Load the email skill
-2. **Get context** → Read original email if reply/forward
+2. **Check stakeholder** → Look up recipient in [`stakeholders/registry.md`](../stakeholders/registry.md)
+3. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
+4. **Present for approval** → NEVER send without user confirmation
+
+---
+
+## Reply / Forward
+
+**Triggers:** "reply", "reply all", "forward"
+
+**Steps:**
+1. **Load skill** → Load the email skill
+2. **Get context** → Read original email
 3. **Choose reply mode:**
    - **Default: `replyall`** — keeps all original recipients, `--to`/`--cc` append
    - **Narrow: `reply`** — sender only, `--to`/`--cc` specify exact extras
 4. **Check stakeholder** → Look up recipient in [`stakeholders/registry.md`](../stakeholders/registry.md)
-5. **Draft** → Apply tone based on stakeholder type (see table below)
-6. **Add signature** → From [`CONFIG.md`](../CONFIG.md)
-7. **Present for approval** → NEVER send without user confirmation
+5. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
+6. **Present for approval** → NEVER send without user confirmation
 
 **Tone Guidelines:**
 
@@ -145,18 +156,102 @@ Task [TID](path) - Title:
 
 ```markdown
 ## Email References
-| entry_id | date | from | subject | folder |
-|----------|------|------|---------|--------|
-| AAA... | 2026-03-01 | Beng PAULINO | Need your approval... | Inbox |
-| BBB... | 2026-03-03 | Marlon Luo | Re: Need your approval... | Sent Items |
+| entry_id | date | from | subject | folder | extracted |
+|----------|------|------|---------|--------|-----------|
+| AAA... | 2026-03-01 | Beng PAULINO | Need your approval... | Inbox | N |
+| BBB... | 2026-03-03 | Marlon Luo | Re: Need your approval... | Sent Items | N |
 ```
 
-2. **Format:** `| <entry_id> | YYYY-MM-DD | <sender_name> | <subject> | <folder_name> |`
+2. **Format:** `| <entry_id> | YYYY-MM-DD | <sender_name> | <subject> | <folder_name> | N |`
+   - `extracted` column starts as `N`. Set to `Y` after Step 3 (Extract Asks/Decisions) is complete for that email.
 
-3. **When looking up task emails later:**
+3. **Extract Asks / Decisions / Deadlines** (NEW — see [Extract Email Content into Task](#extract-email-content-into-task) below)
+
+4. **When looking up task emails later:**
    - Read the task file → get entry_ids from Email References table
    - Use email skill `get-email` for each to get current state
    - This bypasses searching entirely — O(1) email lookup
+
+---
+
+## Extract Email Content into Task
+
+**When:** Right after recording an email reference (Step 3 of "Record Email Reference"). Goal: pull view-relevant signal out of email bodies into the task's structured slots so future `status`/`owed`/`waiting` queries don't need to re-read email bodies.
+
+**Trigger:** Any email reference row with `extracted: N`.
+
+**Steps:**
+
+1. **Get full email body** via `get-email "<entry_id>"`.
+
+2. **Scan body for four signal types:**
+
+| Signal | Examples (English) | Examples (Chinese) | Where to write |
+|--------|--------------------|--------------------|----------------|
+| **Decision** | "we'll go with vendor X", "approved", "agreed to proceed" | "决定", "批准", "确认采用" | Timeline: `[decision]` |
+| **Ask owed by me** (sender wants me to do something) | "could you confirm by Fri", "please send", "need your approval" | "请确认", "麻烦发一下", "需要你批准" | Asks > Owed by me + Timeline: `[ask]` |
+| **Ask owed to me** (I asked for something — usually in `[email-out]`) | "I'll wait for your reply", "please advise" | "等你回复", "请告知" | Asks > Owed to me + Timeline: `[ask]` |
+| **Deadline** | "by next Monday", "due May 20", "before Q2 close" | "5月20日前", "下周一前" | Update task `**Due:**` if more specific; add Timeline: `[deadline]` |
+| **Commitment by me** (sent emails — promises I made) | "I'll send the list", "will revert by", "I'll handle this" | "我会发", "周五前给", "我来处理" | Asks > Owed by me + Timeline: `[ask]` |
+
+3. **For each extracted signal, present to user for confirmation BEFORE writing:**
+
+   ```
+   📩 Email AAA... (2026-05-10, from Prantar):
+   I detected:
+   • Ask owed by me: "Confirm vendor selection" [response_due: 2026-05-13]
+   • Decision: "Vendor narrowed to Rhapsody + alt"
+
+   Add these to T033? [y/n/edit]
+   ```
+
+4. **On confirmation:**
+   - Append confirmed Asks to `## Asks` section in the task file (preserve `response_due` if found in email)
+   - Append confirmed Timeline entries with appropriate tags
+   - Update `## Email References` row: `extracted: Y`
+   - If a deadline was extracted and the task Due date changed, update queue.md Due field (see [`TASK_WORKFLOW.md`](TASK_WORKFLOW.md) → Queue Update → Update in Queue)
+
+5. **If user says "n":**
+   - Still flip `extracted` to `Y` (so we don't re-prompt next time)
+   - Add a one-line Timeline: `**{date}** [email-in] {subject} (no extraction needed)`
+
+6. **If user says "edit":**
+   - Show the proposed extraction as text the user can correct
+   - Apply user's corrected version
+
+**Extraction principles:**
+
+- **Conservative.** When unsure whether a phrase is an ask vs. a soft suggestion, ask. False positives clutter Asks; false negatives drop on the floor.
+- **Inbound vs outbound matters.** Asks in inbound emails default to "Owed by me"; asks in outbound emails ("I'll send X") are commitments by me — also "Owed by me" but with no `response_due` unless specified.
+- **One signal per Timeline entry.** If an email has both a decision and an ask, write two Timeline lines.
+- **Reference the email.** Each extracted Timeline entry should mention the entry_id snippet for traceability: `**2026-05-10** [decision] Vendor narrowed to Rhapsody + alt (email AAA...)`.
+
+**Example — full extraction:**
+
+Email body (entry_id = `BBB123...`):
+> Hi Marlon,
+>
+> Per our call, we'll go with Rhapsody as primary vendor. Could you confirm the procurement path with Beng by Friday May 13? Once confirmed, I'll send the SOW draft early next week.
+>
+> Thanks, Prantar
+
+Extraction:
+
+```markdown
+## Asks
+### Owed by me
+- [ ] 2026-05-10 → Beng: Confirm Rhapsody procurement path [response_due: 2026-05-13]
+
+### Owed to me
+- 2026-05-10 ← Prantar: SOW draft (next week)
+
+## Timeline
+- **2026-05-10** [decision] Rhapsody chosen as primary vendor (email BBB123...)
+- **2026-05-10** [ask] Beng asked to confirm procurement path by 2026-05-13 (email BBB123...)
+- **2026-05-10** [ask] Prantar promised SOW draft early next week (email BBB123...)
+```
+
+Email Reference row updates from `extracted: N` to `extracted: Y`.
 
 ---
 

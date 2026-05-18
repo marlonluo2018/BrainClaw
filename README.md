@@ -25,16 +25,16 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 
 1. Open your AI IDE (Claude, Cursor, etc.)
 2. Go to custom instructions / system prompt settings
-3. Paste the content of [`SYSTEM_PROMPT.md`](SYSTEM_PROMPT.md)
+3. Paste the content of [`CLAUDE.md`](CLAUDE.md) (Claude Code auto-loads it; other IDEs need it pasted manually)
 4. Set your workspace to the BrainClaw folder
 
 ### Daily Use
 
 1. Open your AI IDE
-2. Say **"start"** or **"启动"** to activate the full assistant
+2. Say **"start"**, **"启动"**, or **"start assistant"** to activate the full assistant
 3. The assistant loads brain files and is ready to help
 
-(Or just say "hi"/"你好" for a quick greeting without full startup)
+(Greetings like "hi"/"你好" or generic phrases like "help me"/"帮我" do NOT auto-start the assistant — use an explicit trigger.)
 
 **No installation. No configuration. No command line.**
 
@@ -44,7 +44,7 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 ┌──────────────────────────────────────────────────────────────┐
 │  AI IDE (Claude / Cursor / etc.)                             │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │  System Prompt  (SYSTEM_PROMPT.md)                     │  │
+│  │  System Prompt  (CLAUDE.md)                            │  │
 │  │  "On startup, read brain files..."                     │  │
 │  └────────────────────────────────────────────────────────┘  │
 │                        ↓                                     │
@@ -53,17 +53,17 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  ├── SOUL.md               (identity & values)         │  │
 │  │  ├── OPERATIONAL_RULES.md  (strategies)                │  │
 │  │  ├── CONFIG.md             (parameters)                │  │
-│  │  ├── workflows/            (orchestration)             │  │
+│  │  ├── workflows/            (orchestration + logic)     │  │
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
 │  │  │   ├── STAKEHOLDER_WORKFLOW.md                       │  │
-│  │  │   └── RECORDING_WORKFLOW.md                         │  │
-│  │  ├── skills/               (capabilities)              │  │
-│  │  │   ├── README.md         (skill index)               │  │
-│  │  │   ├── task/             (domain skill)              │  │
-│  │  │   ├── email/            (domain skill)              │  │
+│  │  │   ├── RECORDING_WORKFLOW.md                         │  │
+│  │  │   └── VIEWS_WORKFLOW.md                             │  │
+│  │  ├── skills/               (I/O — external systems)    │  │
 │  │  │   ├── outlook-skill/    (Outlook COM backend)       │  │
-│  │  │   └── ...                                           │  │
+│  │  │   ├── xlsx/             (Excel I/O)                 │  │
+│  │  │   ├── pptx/             (PowerPoint I/O)            │  │
+│  │  │   └── skill-creator/    (scaffold new skills)       │  │
 │  │  ├── tasks/                (task queue)                │  │
 │  │  ├── memory/               (preferences)               │  │
 │  │  └── policy/               (business rules)            │  │
@@ -75,29 +75,28 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 
 | Feature | Description |
 |---------|-------------|
-| **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, RACI stakeholders, Parent-Child relationships |
-| **Email Management** | Find, search, thread-track, and compose emails via native Outlook COM (no cloud dependency) |
+| **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, RACI stakeholders, Parent-Child relationships, structured `Asks` (owed by me / owed to me) |
+| **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `review` — surface what's overdue, owed, and 述职-worthy across all tasks |
+| **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. On match, AI extracts asks/decisions/deadlines into the task's structured slots |
 | **Email Thread Tracking** | Find entire conversation threads across folders via Outlook ConversationID |
 | **Related Email Discovery** | Multi-strategy search (thread + sender + keyword) for cross-thread discovery |
-| **Memory System** | Learns preferences, remembers contacts, tracks things to avoid, maintains policy index |
+| **Memory System** | Preferences, cognitive blind-spot patterns, contacts, achievements (述职 fact base) |
+| **Achievement Auto-capture** | Task completion prompts the AI to extract 述职 material from `[decision]` / `[milestone]` / `[delivery]` Timeline entries |
 | **Policy Management** | Structured policy files with indexing and reference system |
 | **Recurring Tasks** | Auto-create scheduled tasks (monthly reports, quarterly invoices, etc.) |
-| **Office Documents** | Create/edit Excel spreadsheets via minimax-xlsx skill |
-| **Keyword Extraction** | Automatically extract relevant keywords from emails and documents |
+| **Office Documents** | Create/edit Excel/PowerPoint via `xlsx` and `pptx` skills |
 | **Extensible Skills** | Add new capabilities through modular skill system |
 
 ## Skills
 
-| Skill | Type | Purpose |
-|------|------|---------|
-| **outlook-skill** | User | Native Outlook email — find, thread, related, compose, reply, batch-forward |
-| **keyword-extraction** | User | Extract core keywords from any text |
-| **skill-creator** | User | Create new skills |
-| **minimax-xlsx** | User | Handle Excel/spreadsheet files (.xlsx, .csv) |
-| **task** | Workflow | Task lifecycle (create/update/complete) |
-| **email** | Workflow | Email drafting & info detection |
-| **stakeholder** | Workflow | Stakeholder matching & RACI |
-| **recording** | Workflow | Event recording |
+Skills are reserved for I/O against external systems. Business logic (task lifecycle, RACI, event recording, email composition rules) lives in workflow files directly.
+
+| Skill | Purpose | External system |
+|-------|---------|-----------------|
+| **outlook-skill** | Find, thread, related, compose, reply, batch-forward | Microsoft Outlook (COM) |
+| **xlsx** | Read/write Excel/spreadsheet files | `.xlsx`, `.csv` |
+| **pptx** | Read/write PowerPoint files | `.pptx` |
+| **skill-creator** | Scaffold a new skill | (meta) |
 
 ## Email Commands
 
@@ -119,8 +118,7 @@ Files marked with ⭐ are loaded at **startup**. Others are loaded **on-demand**
 
 ```
 BrainClaw/
-├── SYSTEM_PROMPT.md                    # Entry point - for AI IDE integration
-├── SYSTEM_PROMPT_STANDALONE.md         # Standalone version
+├── CLAUDE.md                           # System prompt (single source of truth)
 ├── README.md                           # This file
 ├── README_CN.md                        # Chinese documentation
 ├── ARCHITECTURE.md                     # System architecture
@@ -128,49 +126,56 @@ BrainClaw/
     ├── SOUL.md               ⭐ # Identity & values (unchanging core)
     ├── OPERATIONAL_RULES.md  ⭐ # Core operational strategies
     ├── CONFIG.md             ⭐ # System parameters (user info, formats)
+    ├── views_config.md       ⭐ # Thresholds + defaults for view ops
     ├── recurring_tasks.md    ⭐ # Scheduled recurring tasks
     ├── policy/
     │   └── README.md         ⭐ # Policy index
-    ├── workflows/               # Detailed operational workflows (on-demand)
+    ├── workflows/               # Orchestration + business logic (on-demand)
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── STAKEHOLDER_WORKFLOW.md
-    │   └── RECORDING_WORKFLOW.md
+    │   ├── RECORDING_WORKFLOW.md
+    │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
     ├── stakeholders/
     │   ├── registry.md       ⭐ # Stakeholder index
     │   └── SH0xx-xxx.md          # Individual stakeholder files (on-demand)
-    ├── memory/
-    │   ├── preferences.md    ⭐ # User preferences
-    │   ├── things_to_avoid.md ⭐ # Mistakes to remember
-    │   ├── contacts.md           # External contacts (on-demand)
-    │   └── tracking.md           # Cross-session monitoring (on-demand)
-    ├── skills/                  # Modular capabilities
-    │   ├── README.md         ⭐ # Skill index
-    │   ├── _TEMPLATE_/           # Skill template
-    │   ├── task/                 # Task domain skill
-    │   ├── email/                # Email domain skill
-    │   ├── stakeholder/          # Stakeholder domain skill
-    │   ├── recording/            # Recording domain skill
+    ├── memory/                  # User-derived data (learned over time)
+    │   ├── preferences.md       ⭐ # User preferences (tone, time format, etc.)
+    │   ├── things_to_avoid.md   ⭐ # Cognitive blind-spot patterns + tactical Don'ts
+    │   ├── achievements.md         # 述职 fact base (auto-fed from Complete Task)
+    │   ├── contacts.md             # External contacts (on-demand)
+    │   └── tracking.md             # DEPRECATED — function moved to per-task Asks
+    ├── skills/                  # I/O against external systems
     │   ├── outlook-skill/        # Outlook COM — Python backend + CLI
     │   │   ├── SKILL.md          #   Command reference
     │   │   ├── scripts/          #   CLI entry point
     │   │   └── backend/          #   Search, compose, session mgmt
-    │   ├── keyword-extraction/   # Standalone tool (on-demand)
-    │   ├── minimax-xlsx/         # Standalone tool (on-demand)
-    │   └── skill-creator/        # Standalone tool (on-demand)
+    │   ├── xlsx/                 # Excel file I/O
+    │   ├── pptx/                 # PowerPoint file I/O
+    │   └── skill-creator/        # Scaffold new skills
     └── tasks/                   # Task queue & history
         ├── queue.md          ⭐ # Active tasks + Recent Events
-        ├── FORMITS.md            # Task format specification
+        ├── FORMATS.md            # Task format specification
         ├── T0xx-xxx.md           # Active task details (on-demand)
         └── history/              # Completed tasks & monthly archives
 ```
 
 ## Commands
 
-| Command | Trigger | What it does |
-|---------|---------|--------------|
-| Startup | "start", "启动", "start assistant", "帮我", "help me" | Load brain files, show today's status |
-| Greeting | "hi", "hello", "你好", "在吗", "助手" | Quick greeting (lightweight, no full startup) |
+> Just say what you want in plain language — these are example phrasings, not rigid commands. The AI matches by intent, not exact keywords.
+
+| What you want | Say something like... | What happens |
+|---------------|------------------------|--------------|
+| **Start the assistant** | "start", "启动", "start assistant" | Load brain files, render the full task list grouped by country → priority, with overdue tasks flagged |
+| **Just greeting** | "hi", "你好", "help me", "帮我" | Quick greeting only — no auto-startup on ambiguous phrases |
+| **Check one task's status** | "T033", "T033 状态", "查 T033", "T033 怎么样了", "看下 T033", "status T033" | Per-task view: current blocker, what's owed, recent decisions |
+| **What did I promise / owe?** | "我欠谁啥", "待我处理", "我答应过啥", "我有啥没回的", "owed", "what do I owe" | Cross-task: my open promises, grouped by recipient, sorted by overdue |
+| **Who's blocking me / haven't replied?** | "等待", "我在等谁", "啥事卡着", "谁还没回我", "waiting" | Cross-task: who owes me what, grouped by person, sorted by wait time |
+| **Prep before a meeting** | "见 Beng 之前", "明天和 Mridul 开会前", "before Beng", "prep for X" | Pull all open items with that person + suggested agenda |
+| **Performance review / 述职** | "述职", "半年述职", "Q2 做了啥", "总结这半年", "review Q2 2026" | Bullet summary + narrative draft from achievements.md |
+| **See full task list** | "show all", "全部任务", "完整队列" | Same output as startup — re-render the grouped task list |
+| **Task operations** | "新建任务", "完成 T033", "block T040", "create/update/complete/block task" | Task lifecycle |
+| **Email operations** | "查邮件", "找 X 的邮件", "draft email", "reply", "forward" | Email lifecycle (now with auto-extraction into tasks) |
 
 ## Task Management Features
 
@@ -204,38 +209,41 @@ BrainClaw learns and remembers across sessions:
 
 | Memory File | Purpose |
 |-------------|---------|
-| preferences.md | User preferences (timezone, tone, formats) |
-| things_to_avoid.md | Failed patterns to learn from |
-| contacts.md | External contacts (non-colleagues) |
-| tracking.md | Items requiring cross-session monitoring |
+| `memory/preferences.md` | User preferences (timezone, tone, time format) |
+| `memory/things_to_avoid.md` | **Patterns** (cognitive blind spots) + **Tactical Don'ts** (output-format mistakes) |
+| `memory/achievements.md` | 述职 fact base — auto-fed from Complete Task; 2-axis structure (quarter × category) |
+| `memory/contacts.md` | External contacts (non-colleagues) |
+| `memory/tracking.md` | **DEPRECATED** — replaced by per-task `## Asks` section + `owed`/`waiting` views |
+| `views_config.md` | (NOT memory — system config) Thresholds + defaults for view ops. Lives at `assistant_brain/` root, not in memory/. |
 
 ## Architecture: Workflows & Skills
 
 BrainClaw uses a layered architecture with clear separation of concerns:
 
 ```
-SYSTEM_PROMPT.md (Startup rules)
+CLAUDE.md (Startup rules)
         ↓
 OPERATIONAL_RULES.md (Core policies)
         ↓
-┌───────────────────┐
-│    Workflows      │  ← Orchestration: WHAT to do, WHEN
-│  - TASK           │     Decoupled from implementation details
-│  - EMAIL          │     References skills abstractly
-│  - STAKEHOLDER    │
-│  - RECORDING      │
-└────────┬──────────┘
-         ↓
-┌───────────────────┐
-│     Skills        │  ← Implementation: HOW to do it
-│  - task/SKILL.md  │     CLI commands, processing logic
-│  - outlook-skill/ │     Self-contained, project-agnostic
-│  - email/SKILL.md │
-│  - ...            │
-└───────────────────┘
+┌──────────────────────────────────────────┐
+│    Workflows (orchestration + logic)     │  ← All business logic lives here
+│  - TASK_WORKFLOW                         │     RACI rules, keyword extraction,
+│  - EMAIL_WORKFLOW                        │     event recording, composition
+│  - STAKEHOLDER_WORKFLOW                  │     guidelines, achievement extraction,
+│  - RECORDING_WORKFLOW                    │     views (status/owed/waiting/...)
+│  - VIEWS_WORKFLOW                        │
+└──────────────┬───────────────────────────┘
+               ↓ (only when external I/O needed)
+┌──────────────────────────────────────────┐
+│   Skills (I/O — external systems)        │
+│  - outlook-skill/  Outlook COM           │
+│  - xlsx/           Excel files           │
+│  - pptx/           PowerPoint files      │
+│  - skill-creator/  meta                  │
+└──────────────────────────────────────────┘
 ```
 
-**Key Principle:** Workflows describe operations in abstract terms ("use outlook-skill to find emails"). Skills contain the actual CLI commands. Skills are loaded **on-demand** only.
+**Key Principle:** Workflows hold all business logic in markdown so the AI can read and follow it. Skills exist only where real code is required to talk to an external system. Both are loaded **on-demand**.
 
 ## System Capabilities & Limitations
 

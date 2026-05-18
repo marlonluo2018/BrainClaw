@@ -21,17 +21,17 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     System Prompt                            │
-│          (Startup & On-Demand Loading Rules)                 │
+│                  System Prompt (CLAUDE.md)                   │
+│          Startup & On-Demand Loading Rules                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Brain Files                               │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
-│  │  SOUL    │  │ CONFIG   │  │OPERATIONAL│                  │
-│  │          │  │          │  │  RULES   │                  │
-│  └──────────┘  └──────────┘  └──────────┘                  │
+│  ┌──────────┐  ┌──────────┐  ┌────────────┐                │
+│  │  SOUL    │  │ CONFIG   │  │OPERATIONAL │                │
+│  │          │  │          │  │  RULES     │                │
+│  └──────────┘  └──────────┘  └────────────┘                │
 │  ┌──────────────────────────────────────────┐              │
 │  │         Memory Files                     │              │
 │  │  preferences | things_to_avoid |         │              │
@@ -41,19 +41,15 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   Workflows                                  │
+│         Workflow Layer (orchestration + business logic)     │
 │  TASK_WORKFLOW | EMAIL_WORKFLOW | STAKEHOLDER_WORKFLOW |    │
 │  RECORDING_WORKFLOW                                          │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     Skills                                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │  Workflow   │  │  Workflow   │  │    User     │        │
-│  │   Skills    │  │   Skills    │  │   Skills    │        │
-│  │(task/email) │  │(stakeholder)│  │ (xlsx/graph)│        │
-│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│           Skills Layer (I/O — external systems)             │
+│  outlook-skill | xlsx | pptx | skill-creator                │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -63,14 +59,19 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**Two-layer separation:**
+- **Workflow layer** holds all business logic (task lifecycle, RACI suggestion, event recording, email composition rules) directly inside the workflow `.md` files.
+- **Skills layer** is reserved for I/O against external systems (Outlook COM, Excel files, PowerPoint files). Skills are self-contained, project-agnostic, and have no business logic.
+
+There is no "workflow skill" middleware tier — workflows call I/O skills directly.
+
 ---
 
 ## 3. Directory Structure
 
 ```
 BrainClaw/
-├── SYSTEM_PROMPT.md              # Main system prompt (for IDE)
-├── SYSTEM_PROMPT_STANDALONE.md   # Standalone system prompt
+├── CLAUDE.md                     # System prompt — single source of truth
 ├── README.md                     # User documentation (EN)
 ├── README_CN.md                  # User documentation (CN)
 ├── ARCHITECTURE.md               # This file
@@ -88,28 +89,26 @@ BrainClaw/
 │   │   ├── tracking.md           # Cross-session tracking
 │   │   └── achievements.md       # Accomplishments
 │   │
-│   ├── workflows/                # Operation procedures
+│   ├── workflows/                # Orchestration + business logic
 │   │   ├── TASK_WORKFLOW.md
 │   │   ├── EMAIL_WORKFLOW.md
 │   │   ├── STAKEHOLDER_WORKFLOW.md
-│   │   └── RECORDING_WORKFLOW.md
+│   │   ├── RECORDING_WORKFLOW.md
+│   │   └── VIEWS_WORKFLOW.md
 │   │
-│   ├── skills/                   # Modular capabilities
-│   │   ├── README.md             # Skill index (auto-generated)
-│   │   ├── _TEMPLATE_/           # Skill template
-│   │   ├── email/                # Email workflow skill
-│   │   ├── task/                 # Task workflow skill
-│   │   ├── stakeholder/          # Stakeholder workflow skill
-│   │   ├── recording/            # Recording workflow skill
-│   │   └── [user skills]/        # User-accessible skills
+│   ├── skills/                   # I/O against external systems
+│   │   ├── outlook-skill/        # Outlook COM (find/thread/compose)
+│   │   ├── xlsx/                 # Excel file I/O
+│   │   ├── pptx/                 # PowerPoint file I/O
+│   │   └── skill-creator/        # Author new skills
 │   │
 │   ├── tasks/                    # Task management
 │   │   ├── queue.md              # Active task queue
+│   │   ├── FORMATS.md            # Task format spec
 │   │   ├── T001-xxx.md           # Task files
 │   │   └── history/              # Completed tasks
 │   │
 │   ├── stakeholders/             # Stakeholder management
-│   │   ├── README.md             # Module documentation
 │   │   ├── registry.md           # Central stakeholder DB
 │   │   └── SH001-xxx.md          # Detailed profiles
 │   │
@@ -155,126 +154,92 @@ BrainClaw/
 
 ### 4.2 Memory System
 
-The memory system enables persistent learning across sessions.
+The memory system enables persistent learning across sessions. Memory files hold **user-derived data** that the system learns over time — distinct from system config (which lives at `assistant_brain/` root).
 
 | File | Trigger | Purpose |
 |------|---------|---------|
-| `preferences.md` | User explicitly states preference | Store work preferences |
-| `things_to_avoid.md` | Work mistake repeats 2+ times | Record mistakes to avoid |
-| `contacts.md` | External contact mentioned 3+ times | Track important contacts |
-| `tracking.md` | Item requires cross-session monitoring | Track ongoing items |
-| `achievements.md` | Significant accomplishment | Record successes |
+| `memory/preferences.md` | User explicitly states preference | Store work preferences (tone, language, formatting) |
+| `memory/things_to_avoid.md` | Recurring failure mode (Pattern) OR composition Don't | Drives blind-spot prompts; tactical output Don'ts |
+| `memory/contacts.md` | External contact mentioned 3+ times | Track important contacts |
+| `memory/achievements.md` | Auto-fed from Complete Task; manual additions also welcome | 述职 fact base, used by `review` view command |
+| `memory/tracking.md` | DEPRECATED 2026-05-16 | Function replaced by per-task `## Asks` section + `owed`/`waiting` views |
+
+**Note:** `views_config.md` (view thresholds + defaults) is **not** memory — it's system config. Lives at `assistant_brain/` root next to `CONFIG.md`.
 
 **Recording Threshold**: See `RECORDING_WORKFLOW.md`
 
 ### 4.3 Workflows
 
-Workflows define **step-by-step procedures** for multi-step operations.
+Workflows hold **all business logic** and step-by-step procedures. They orchestrate work and call I/O skills directly when external system access is needed.
 
-| Workflow | Purpose | Skills Used |
-|----------|---------|-------------|
-| `TASK_WORKFLOW.md` | Task CRUD operations | task (create/update/complete), stakeholder (match) |
-| `EMAIL_WORKFLOW.md` | Email processing & drafting | email (compose/info-detect), outlook-skill |
-| `STAKEHOLDER_WORKFLOW.md` | Stakeholder matching & RACI | stakeholder (match/raci-suggest), email (compose) |
-| `RECORDING_WORKFLOW.md` | Event & memory recording | recording (event-record) |
+| Workflow | Purpose | I/O Skills Used |
+|----------|---------|-----------------|
+| `TASK_WORKFLOW.md` | Task CRUD, RACI suggestion, keyword extraction, achievement extraction on completion | (none — pure file ops) |
+| `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction | `outlook-skill` |
+| `STAKEHOLDER_WORKFLOW.md` | Stakeholder matching, RACI rules, communication styles | `outlook-skill` (for notifications) |
+| `RECORDING_WORKFLOW.md` | Event recording, memory recording, archival | (none — pure file ops) |
+| `VIEWS_WORKFLOW.md` | Per-task and cross-task views: status, owed, waiting, before, review/述职 | (none — pure file ops) |
 
-**Design Pattern**:
+**Design Pattern:**
 ```markdown
 ## Operation Name
 
 **Trigger:** When to execute
 
 **Steps:**
-1. Action → Call `skill/name`
-2. Action → Result
+1. Action → (inline business logic, e.g. read queue.md)
+2. Action → Call `outlook-skill` find-recent
 3. ...
 ```
 
-### 4.4 Workflow vs Skill - Division of Responsibility
+### 4.4 Workflow vs Skill — Division of Responsibility
 
 | Aspect | Workflow | Skill |
 |--------|----------|-------|
-| **Role** | **Orchestrator** | **Executor** |
-| **What** | Defines WHAT steps to do | Defines HOW to do it |
-| **Content** | Step sequence, decision points | Processing logic, algorithms |
-| **Scope** | Multi-step, multi-skill operations | Single, focused functionality |
-| **Analogy** | Conductor (coordinates musicians) | Musician (plays instrument) |
-| **Example** | "Create Task" workflow | `task/create` skill |
+| **Role** | **Orchestrator + business logic** | **I/O against external systems** |
+| **Content** | Step sequence, decision rules, RACI logic, format rules | CLI commands, file format readers/writers |
+| **Examples** | "Create Task," "Match Stakeholder," "Suggest RACI" | Read Outlook inbox, parse .xlsx, write .pptx |
+| **Coupling** | Project-specific (knows about queue.md, tasks/, registry.md) | Project-agnostic (no BrainClaw imports) |
 
-**Workflow Responsibilities:**
-- Define operation sequence in abstract terms
-- Reference skills, not hardcode CLI commands
-- Handle decision points (if/else)
-- Coordinate between skills
-- Present results to user
+**Why this split:** Business logic that is markdown-readable belongs in workflows so the AI can read and follow it without code execution. External-system I/O (COM, file formats, APIs) requires real code, so it lives in skills.
 
-**Skill Responsibilities:**
-- Implement specific functionality with concrete CLI commands
-- Process inputs and generate outputs
-- Handle errors and edge cases
-- Return results to caller
-- Self-contained: skills are project-agnostic (e.g., outlook-skill works standalone)
-
-**Example - Creating a Task:**
+**Example — Creating a Task** (entirely workflow-resident; no I/O skill needed):
 
 ```markdown
-# Workflow (TASK_WORKFLOW.md)
-## Create Task
-1. Call `keyword-extraction` → Get keywords
-2. Call `stakeholder` (operation: match) → Get stakeholders
-3. Present RACI to user for confirmation
-4. Call `task` (operation: create) → Create file
-5. Call `recording` (operation: event-record) → Record event
-
-# Skill (task/SKILL.md)
-## Operations
-### Create
-**Processing Logic:**
-1. Generate task ID from queue.md
-2. Create file with template
-3. Fill in provided fields
-4. Update queue.md
-5. Return file path
+# TASK_WORKFLOW.md → Create Task
+1. Read queue.md header → Get Last Task ID, increment
+2. Extract keywords (rules in workflow itself)
+3. Match contacts against stakeholders/registry.md, suggest RACI
+4. Present RACI matrix → Get user confirmation
+5. Generate filename: T{ID}-{kw1}-{kw2}.md
+6. Write task file using template from tasks/FORMATS.md
+7. Update queue.md
+8. Record event in queue.md "Recent Events"
 ```
 
 ### 4.5 Skills
 
-Skills are **modular implementations** of specific functionalities.
+Skills are **modular I/O implementations** that workflows call when they need to touch external systems.
 
-#### Skill Structure
+#### Current skills
+
+| Skill | Purpose | External system |
+|-------|---------|-----------------|
+| `outlook-skill` | Find/thread/compose/forward email | Microsoft Outlook (COM) |
+| `xlsx` | Read/write Excel files | `.xlsx` file format |
+| `pptx` | Read/write PowerPoint files | `.pptx` file format |
+| `skill-creator` | Scaffold new skills | (meta) |
+
+#### Skill structure
 
 ```
 skills/
-├── README.md              # Index file
-├── _TEMPLATE_/            # Template for new skills
-│   └── SKILL.md
-├── [workflow-skill]/      # Workflow skills (support workflows)
-│   └── SKILL.md
-└── [user-skill]/          # User skills (direct user access)
-    └── SKILL.md
+└── <skill-name>/
+    ├── SKILL.md          # YAML frontmatter (name, description, triggers) + command reference
+    └── [implementation]  # scripts/, backend/, etc. — varies per skill
 ```
 
-#### Skill Categories
-
-**1. Workflow Skills** - Internal skills supporting workflows (not shown to users)
-
-| Domain | Operations | Purpose |
-|--------|------------|---------|
-| `task` | create, update, complete | Task lifecycle management |
-| `email` | compose, info-detect | Email drafting and analysis |
-| `stakeholder` | match, raci-suggest | Stakeholder matching and RACI |
-| `recording` | event-record | Event recording |
-
-**2. User Skills** - Direct user-accessible tools
-
-| Skill | Purpose |
-|------|---------|
-| `outlook-skill` | Native Outlook email via COM — find, thread, compose, batch-forward |
-| `keyword-extraction` | Extract keywords from text |
-| `skill-creator` | Create new skills |
-| `minimax-xlsx` | Excel/spreadsheet operations |
-
-### 4.5 Outlook Skill Architecture
+### 4.6 Outlook Skill Architecture
 
 The `outlook-skill` is a self-contained Python application that interfaces with Microsoft Outlook via COM. It is **decoupled from BrainClaw** — the skill has its own config, backend, and CLI and can run standalone.
 
@@ -322,29 +287,19 @@ skills/outlook-skill/
 name: skill-name
 description: One-line description
 triggers: ["keyword1", "keyword2"]
-operations: ["op1", "op2"]  # For domain skills
-inputs:
-  - name: param1
-    type: string
-    required: true
-outputs:
-  - name: result1
-    type: object
+operations: ["op1", "op2"]
 ---
 
 # Skill Name
 
-## Operations  # For domain skills
-### Operation 1
-### Operation 2
+## Commands
+### Command 1
+### Command 2
 
-## Inputs
-## Processing Logic
-## Output Format
 ## Example
 ```
 
-### 4.5 Tasks
+### 4.7 Tasks
 
 #### Task File Naming
 ```
@@ -366,7 +321,7 @@ T{ID}-{keyword1}-{keyword2}.md
 - **Subtask**: Has "Parent Task: TXXX" field
 - **Queue display**: Subtasks indented under master with `↳` prefix
 
-### 4.6 Stakeholders
+### 4.8 Stakeholders
 
 #### Registry Structure
 Each stakeholder has:
@@ -383,7 +338,7 @@ Tasks include RACI matrix:
 - **C** = Consulted (provides input)
 - **I** = Informed (kept updated)
 
-### 4.7 Policies
+### 4.9 Policies
 
 Policies are company-specific rules stored in structured folders.
 
@@ -401,16 +356,11 @@ policy/
 
 ### 5.1 Adding a New Skill
 
-1. **Determine skill type**:
-   - **Workflow skill**: Supports workflows with multiple operations (e.g., `calendar` with schedule/query operations)
-   - **User skill**: Direct user access with single purpose (e.g., `pdf-converter`)
+Skills are reserved for I/O against external systems. If a capability can be expressed as steps the AI follows by reading markdown, put it in a workflow instead.
 
-2. **Create skill directory and SKILL.md**:
-   ```
-   skills/[workflow-skill]/SKILL.md  # Workflow skill
-   # OR
-   skills/[user-skill]/SKILL.md      # User skill
-   ```
+1. **Confirm it needs a skill**: External system access (COM, file format, API)? → skill. Pure logic over existing files? → workflow.
+
+2. **Create skill directory and SKILL.md**: `skills/<skill-name>/SKILL.md`
 
 3. **Write SKILL.md**:
    ```markdown
@@ -418,22 +368,17 @@ policy/
    name: skill-name
    description: One-line description
    triggers: ["keyword1", "keyword2"]
-   operations: ["op1", "op2"]  # Only for workflow skills
+   operations: ["op1", "op2"]
    ---
-   
+
    # Skill Name
-   ## Operations  # For workflow skills
-   ## Function   # For user skills
+   ## Commands
+   ## Example
    ```
 
-4. **Add YAML frontmatter to SKILL.md** (name, description, triggers)
+4. **Reference from a workflow**: Add a step like `Call <skill-name> <command>` in the relevant workflow.
 
-**Example**: Adding `calendar` workflow skill
-```markdown
-## calendar (workflow skill)
-- **Operations:** schedule, query, check-availability
-- **Triggers:** `schedule meeting`, `check calendar`, `my availability`
-```
+**Example**: A `calendar` skill would be justified (it talks to Outlook/Graph). A `raci-suggest` skill would NOT — that's pure logic and belongs in `STAKEHOLDER_WORKFLOW.md`.
 
 ### 5.2 Adding a New Workflow
 
@@ -487,7 +432,7 @@ policy/
 
 3. **Update `RECORDING_WORKFLOW.md`** memory types table
 
-4. **Update `SYSTEM_PROMPT.md`** to load at startup
+4. **Update `CLAUDE.md`** to load at startup
 
 ---
 
@@ -497,13 +442,13 @@ policy/
 
 | Layer | Responsibility | Example |
 |-------|---------------|---------|
-| System Prompt | Startup & loading rules | When to load what |
+| System Prompt | Startup & loading rules | CLAUDE.md |
 | Brain Files | Knowledge & settings | SOUL, CONFIG, memory |
-| Workflows | Orchestration (WHAT to do) | TASK_WORKFLOW, EMAIL_WORKFLOW |
-| Skills | Implementation (HOW to do) | outlook-skill CLI, task/create |
+| Workflows | Orchestration + business logic | TASK_WORKFLOW, EMAIL_WORKFLOW |
+| Skills | I/O against external systems | outlook-skill, xlsx, pptx |
 | Data | Persistence | Task files, registry |
 
-**Key principle**: Workflows reference skills abstractly ("use outlook-skill to find thread"). Exact CLI commands live in `SKILL.md`. This keeps skills self-contained and project-agnostic.
+**Key principle**: Workflows reference skills abstractly ("use outlook-skill to find thread"). Exact CLI commands live in `SKILL.md`. Skills are self-contained and project-agnostic.
 
 ### 6.2 On-Demand Loading
 
@@ -592,12 +537,12 @@ Always format IDs as clickable links:
 **Output Format**:
 ```
 ✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name]
-• Skills: [count] ([list of user skill names])
+• Skills: [count] ([list of skill names])
 • Policies: [count] | Stakeholders: [count]
 ```
-- **Count skills:** Count items under "## User Skills" section only (NOT workflow skills)
-- **List skills:** Extract skill names from "User Skills" section (e.g., keyword-extraction, skill-creator, etc.)
-- Example: If README.md has 4 user skills, output: `• Skills: 4 (keyword-extraction, skill-creator, minimax-xlsx, microsoft-graph-skill)`
+- **Count skills:** Count directories under `assistant_brain/skills/` that have a `SKILL.md`
+- **List skills:** Extract `name:` from each skill's frontmatter
+- Example: `• Skills: 4 (outlook-skill, xlsx, pptx, skill-creator)`
 
 ---
 
@@ -637,5 +582,5 @@ Always format IDs as clickable links:
 
 ---
 
-**Last Updated:** 2026-04-09
-**Version:** 1.0
+**Last Updated:** 2026-05-16
+**Version:** 1.1

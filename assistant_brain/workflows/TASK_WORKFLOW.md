@@ -16,11 +16,16 @@
 3. Match contacts against [`stakeholders/registry.md`](../stakeholders/registry.md) and suggest RACI roles (see [RACI Rules](#raci-rules-by-task-type))
 4. Present RACI matrix to user for confirmation
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
-6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md)
-7. Add entry to queue.md (see [Queue Update](#queue-update))
-8. Update "Last Task ID" in queue.md header
-9. Record in Recent Events: `- **{date}**: 📋 Created [TID](path) - {title}`
-10. Confirm with user
+6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### Owed by me` and `### Owed to me` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.
+7. **Initialize Asks** → From the trigger content (user request or email body), detect any explicit promises:
+   - "I'll send X to {person}" / "我会发给 {人}" → append to `### Owed by me` as `- [ ] {today} → {person}: {what}`
+   - "{person} will send X" / "等 {人} 回" → append to `### Owed to me` as `- {today} ← {person}: {what}`
+   - If a `response_due` date is mentioned, include `[response_due: YYYY-MM-DD]` on the owed-by-me line.
+   - If no explicit asks: leave both subsections empty (just the headings). Do **not** keep the placeholder example lines from the template.
+8. Add entry to queue.md (see [Queue Update](#queue-update))
+9. Update "Last Task ID" in queue.md header
+10. Record in Recent Events: `- **{date}**: 📋 Created [TID](path) - {title}`
+11. Confirm with user — show the populated Asks (if any) so the user can correct or add more before saving.
 
 ---
 
@@ -30,12 +35,20 @@
 
 **Steps:**
 1. Read current task file
-2. Check if incoming information already exists (duplicate check)
-3. If duplicate → Notify user and skip
-4. If new → Show changes and get approval
-5. After approval, update task file and timeline entry
-6. Update queue.md if status/priority/due changed (see [Queue Update](#queue-update))
-7. Notify user of changes
+2. **If task file lacks `## Asks` section** (legacy file): insert empty section with both `### Owed by me` and `### Owed to me` subsections before proceeding. Going forward all updates land in a properly-structured file.
+3. Check if incoming information already exists (duplicate check)
+4. If duplicate → Notify user and skip
+5. If new → Show changes and get approval
+6. **Detect Asks signals** in the user input or referenced email content:
+   - **New owed-by-me** ("I'll do X" / "I'll send X" / "我会发" / "我会处理") → append `- [ ] {today} → {person}: {what} [response_due: {date if given}]` to `### Owed by me`
+   - **New owed-to-me** ("{person} will send X" / "等 {人} 回" / "等回复") → append `- {today} ← {person}: {what}` to `### Owed to me`
+   - **Owed-by-me fulfilled** (user says "done" / "已发" / "处理完了" referencing a specific item) → flip the matching `[ ]` to `[x]` (do NOT delete — kept for history)
+   - **Owed-to-me received** (user says "got reply from X" / "X 回了") → remove the matching line from `### Owed to me`
+   - When ambiguous which existing item is being closed, ask before flipping/removing.
+6a. **Reclassify Current State items that are actually Asks.** Scan `## Current State` for items that have an external recipient (an action like "send X to {person}" / "notify {team}" / "deliver to {role}"). For each such item, propose to upgrade it to `Asks > Owed by me` and remove from Current State (or leave if it's also a meaningful internal step). This keeps cross-task views (`owed`/`waiting`) accurate. Apply the [Asks vs Current State](../tasks/FORMATS.md#asks) rules from FORMATS.md. Ask user before moving — don't auto-rewrite long-standing items silently.
+7. After approval, update task file (status, fields, Asks, timeline entry)
+8. Update queue.md if status/priority/due changed (see [Queue Update](#queue-update))
+9. Notify user of changes
 
 **Update Types:**
 
@@ -47,6 +60,8 @@
 | stakeholders | Update RACI matrix |
 | due_date | Update due field + queue.md |
 | priority | Update priority + queue.md |
+| asks (owed by me) | Append `- [ ] {date} → {person}: {what}` to `### Owed by me`; flip `[x]` when fulfilled |
+| asks (owed to me) | Append `- {date} ← {person}: {what}` to `### Owed to me`; remove line when received |
 
 ---
 
@@ -58,11 +73,75 @@
 1. Read task file → Get RACI matrix → Identify Accountable (A) and Informed (I) stakeholders
 2. Update status to ✅
 3. If task has "Recurring Task ID" → Update recurring_tasks.md "last_completed"
-4. Move task file to `tasks/history/`
-5. Remove from queue.md (see [Queue Update](#queue-update))
-6. Record in Recent Events: `- **{date}**: ✅ Completed [TID](path) - {title}`
-7. Ask user: "Draft notification email to [stakeholders]?"
-8. If yes → Follow [EMAIL_WORKFLOW](EMAIL_WORKFLOW.md) to draft and send
+4. **Extract achievements** (NEW — see [Extract Achievements on Completion](#extract-achievements-on-completion) below) — runs BEFORE moving the file so we still have a clean path
+5. Move task file to `tasks/history/{YYYY}-Q{n}/` (quarter determined by completion date)
+6. Remove from queue.md (see [Queue Update](#queue-update))
+7. Record in Recent Events: `- **{date}**: ✅ Completed [TID](path) - {title}`
+8. Ask user: "Draft notification email to [stakeholders]?"
+9. If yes → Follow [EMAIL_WORKFLOW](EMAIL_WORKFLOW.md) to draft and send
+
+---
+
+## Extract Achievements on Completion
+
+**When:** Step 4 of Complete Task (above). Goal: sift task content for 述职-worthy items and append to [`memory/achievements.md`](../memory/achievements.md).
+
+**Steps:**
+
+1. **Scan task Timeline for material entries:**
+   - Filter to entries tagged `[decision]`, `[milestone]`, or `[delivery]`
+   - Read task header for: Title, Geo, RACI matrix, Due, completion date
+   - Read task Notes / Current State for outcomes
+
+2. **Decide if achievement-worthy:**
+   - **Skip** routine tasks that are pure execution (e.g., "process voucher request") unless scale or recovery makes them notable
+   - **Include** when ANY of: scale > typical (people, dollars, regions), unusual outcome (recovered from blocked, faster than baseline), strategic visibility (high-power stakeholder, cross-geo, leader audience), measurable impact (NPS, completion %, savings)
+
+3. **Pick the right category** from [`achievements.md`](../memory/achievements.md) taxonomy. If multiple fit, pick the dominant one.
+
+4. **Compose the entry** using the format from `achievements.md`:
+   ```markdown
+   - **{Title}** ([T###](../tasks/history/{YYYY}-Q{n}/T###-xxx.md), completed {YYYY-MM-DD})
+     - **Scale:** {numbers from task — headcount, $, regions, sessions}
+     - **Outcome:** {what was delivered — pulled from [delivery]/[milestone] entries}
+     - **Stakeholders:** {key names from RACI with roles}
+     - **Impact:** {one sentence — synthesized from [decision] + outcomes}
+     - **Evidence:** {best concrete pointer — NPS, count, document name}
+   ```
+
+5. **Determine quarter:** Based on completion date. Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec.
+
+6. **Present draft to user for confirmation:**
+   ```
+   📌 Achievement candidate from T033:
+
+   Category: 🤝 Cross-Geo Collaboration → Q2 2026
+
+   - **Rhapsody Cert — Saudi Healthcare** ([T033](.../T033...), completed 2026-05-30)
+     - Scale: ...
+     - Outcome: ...
+     - Impact: ...
+     - Evidence: ...
+
+   Add to achievements.md? [y/n/edit/skip]
+   ```
+
+7. **On user response:**
+   - `y` → Append to the matching quarter + category in `achievements.md`. Newest at top of category.
+   - `edit` → Show as editable text; apply user's revisions.
+   - `n` / `skip` → Don't add. Continue task completion.
+
+8. **If task has multiple notable angles** (e.g., a training delivery that ALSO recovered from a blocker):
+   - Suggest a single primary entry under the dominant category
+   - Mention secondary angles in the **Impact** line rather than creating duplicate entries
+
+**When NOT to extract:**
+
+- Recurring routine tasks (monthly reports, voucher requests) — unless an unusual outcome
+- Tasks completed in <1 day with no decision/milestone tags
+- Subtasks where the parent (Master) task captures the achievement
+
+---
 
 ---
 
