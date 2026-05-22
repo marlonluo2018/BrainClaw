@@ -17,11 +17,19 @@
 
 ## System
 - OS: Windows 11
-- Python command: `py -3 full/path/script.py` (from project root, no `cd`, no `&&`)
+- Python command: `py -3 full/path/script.py` (no `cd`, no `&&`)
 - Shell: PowerShell
 - PowerShell syntax: `;` for sequential, `-and` for conditional (no `&&`)
 - Bash syntax: `&&` for conditional chaining
 - Recent Events Window: 14 days (events older than this are archived to timeline)
+
+## Skill Paths
+
+> Absolute paths for skill scripts. Use these when invoking skills — decoupled from working directory.
+
+| Skill | Script Path |
+|-------|-------------|
+| outlook | `c:/Users/MengNingLuo/Desktop/BrainClaw/assistant_brain/skills/outlook-skill/scripts/outlook_skill.py` |
 
 ## Tasks
 
