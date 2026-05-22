@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrainClaw - Personal Assistant System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+            line-height: 1.6;
+            color: #1a1a2e;
+            background: #f8f9fa;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 100px 20px 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: drift 20s linear infinite;
+        }
+
+        @keyframes drift {
+            from { transform: translate(0, 0); }
+            to { transform: translate(50px, 50px); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 10px;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .hero h1 span {
+            color: #e94560;
+        }
+
+        .hero p.tagline {
+            font-size: 1.4rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        section h2 {
+            font-size: 2.2rem;
+            text-align: center;
+            margin-bottom: 15px;
+            color: #1a1a2e;
+        }
+
+        section .section-sub {
+            text-align: center;
+            color: #666;
+            margin-bottom: 50px;
+            font-size: 1.1rem;
+        }
+
+        /* Problem / Solution */
+        .problem-solution {
+            background: white;
+        }
+
+        .ps-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .ps-card {
+            padding: 35px;
+            border-radius: 12px;
+        }
+
+        .ps-card.problem {
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+        }
+
+        .ps-card.solution {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+
+        .ps-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ps-card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .ps-card ul li {
+            padding: 8px 0;
+            padding-left: 24px;
+            position: relative;
+        }
+
+        .ps-card.problem ul li::before {
+            content: '✗';
+            position: absolute;
+            left: 0;
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        .ps-card.solution ul li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        /* Architecture */
+        .architecture {
+            background: #f8f9fa;
+        }
+
+        .arch-two-layer {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .arch-layer-card {
+            border-radius: 14px;
+            padding: 32px;
+            position: relative;
+        }
+
+        .arch-layer-card.workflow-layer {
+            background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+            border: 2px solid #86efac;
+        }
+
+        .arch-layer-card.skill-layer {
+            background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+            border: 2px solid #93c5fd;
+        }
+
+        .arch-layer-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .arch-layer-num {
+            background: #1a1a2e;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .arch-layer-header h3 {
+            font-size: 1.4rem;
+            color: #1a1a2e;
+            margin: 0;
+        }
+
+        .arch-layer-tag {
+            margin-left: auto;
+            font-size: 0.85rem;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .arch-layer-desc {
+            color: #475569;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        .arch-layer-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .arch-layer-examples span {
+            background: rgba(0,0,0,0.05);
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 0.82rem;
+            color: #334155;
+        }
+
+        .arch-layer-point {
+            font-size: 0.88rem;
+            color: #475569;
+            border-top: 1px solid rgba(0,0,0,0.08);
+            padding-top: 12px;
+        }
+
+        .arch-connector {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 0;
+            justify-content: center;
+        }
+
+        .arch-connector-line {
+            height: 2px;
+            width: 60px;
+            background: #cbd5e1;
+        }
+
+        .arch-connector-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        .arch-benefit-row {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .arch-benefit {
+            display: inline-block;
+            background: #1a1a2e;
+            color: #e2e8f0;
+            padding: 16px 28px;
+            border-radius: 10px;
+            font-size: 0.92rem;
+        }
+
+        .arch-benefit strong {
+            color: #e94560;
+        }
+
+        /* Brain Parts */
+        .brain-parts {
+            background: white;
+        }
+
+        .brain-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        .brain-card {
+            border-radius: 12px;
+            padding: 28px;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brain-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .brain-card.identity::before { background: #e94560; }
+        .brain-card.memory::before { background: #8b5cf6; }
+        .brain-card.tasks::before { background: #f59e0b; }
+        .brain-card.workflows::before { background: #10b981; }
+        .brain-card.skills::before { background: #3b82f6; }
+        .brain-card.policies::before { background: #6366f1; }
+
+        .brain-card .brain-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .brain-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+            color: #1a1a2e;
+        }
+
+        .brain-card .analogy {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .brain-card p.desc {
+            font-size: 0.92rem;
+            color: #475569;
+            margin: 0;
+        }
+
+        /* Features */
+        .features {
+            background: white;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 30px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #1a1a2e;
+        }
+
+        .feature-card p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        /* Background Knowledge */
+        .bg-knowledge {
+            background: white;
+        }
+
+        .bg-knowledge.bg-alt {
+            background: #f8f9fa;
+        }
+
+        .bg-split {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 50px;
+            align-items: start;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .bg-left {
+            padding-top: 10px;
+        }
+
+        .bg-big-icon {
+            font-size: 3.5rem;
+            margin-bottom: 16px;
+        }
+
+        .bg-left h3 {
+            font-size: 1.3rem;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+
+        .bg-left p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        .bg-right {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .bg-power {
+            display: flex;
+            gap: 16px;
+            align-items: start;
+            background: rgba(0,0,0,0.02);
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .bg-power-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .bg-power h4 {
+            font-size: 1rem;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .bg-power p {
+            font-size: 0.88rem;
+            color: #64748b;
+            margin: 0;
+        }
+
+        .bg-punchline {
+            max-width: 900px;
+            margin: 35px auto 0;
+            background: #1a1a2e;
+            color: #e2e8f0;
+            padding: 18px 28px;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            text-align: center;
+        }
+
+        .bg-punchline strong {
+            color: #e94560;
+        }
+
+        @media (max-width: 768px) {
+            .bg-split { grid-template-columns: 1fr; gap: 30px; }
+            .task-hub-layout { grid-template-columns: 1fr; }
+            .task-hub-center { order: -1; }
+        }
+
+        /* Task Model */
+        .task-model {
+            background: white;
+        }
+
+        .task-func-layout {
+            position: relative;
+            width: 750px;
+            height: 750px;
+            margin: 0 auto;
+        }
+
+        .task-func-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        .task-hub-node {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e94560, #0f3460);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 8px 30px rgba(233, 69, 96, 0.3);
+        }
+
+        .task-hub-node .hub-icon {
+            font-size: 2.2rem;
+            margin-bottom: 6px;
+        }
+
+        .task-hub-node .hub-label {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .task-hub-node .hub-sub {
+            font-size: 0.72rem;
+            opacity: 0.8;
+        }
+
+        .task-func-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .task-func-item {
+            position: absolute;
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 28px 18px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #fafafa;
+            transition: transform 0.15s, box-shadow 0.15s;
+            top: 50%;
+            left: 50%;
+        }
+
+        .task-func-item:nth-child(1) { transform: translate(-50%, -50%) translate(0px, -250px); }
+        .task-func-item:nth-child(2) { transform: translate(-50%, -50%) translate(217px, -125px); }
+        .task-func-item:nth-child(3) { transform: translate(-50%, -50%) translate(217px, 125px); }
+        .task-func-item:nth-child(4) { transform: translate(-50%, -50%) translate(0px, 250px); }
+        .task-func-item:nth-child(5) { transform: translate(-50%, -50%) translate(-217px, 125px); }
+        .task-func-item:nth-child(6) { transform: translate(-50%, -50%) translate(-217px, -125px); }
+
+        .task-func-item:hover {
+            transform: translate(-50%, -50%) translate(0px, -250px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+        }
+        .task-func-item:nth-child(2):hover { transform: translate(-50%, -50%) translate(217px, -125px) scale(1.05); }
+        .task-func-item:nth-child(3):hover { transform: translate(-50%, -50%) translate(217px, 125px) scale(1.05); }
+        .task-func-item:nth-child(4):hover { transform: translate(-50%, -50%) translate(0px, 250px) scale(1.05); }
+        .task-func-item:nth-child(5):hover { transform: translate(-50%, -50%) translate(-217px, 125px) scale(1.05); }
+        .task-func-item:nth-child(6):hover { transform: translate(-50%, -50%) translate(-217px, -125px) scale(1.05); }
+
+        .task-func-item .func-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+
+        .task-func-item .func-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .task-func-item .func-desc {
+            font-size: 0.88rem;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .task-model-footer {
+            max-width: 950px;
+            margin: 40px auto 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .task-model-stat {
+            text-align: center;
+            padding: 18px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .task-model-stat .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #e94560;
+        }
+
+        .task-model-stat .stat-label {
+            font-size: 0.82rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .task-func-layout { width: 100%; height: auto; min-height: 500px; }
+            .task-func-center { position: relative; top: auto; left: auto; transform: none; display: flex; justify-content: center; margin-bottom: 30px; }
+            .task-func-ring { position: relative; top: auto; left: auto; width: 100%; height: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+            .task-func-item { position: relative; top: auto; left: auto; width: auto; transform: none !important; }
+        }
+
+        /* How it works */
+        .how-it-works {
+            background: #f8f9fa;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .step {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #e94560, #0f3460);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0 auto 20px;
+        }
+
+        .step h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .step p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        /* Audience */
+        .audience {
+            background: white;
+        }
+
+        .audience-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .audience-card {
+            display: flex;
+            align-items: start;
+            gap: 15px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .audience-card .icon {
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        .audience-card h4 {
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        .audience-card p {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+
+        /* Philosophy */
+        .philosophy {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            color: white;
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .philosophy blockquote {
+            font-size: 1.8rem;
+            font-style: italic;
+            max-width: 700px;
+            margin: 0 auto 20px;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .philosophy p {
+            opacity: 0.7;
+            font-size: 1.1rem;
+        }
+
+        /* Footer */
+        footer {
+            background: #111;
+            color: #94a3b8;
+            text-align: center;
+            padding: 30px 20px;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.2rem; }
+            .hero p.tagline { font-size: 1.1rem; }
+            .ps-grid { grid-template-columns: 1fr; }
+            .steps { grid-template-columns: 1fr; }
+            .audience-grid { grid-template-columns: 1fr; }
+            .feature-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero -->
+    <header class="hero">
+        <div class="hero-content">
+            <div class="logo">🧠🦞</div>
+            <h1>Brain<span>Claw</span></h1>
+            <p class="tagline">Bringing AI automation to non-technical office workers through AI IDEs</p>
+            <div class="hero-badges">
+                <span class="badge">No Installation</span>
+                <span class="badge">No Command Line</span>
+                <span class="badge">No Coding Required</span>
+                <span class="badge">Corporate-Friendly</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Problem / Solution -->
+    <section class="problem-solution">
+        <div class="container">
+            <h2>Why BrainClaw?</h2>
+            <p class="section-sub">Traditional AI automation tools create barriers for regular office workers</p>
+            <div class="ps-grid">
+                <div class="ps-card problem">
+                    <h3>&#x1F6AB; The Problem</h3>
+                    <ul>
+                        <li>AI tools require technical setup (binaries, env vars, CLI)</li>
+                        <li>Corporate IT policies restrict installing such tools</li>
+                        <li>Non-technical workers can't use scripts or APIs</li>
+                        <li>Knowledge lives in developers' heads, not shared systems</li>
+                    </ul>
+                </div>
+                <div class="ps-card solution">
+                    <h3>&#x2705; BrainClaw's Solution</h3>
+                    <ul>
+                        <li>Runs inside AI IDEs already approved for corporate use</li>
+                        <li>Zero technical setup &mdash; just open and start</li>
+                        <li>Natural language commands instead of scripts</li>
+                        <li>Learns user preferences through simple memory files</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Background: Why AI IDE Can Do Everything -->
+    <section class="bg-knowledge">
+        <div class="container">
+            <h2>Background: Why Can an AI IDE Do All This?</h2>
+            <p class="section-sub">Understanding what makes this possible</p>
+
+            <div class="bg-split">
+                <div class="bg-left">
+                    <div class="bg-big-icon">&#x1F4BB;</div>
+                    <h3>An AI IDE is not just a chatbot</h3>
+                    <p>Modern AI IDEs (like Claude Code, Cursor) give the AI three superpowers that a regular chatbot doesn't have:</p>
+                </div>
+                <div class="bg-right">
+                    <div class="bg-power">
+                        <div class="bg-power-icon">&#x1F4C2;</div>
+                        <div>
+                            <h4>Read &amp; Write Files</h4>
+                            <p>The AI can open, edit, and create files on your computer &mdash; just like you would in Explorer or Finder.</p>
+                        </div>
+                    </div>
+                    <div class="bg-power">
+                        <div class="bg-power-icon">&#x2328;&#xFE0F;</div>
+                        <div>
+                            <h4>Run Commands</h4>
+                            <p>It can execute programs &mdash; run Python scripts, call Outlook, open Excel &mdash; anything you could type in a terminal.</p>
+                        </div>
+                    </div>
+                    <div class="bg-power">
+                        <div class="bg-power-icon">&#x1F9E0;</div>
+                        <div>
+                            <h4>Follow Instructions</h4>
+                            <p>It reads your instruction files at startup and follows them like an employee following an SOP. No coding needed &mdash; just write what you want in plain text.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-punchline">
+                <strong>Result:</strong> File access + command execution + instruction following = an AI that can do real work on your machine, not just chat.
+            </div>
+        </div>
+    </section>
+
+    <!-- Background: What is a Skill -->
+    <section class="bg-knowledge bg-alt">
+        <div class="container">
+            <h2>Background: What is a "Skill"?</h2>
+            <p class="section-sub">How BrainClaw connects to external tools</p>
+
+            <div class="bg-split">
+                <div class="bg-left">
+                    <div class="bg-big-icon">&#x1F9E9;</div>
+                    <h3>Skills = plug-in connectors</h3>
+                    <p>A skill is a small, self-contained module that lets the AI talk to one external system. Think of it like installing an app on your phone.</p>
+                </div>
+                <div class="bg-right">
+                    <div class="bg-power">
+                        <div class="bg-power-icon">&#x1F4E7;</div>
+                        <div>
+                            <h4>outlook-skill</h4>
+                            <p>Searches your inbox, reads email threads, composes replies, and forwards messages &mdash; all through your local Outlook.</p>
+                        </div>
+                    </div>
+                    <div class="bg-power">
+                        <div class="bg-power-icon">&#x1F4CA;</div>
+                        <div>
+                            <h4>xlsx skill</h4>
+                            <p>Creates, reads, and edits Excel spreadsheets. Useful for reports, data extraction, and formatting tables.</p>
+                        </div>
+                    </div>
+                    <div class="bg-power">
+                        <div class="bg-power-icon">&#x2795;</div>
+                        <div>
+                            <h4>Add your own</h4>
+                            <p>Need to connect to another system? Create a new skill folder with a description file &mdash; the AI learns to use it immediately.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-punchline">
+                <strong>Key idea:</strong> Skills only do I/O (input/output). They don't make decisions &mdash; that's the workflow's job. This keeps things simple and modular.
+            </div>
+        </div>
+    </section>
+
+    <!-- Task Functions -->
+    <section class="task-model">
+        <div class="container">
+            <h2>The Task: Center of Everything</h2>
+            <p class="section-sub">One task connects all functions &mdash; here's what you can do</p>
+
+            <div class="task-func-layout">
+                <!-- Center task node -->
+                <div class="task-func-center">
+                    <div class="task-hub-node">
+                        <div class="hub-icon">&#x1F4CB;</div>
+                        <div class="hub-label">Task</div>
+                        <div class="hub-sub">the central hub</div>
+                    </div>
+                </div>
+
+                <!-- Function ring -->
+                <div class="task-func-ring">
+                    <div class="task-func-item">
+                        <div class="func-icon">&#x1F4E7;</div>
+                        <div class="func-name">Email</div>
+                        <div class="func-desc">Receive email &rarr; auto-create task; extract asks &amp; deadlines</div>
+                    </div>
+                    <div class="task-func-item">
+                        <div class="func-icon">&#x1F465;</div>
+                        <div class="func-name">Stakeholders</div>
+                        <div class="func-desc">Auto-match contacts &amp; suggest RACI roles</div>
+                    </div>
+                    <div class="task-func-item">
+                        <div class="func-icon">&#x1F91D;</div>
+                        <div class="func-name">Asks Tracking</div>
+                        <div class="func-desc">"What do I owe?" / "Who's blocking me?"</div>
+                    </div>
+                    <div class="task-func-item">
+                        <div class="func-icon">&#x1F4DC;</div>
+                        <div class="func-name">Policy Check</div>
+                        <div class="func-desc">Auto-apply company rules &amp; approval flows</div>
+                    </div>
+                    <div class="task-func-item">
+                        <div class="func-icon">&#x1F4C5;</div>
+                        <div class="func-name">Timeline</div>
+                        <div class="func-desc">Every update &amp; decision auto-recorded</div>
+                    </div>
+                    <div class="task-func-item">
+                        <div class="func-icon">&#x1F3C6;</div>
+                        <div class="func-name">Achievements</div>
+                        <div class="func-desc">Task complete &rarr; auto-extract wins for performance review</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="task-model-footer">
+                <div class="task-model-stat">
+                    <div class="stat-value">&#x1F4E8; &rarr; &#x1F4CB;</div>
+                    <div class="stat-label">Email arrives &rarr; task auto-created with extracted info</div>
+                </div>
+                <div class="task-model-stat">
+                    <div class="stat-value">&#x1F4CB; &rarr; &#x1F50D;</div>
+                    <div class="stat-label">Ask "what do I owe?" &rarr; scans all tasks instantly</div>
+                </div>
+                <div class="task-model-stat">
+                    <div class="stat-value">&#x2705; &rarr; &#x1F3C6;</div>
+                    <div class="stat-label">Complete a task &rarr; achievements auto-captured for review</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="container">
+            <h2>How It Works</h2>
+            <p class="section-sub">From startup to execution &mdash; the full operational flow</p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Startup</h3>
+                    <p>Say "start" &rarr; AI loads brain files (identity, rules, memory, task queue) and shows your full task dashboard</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>You Speak</h3>
+                    <p>Give any command in natural language &mdash; "check email", "create task for X", "what do I owe?"</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Workflow Activates</h3>
+                    <p>The AI matches your intent to the right workflow and follows it step by step like an SOP</p>
+                </div>
+            </div>
+
+            <div style="max-width: 800px; margin: 50px auto 0; background: white; border-radius: 14px; border: 1px solid #e2e8f0; padding: 36px;">
+                <h3 style="text-align: center; margin-bottom: 24px; font-size: 1.2rem; color: #1a1a2e;">Example: "Check today emails"</h3>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #e94560; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">1</div>
+                        <div style="flex: 1; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0; font-size: 0.9rem;"><strong>EMAIL_WORKFLOW</strong> loaded &rarr; sets filter to today's inbox</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #e94560; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">2</div>
+                        <div style="flex: 1; padding: 12px 16px; background: #eff6ff; border-radius: 8px; border: 1px solid #93c5fd; font-size: 0.9rem;"><strong>outlook-skill</strong> called &rarr; fetches today's emails, presents summary list</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #e94560; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">3</div>
+                        <div style="flex: 1; padding: 12px 16px; background: #fff7ed; border-radius: 8px; border: 1px solid #fdba74; font-size: 0.9rem;">AI detects actionable email &rarr; one from Ashish contains a PMP renewal request with a deadline</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #e94560; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">4</div>
+                        <div style="flex: 1; padding: 12px 16px; background: #ecfdf5; border-radius: 8px; border: 1px solid #6ee7b7; font-size: 0.9rem;"><strong>User approval</strong> &rarr; AI asks "Create a task for PMP renewal?" &rarr; you confirm</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #e94560; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">5</div>
+                        <div style="flex: 1; padding: 12px 16px; background: #fef3c7; border-radius: 8px; border: 1px solid #fcd34d; font-size: 0.9rem;"><strong>TASK_WORKFLOW</strong> triggered &rarr; creates task with extracted deadline, keywords &amp; asks</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #e94560; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">6</div>
+                        <div style="flex: 1; padding: 12px 16px; background: #f5f3ff; border-radius: 8px; border: 1px solid #c4b5fd; font-size: 0.9rem;"><strong>STAKEHOLDER_WORKFLOW</strong> &rarr; matches "Ashish" to registry, assigns RACI roles</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #1a1a2e; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">&#x2713;</div>
+                        <div style="flex: 1; padding: 12px 16px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem;">Task created &rarr; AI suggests next steps: "Reply to Ashish to confirm?" or "Check policy for PMP renewal process?"</div>
+                    </div>
+                </div>
+                <p style="text-align: center; margin-top: 20px; font-size: 0.85rem; color: #94a3b8;">"Check today emails" &rarr; discovers actionable request &rarr; task auto-created with full context</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture -->
+    <section class="architecture">
+        <div class="container">
+            <h2>2-Layer Architecture</h2>
+            <p class="section-sub">A clean separation: Workflows think, Skills act</p>
+
+            <div class="arch-two-layer">
+                <div class="arch-layer-card workflow-layer">
+                    <div class="arch-layer-header">
+                        <span class="arch-layer-num">Layer 1</span>
+                        <h3>Workflows</h3>
+                        <span class="arch-layer-tag">The Brain</span>
+                    </div>
+                    <p class="arch-layer-desc">All business logic lives here as plain text. The AI reads these like an SOP and follows them step by step.</p>
+                    <div class="arch-layer-examples">
+                        <span>Task lifecycle</span>
+                        <span>Email rules</span>
+                        <span>Stakeholder matching</span>
+                        <span>Views &amp; reports</span>
+                        <span>Event recording</span>
+                    </div>
+                    <div class="arch-layer-point">&#x1F4A1; Written in markdown &mdash; anyone can read, edit, or add new procedures without coding</div>
+                </div>
+
+                <div class="arch-connector">
+                    <div class="arch-connector-line"></div>
+                    <div class="arch-connector-label">calls only when external I/O is needed</div>
+                    <div class="arch-connector-line"></div>
+                </div>
+
+                <div class="arch-layer-card skill-layer">
+                    <div class="arch-layer-header">
+                        <span class="arch-layer-num">Layer 2</span>
+                        <h3>Skills</h3>
+                        <span class="arch-layer-tag">The Hands</span>
+                    </div>
+                    <p class="arch-layer-desc">Plug-in connectors that talk to external systems. They do I/O only &mdash; no business decisions.</p>
+                    <div class="arch-layer-examples">
+                        <span>Outlook (email)</span>
+                        <span>Excel (spreadsheets)</span>
+                        <span>Skill Creator (meta)</span>
+                    </div>
+                    <div class="arch-layer-point">&#x1F50C; Self-contained &amp; reusable &mdash; add a new skill without touching workflows</div>
+                </div>
+            </div>
+
+            <div class="arch-benefit-row">
+                <div class="arch-benefit">
+                    <strong>Why this matters:</strong> Business rules stay in readable text files, not buried in code. Change a process? Just edit the workflow file.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Brain Parts -->
+    <section class="brain-parts">
+        <div class="container">
+            <h2>What's Inside the Brain?</h2>
+            <p class="section-sub">Just like a real assistant, BrainClaw has different "brain parts" &mdash; each stored as a simple text file you can open and edit</p>
+
+            <div class="brain-grid">
+                <div class="brain-card identity">
+                    <div class="brain-icon">&#x1F9EC;</div>
+                    <h3>Personality &amp; Rules</h3>
+                    <div class="analogy">Like an employee handbook</div>
+                    <p class="desc">Who the assistant is, what it's allowed to do, and what always needs your approval first.</p>
+                </div>
+                <div class="brain-card memory">
+                    <div class="brain-icon">&#x1F4AD;</div>
+                    <h3>Memory</h3>
+                    <div class="analogy">Like a notebook it keeps about you</div>
+                    <p class="desc">Learns your preferences over time &mdash; how you like things formatted, mistakes to avoid, and your achievements for review season.</p>
+                </div>
+                <div class="brain-card tasks">
+                    <div class="brain-icon">&#x1F4CB;</div>
+                    <h3>Task Queue</h3>
+                    <div class="analogy">Like a to-do list on your desk</div>
+                    <p class="desc">All your active work in one place &mdash; grouped by region, sorted by priority, with due dates and who owes what to whom.</p>
+                </div>
+                <div class="brain-card workflows">
+                    <div class="brain-icon">&#x1F504;</div>
+                    <h3>Workflows</h3>
+                    <div class="analogy">Like SOPs for your assistant</div>
+                    <p class="desc">Step-by-step procedures for common operations: creating tasks, sending emails, preparing for meetings. The AI follows them like a checklist.</p>
+                </div>
+                <div class="brain-card skills">
+                    <div class="brain-icon">&#x1F50C;</div>
+                    <h3>Skills</h3>
+                    <div class="analogy">Like apps on a phone</div>
+                    <p class="desc">Plug-in connectors to external tools &mdash; Outlook for email, Excel for spreadsheets. Add new skills without changing anything else.</p>
+                </div>
+                <div class="brain-card policies">
+                    <div class="brain-icon">&#x1F4D6;</div>
+                    <h3>Policies</h3>
+                    <div class="analogy">Like a compliance binder</div>
+                    <p class="desc">Your company's rules (procurement, reimbursement, exam procedures) so the assistant always follows the right process.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <div class="container">
+            <h2>Key Features</h2>
+            <p class="section-sub">Enterprise-grade personal productivity powered by AI</p>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F4CB;</div>
+                    <h3>Task Management</h3>
+                    <p>Rich task cards with Status, Priority, Geo, Due Time, RACI stakeholders, parent-child relationships, and structured Asks</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F4E7;</div>
+                    <h3>Email Integration</h3>
+                    <p>Native Outlook COM &mdash; search, thread-track, compose, reply, and auto-extract asks/decisions into tasks</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F9E0;</div>
+                    <h3>Memory System</h3>
+                    <p>Learns preferences, avoids past mistakes, tracks achievements, and remembers contacts across sessions</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F50D;</div>
+                    <h3>Smart Views</h3>
+                    <p>Instant answers: "what do I owe?", "who's blocking me?", "prep before meeting with X", "Q2 review"</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F4C4;</div>
+                    <h3>Office Documents</h3>
+                    <p>Create and edit Excel spreadsheets through natural language</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F4DC;</div>
+                    <h3>Policy Management</h3>
+                    <p>Structured policy files with indexing &mdash; the assistant knows your company's rules and procedures</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F504;</div>
+                    <h3>Recurring Tasks</h3>
+                    <p>Auto-create scheduled tasks: monthly reports, quarterly invoices, and periodic processes</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F9E9;</div>
+                    <h3>Extensible Skills</h3>
+                    <p>Add new capabilities through a modular skill system without touching the core architecture</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Who Is This For -->
+    <section class="audience">
+        <div class="container">
+            <h2>Who Is This For?</h2>
+            <p class="section-sub">Built for people who want AI power without technical complexity</p>
+            <div class="audience-grid">
+                <div class="audience-card">
+                    <div class="icon">&#x1F4BC;</div>
+                    <div>
+                        <h4>Office Workers</h4>
+                        <p>Want AI assistance but don't know programming</p>
+                    </div>
+                </div>
+                <div class="audience-card">
+                    <div class="icon">&#x1F3E2;</div>
+                    <div>
+                        <h4>Corporate Employees</h4>
+                        <p>Work in environments with restricted software installation</p>
+                    </div>
+                </div>
+                <div class="audience-card">
+                    <div class="icon">&#x1F465;</div>
+                    <div>
+                        <h4>Teams</h4>
+                        <p>Want to automate Microsoft 365 tasks without coding</p>
+                    </div>
+                </div>
+                <div class="audience-card">
+                    <div class="icon">&#x1F31F;</div>
+                    <div>
+                        <h4>Everyone</h4>
+                        <p>Anyone who wants a personal assistant that learns their preferences</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Commands Demo -->
+    <section class="features" style="background: #f8f9fa;">
+        <div class="container">
+            <h2>Natural Language Commands</h2>
+            <p class="section-sub">Just say what you want &mdash; no rigid syntax required</p>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>"What do I owe?"</h3>
+                    <p>Cross-task view: your open promises, grouped by recipient, sorted by overdue</p>
+                </div>
+                <div class="feature-card">
+                    <h3>"Before meeting with Beng"</h3>
+                    <p>Pull all open items with that person + suggested agenda for the meeting</p>
+                </div>
+                <div class="feature-card">
+                    <h3>"T033 status"</h3>
+                    <p>Per-task view: current blocker, what's owed, recent decisions</p>
+                </div>
+                <div class="feature-card">
+                    <h3>"Q2 review"</h3>
+                    <p>Performance review draft from auto-captured achievements</p>
+                </div>
+                <div class="feature-card">
+                    <h3>"Find email from Ashish about certification"</h3>
+                    <p>Search Outlook inbox by sender + keywords, display results</p>
+                </div>
+                <div class="feature-card">
+                    <h3>"Create task for PMP renewal"</h3>
+                    <p>Auto-extracts keywords, suggests RACI, creates structured task card</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Philosophy -->
+    <section class="philosophy">
+        <blockquote>"AI should be accessible to everyone, not just developers."</blockquote>
+        <p>BrainClaw bridges the gap between powerful AI tools and everyday office workers.</p>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>BrainClaw &mdash; Built with the belief that AI should serve everyone, not just the technical elite.</p>
+    </footer>
+
+</body>
+</html>

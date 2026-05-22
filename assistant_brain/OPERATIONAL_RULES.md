@@ -56,7 +56,7 @@ powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 | Task operations | "create task", "update task", "complete task", "block task" | [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md) |
 | Stakeholder management | "match stakeholder", "suggest RACI", "notify stakeholder" | [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md) |
 | Event recording | "record event", "archive events" | [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md) |
-| **Views (cross-task / per-task)** | `status T###` (or bare `T###`), `owed`, `待我处理`, `waiting`, `等待`, `before {person}`, `见 X 前`, `review {period}`, `述职`, `半年述职`, `annual review`, `show all`, `全部任务` | [`workflows/VIEWS_WORKFLOW.md`](workflows/VIEWS_WORKFLOW.md) |
+| **Views (cross-task / per-task)** | `status T###` (or bare `T###`), `pending`, `pending out`/`owed`/`待我处理`, `pending in`/`waiting`/`等待`, `before {person}`, `见 X 前`, `review {period}`, `述职`, `半年述职`, `annual review`, `taskboard`, `全部任务` | [`workflows/VIEWS_WORKFLOW.md`](workflows/VIEWS_WORKFLOW.md) |
 
 **⚠️ CRITICAL:** ALWAYS load and follow the workflow BEFORE executing operations. Do NOT skip workflow loading.
 

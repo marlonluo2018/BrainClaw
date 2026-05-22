@@ -15,11 +15,12 @@
 | User intent (in any phrasing) | Operation |
 |------------------------------|-----------|
 | "How is task T### going?" / "T### 怎么样" / "T### 啥情况" / "T### 状态" / bare `T###` | `status T###` |
-| "What did I promise / owe people?" / "待我处理" / "我答应过啥" / "我有啥没回的" | `owed` |
-| "Who haven't I heard back from?" / "等待" / "等谁回" / "啥事卡着" | `waiting` |
+| "What did I promise / owe people?" / "待我处理" / "我答应过啥" / "我有啥没回的" | `pending:out` |
+| "Who haven't I heard back from?" / "等待" / "等谁回" / "啥事卡着" | `pending:in` |
 | "Prep me before meeting X" / "见 X 之前" / "和 X 开会前" / "下午要见 X" | `before X` |
 | "What did I accomplish this period?" / "述职" / "Q2 做了啥" / "总结这半年" | `review {period}` |
-| "Show all tasks" / "全部任务" / "show all" | `show all` (see CONFIG.md) |
+| "What's pending?" / "待办总览" / "all pending" / "所有待办" / "pending items" | `pending` |
+| "Show all tasks" / "全部任务" / "taskboard" / "任务板" | `taskboard` (see CONFIG.md) |
 
 **Disambiguation rules:**
 
@@ -28,7 +29,7 @@
 3. **Time-period signals → review.** Phrases like "Q2", "半年", "annual", "这季度", "this quarter" combined with action words (做了啥, accomplished, summary, 总结) → `review`.
 4. **Vague inputs without specific entity** ("看看", "what's up", "现在咋样") — point user to specific commands rather than guessing. There is no global view default.
 5. **Ask one clarifying question if truly ambiguous.** E.g., user says only "Beng" — could mean `before Beng`, or pull all tasks with Beng as RACI, or look up Beng's contact info. Ask: "Want a meeting prep with Beng, or all open items involving Beng?" Don't guess wrong; one clarification is cheaper than re-running.
-6. **Never silently fall back to no-op.** If you cannot match intent after one clarification, say so: "I'm not sure which view you want — try `status T###`, `待我处理` (owed), `等待` (waiting), `before {person}`, or `show all`."
+6. **Never silently fall back to no-op.** If you cannot match intent after one clarification, say so: "I'm not sure which view you want — try `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `taskboard`, or `review {period}`."
 
 ---
 
@@ -37,15 +38,16 @@
 | Operation | Scope | What it answers |
 |-----------|-------|-----------------|
 | `status T###` (or bare `T###`) | Single task | "How is this task going?" (also accepts legacy `digest T###` / `brief T###`) |
-| `owed` / `待我处理` | Cross-task (Grep-based) | "What do I owe other people?" |
-| `waiting` / `等待` | Cross-task (Grep-based) | "Who am I waiting on?" |
+| `pending:out` (alias: `owed` / `待我处理`) | Cross-task (Grep-based) | "What do I owe other people?" |
+| `pending:in` (alias: `waiting` / `等待`) | Cross-task (Grep-based) | "Who am I waiting on?" |
 | `before {person}` | Person-scoped (Grep-based) | "What should I cover before meeting X?" |
 | `review {period}` | Achievements | "What did I accomplish in this period?" |
-| `show all` | Queue overview | "All my tasks at a glance" — see [`CONFIG.md`](../CONFIG.md) |
+| `pending` | Cross-task (Grep-based) | "All open asks in one view — both directions, with suggestions" |
+| `taskboard` | Queue overview | "All my tasks at a glance" — see [`CONFIG.md`](../CONFIG.md) |
 
 > **Startup brief is minimal and focus-driven** — only overdue tasks (queue `**Due:**` < today) are listed by ID at startup. There is no global dashboard; details come on-demand via `status T###` or the cross-task ops above.
 >
-> **Cross-task ops use Grep, not full-file reads.** `owed`, `waiting`, and `before {person}` exploit the structured `Asks` format to extract just what they need — no need to read 18 task files.
+> **Cross-task ops use Grep, not full-file reads.** The `pending` series (`pending`, `pending:out`, `pending:in`) and `before {person}` exploit the structured `Asks` format to extract just what they need — no need to read 18 task files.
 
 ---
 
@@ -71,7 +73,7 @@
 
 1. **Common Setup** above.
 2. Read the specified task file completely.
-3. Read [`stakeholders/registry.md`](../stakeholders/registry.md) to resolve power levels for owed-overdue calculation.
+3. Read [`contacts.md`](../contacts.md) to resolve power levels for owed-overdue calculation.
 4. Compute fields per [`views_config.md`](../views_config.md) → "Status Defaults":
    - **Now:** Oldest open item with tag `[blocker]` or `[waiting]` from Timeline. If none, current Status.
    - **Owed by me:** All unchecked `[ ]` items under `## Asks > Owed by me`. Compute overdue per stakeholder power.
@@ -104,80 +106,103 @@ T### {Title} | {status_emoji} {priority} | Created {Nd} ago
 
 ---
 
-## owed / 待我处理
+## The `pending` Series
 
-**Triggers (any phrasing matching the intent):**
-
-- English: `owed`, `what do I owe`, `my open promises`, `what did I promise`, `what am I supposed to reply to`, `outstanding asks from me`
-- Chinese: `待我处理`, `我答应过啥`, `我有啥没回的`, `我还没做的`, `我答应的`, `还没回复的`, `没办的事`
-- Question shape: any "what / 啥 / 哪些" + "I / 我" + "owe / promise / 答应 / 待办 / 没回" pattern
-
-**Implementation: Grep, not full-file reads.** The `Asks > Owed by me` format uses `[ ]` checkboxes; `Owed to me` does not. So unchecked checkbox lines under task files are exactly the open Owed-by-me items.
-
-**Steps:**
-
-1. **Common Setup** (skip step 4 — no per-task reads needed).
-2. Run a single Grep across `assistant_brain/tasks/T*.md`:
-   - Pattern: `^- \[ \] .*→` (unchecked item with `→` arrow — distinctive of `Owed by me`)
-   - Output mode: `content` with `-n` (line numbers) so we know the source file per match.
-3. Parse each match into: source task ID (from filename), date, person (after `→`), what, response_due (if `[response_due: YYYY-MM-DD]` present).
-4. For each item, compute overdue status using stakeholder power level (config: "Owed-by-me Overdue Thresholds"). If response_due not set, apply preferences.md "Follow-up Timing Standard" (3-5 business days).
-5. Group items by recipient (person).
-6. Within each group, sort by overdue severity (most overdue first, then most days-until-due).
-7. Cross-reference [`memory/things_to_avoid.md`](../memory/things_to_avoid.md) Patterns — flag any matching items per the pattern's `Brief action`.
-8. Output format:
-
-```
-📤 待我处理 / Owed by me ({total_count} across {task_count} tasks)
-
-{group: person_name}
-   • {what} ({task_link}, [overdue Nd] OR [due in Nd])
-   • {what} ({task_link}, ...)
-
-{group: another_person}
-   ...
-
-{if any pattern flagged, emit pattern-specific notes here}
-```
-
-9. Sort groups: groups containing any overdue item come first; within those, by max overdue. Then groups with all upcoming.
+> Three commands sharing the same display format. `pending` = both directions; `pending:out` = only what I owe; `pending:in` = only what I'm waiting on.
+> Old triggers (`owed`, `待我处理`, `waiting`, `等待`) still work as aliases routing to `pending:out` / `pending:in`.
 
 ---
 
-## waiting / 等待
+### pending (unified)
 
-**Triggers (any phrasing matching the intent):**
+**Triggers:**
 
-- English: `waiting`, `who am I waiting on`, `who hasn't replied`, `who's blocking me`, `pending replies`, `outstanding asks to others`
-- Chinese: `等待`, `我在等谁`, `啥事卡着`, `谁还没回我`, `卡在谁身上`, `在等啥消息`, `谁拖着我`, `谁压着`
+- English: `pending`, `all pending`, `pending items`, `what's pending`, `show pending`, `open asks`
+- Chinese: `待办总览`, `所有待办`, `待办汇总`, `所有待处理`
+
+**Runs both Grep passes and outputs both sections.**
+
+---
+
+### pending:out (owed by me)
+
+**Triggers:**
+
+- English: `pending:out`, `owed`, `what do I owe`, `my open promises`, `what did I promise`, `outstanding asks from me`
+- Chinese: `待我处理`, `我答应过啥`, `我有啥没回的`, `我还没做的`, `没办的事`
+- Question shape: any "what / 啥 / 哪些" + "I / 我" + "owe / promise / 答应 / 待办 / 没回" pattern
+
+**Runs only the owed-by-me Grep pass. Outputs the 📤 section only.**
+
+---
+
+### pending:in (waiting on others)
+
+**Triggers:**
+
+- English: `pending:in`, `waiting`, `who am I waiting on`, `who hasn't replied`, `who's blocking me`, `pending replies`
+- Chinese: `等待`, `我在等谁`, `啥事卡着`, `谁还没回我`, `卡在谁身上`, `谁拖着我`, `谁压着`
 - Question shape: any "who / 谁 / 啥事" + "waiting / 等 / 卡 / 没回 / 拖" pattern
 
-**Implementation: Grep, not full-file reads.** `Owed to me` items use `←` arrow without `[ ]` checkbox — distinctive pattern.
+**Runs only the owed-to-me Grep pass. Outputs the 📥 section only.**
+
+---
+
+### Shared Implementation (all three commands)
+
+**Grep patterns:**
+
+- Owed by me: `^- \[ \] .*→` across `tasks/T*.md`
+- Owed to me: `^- \d{4}-\d{2}-\d{2} ←` across `tasks/T*.md`
 
 **Steps:**
 
-1. **Common Setup** (skip step 4 — no per-task reads needed).
-2. Run a single Grep across `assistant_brain/tasks/T*.md`:
-   - Pattern: `^- \d{4}-\d{2}-\d{2} ←` (date + `←` arrow — distinctive of `Owed to me`)
-   - Output mode: `content` with `-n`.
-3. Parse each match into: task ID (from filename), since-date, person (after `←`), what.
-4. Compute days-waiting from since-date vs today.
-5. Group by person.
-6. Within each group, sort by days-waiting (longest first).
-7. Output format:
+1. **Common Setup** (queue.md for task metadata: title, priority, due).
+2. Run Grep pass(es) depending on command:
+   - `pending` → both patterns
+   - `pending:out` → owed-by-me pattern only
+   - `pending:in` → owed-to-me pattern only
+3. Parse each match:
+   - Task ID from filename (e.g., `T033` from `T033-rhapsody-...md`)
+   - Date, person (after `→` or `←`), action/what
+4. Cross-reference queue.md for each task's **title**, **priority**, **due date**.
+5. Cross-reference [`memory/things_to_avoid.md`](../memory/things_to_avoid.md) Patterns — flag any matching items.
+6. Output in shared format below.
+
+### Shared Output Format
 
 ```
-📥 等待 / Waiting on others ({total} items across {task_count} tasks)
+📋 Pending ({total} items across {N} tasks)
 
-{group: person_name}
-   • {what} ({task_link}, waiting {Nd} since {date})
-   • {what} ({task_link}, waiting {Nd})
+📤 Owed by me ({count}):
 
-{group: another_person}
-   ...
+- [T033](path) · Rhapsody Cert... · P1 · Due: TBD
+  → Jian Hui Liang: Contact learner to use "external education" · Since: 2026-05-19
+
+- [T024](path) · Cert Voucher Quotation... · P2 · Due: TBD
+  → LearnQuest: Request voucher codes (after PO completed) · Since: 2026-05-18
+
+📥 Owed to me ({count}):
+
+- [T041](path) · Red Hat Procurement... · P1 · Due: 2026-05-15
+  ← B Sowmya: Complete PO for Red Hat Learning Subscription · Since: 2026-05-18
+
+- [T042](path) · Veeva Course... · P2 · Due: 2026-06-30
+  ← Citra Ganeshty: PO# issuance · Since: 2026-05-19
+
+{if any pattern flagged from things_to_avoid.md, append notes here}
 ```
 
-8. Groups sorted by their max wait duration (longest first).
+**Format rules:**
+
+- Each item is a **2-line block**: line 1 = task context, line 2 = action (with `→`/`←` + person + what + `· Since: YYYY-MM-DD`).
+- `Since:` date = the date from the Asks line (for out: when the ask was logged; for in: when the waiting item was logged).
+- Items separated by a blank line for scan-ability.
+- Sort: P1 first → then by wait duration (longest first).
+- Title truncated to ~30 chars with `...` if needed.
+- `pending:out` renders only the 📤 section; `pending:in` renders only the 📥 section; `pending` renders both.
+- Empty sections omitted entirely.
+- Header line (`📋 Pending...`) always appears with correct counts for whichever sections are shown.
 
 ---
 
@@ -187,7 +212,7 @@ T### {Title} | {status_emoji} {priority} | Created {Nd} ago
 
 **Standalone `brief` is not a view operation.** The startup brief is minimal (just overdue tasks from queue.md). For task detail, the user must focus on a specific task with `status T###` or use a cross-task op (`owed` / `waiting` / `before`).
 
-**Vague inputs without specific entity** (`看看`, `what's up`, `现在咋样`, `今天该干啥`, `啥要紧`, `今天重点`) — do not guess. Reply with command hints: `Try 'status T###', '待我处理' (owed), '等待' (waiting), 'before {person}', 'show all', or 'review {period}'.`
+**Vague inputs without specific entity** (`看看`, `what's up`, `现在咋样`, `今天该干啥`, `啥要紧`, `今天重点`) — do not guess. Reply with command hints: `Try 'status T###', 'pending', 'pending out', 'pending in', 'before {person}', 'taskboard', or 'review {period}'.`
 
 ---
 
@@ -197,7 +222,7 @@ T### {Title} | {status_emoji} {priority} | Created {Nd} ago
 
 - English: `before {name}`, `prep for meeting with {name}`, `prep for {time/event}`, `meeting prep {name}`, `briefing on {name}`, `getting ready to meet {name}`
 - Chinese: `见 {人} 前`, `见 {人} 之前`, `和 {人} 开会前`, `下午要见 {人}`, `明天和 {人} 谈之前`, `跟 {人} meeting 前`, `备会 {人}`
-- Pattern: input contains a stakeholder name (in registry) AND a "before / 前 / 之前 / 之前" / meeting reference word
+- Pattern: input contains a contact name (in contacts.md) AND a "before / 前 / 之前 / 之前" / meeting reference word
 - If only a person name is given without "before / 前", **ASK** ("Want a meeting prep, or all open items with this person?") — don't guess.
 
 **Implementation: Grep first, then read only matching task files.** Do NOT read all 18 task files. Grep for the person's name across `assistant_brain/tasks/T*.md` to identify the (usually 2-5) relevant files, then read only those.
@@ -206,8 +231,8 @@ T### {Title} | {status_emoji} {priority} | Created {Nd} ago
 
 1. **Common Setup**.
 2. Identify the target:
-   - If a person name → match against [`stakeholders/registry.md`](../stakeholders/registry.md) by name, alias, or email. Collect all known aliases for the next step.
-   - If a time/event → ask user which stakeholders are involved (default: read context from recent calendar mentions if available).
+   - If a person name → match against [`contacts.md`](../contacts.md) by name, alias, or email. Collect all known aliases for the next step.
+   - If a time/event → ask user which contacts are involved (default: read context from recent calendar mentions if available).
 3. **Grep for matching files**: Run Grep with the person's name (and aliases) across `assistant_brain/tasks/T*.md`, `output_mode: files_with_matches`. Returns the small subset of task files involving this person.
 4. **Read only those task files** (typically 2-5, not 18).
 5. For each such task, gather:
@@ -220,7 +245,7 @@ T### {Title} | {status_emoji} {priority} | Created {Nd} ago
 
 ```
 🤝 Pre-meeting brief: {person}
-{if stakeholder profile available, brief context: power, geo, typical tone}
+{if contact has tone/role annotation in contacts.md, brief context: power, geo, typical tone}
 
 Active tasks involving {person} ({n}):
 

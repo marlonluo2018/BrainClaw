@@ -10,8 +10,8 @@
 
 **Steps:**
 1. Extract contacts from email (To/CC/From) or user request
-2. Read [`stakeholders/registry.md`](../stakeholders/registry.md)
-3. Match each contact by name or email against registry
+2. Read [`contacts.md`](../contacts.md)
+3. Match each contact by name or email against contacts
 4. For each match, suggest RACI role based on:
    - **Email role**: To/From → R or A, CC → I
    - **Stakeholder power**: High Power → A
@@ -67,10 +67,9 @@ Name: "Marlon Luo", Email: "luomn@cn.ibm.com", Role: "to"
 **Applies to:** All email types (new, reply, forward) - See [EMAIL_WORKFLOW](EMAIL_WORKFLOW.md)
 
 **Steps:**
-1. Read [`stakeholders/registry.md`](../stakeholders/registry.md) → Find recipient
-2. Read stakeholder's detailed file (e.g., `SH001-beng-paulino.md`)
-3. Use profile (power, style, interests, concerns) to select tone from Communication Styles below
-4. Pass context to email drafting (see [EMAIL_WORKFLOW](EMAIL_WORKFLOW.md))
+1. Read [`contacts.md`](../contacts.md) → Find recipient
+2. Use contact's tone annotation and section (Decision Maker / Process / External) to select tone from Communication Styles below
+3. Pass context to email drafting (see [EMAIL_WORKFLOW](EMAIL_WORKFLOW.md))
 
 ---
 

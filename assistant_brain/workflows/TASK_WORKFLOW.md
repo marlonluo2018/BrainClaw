@@ -13,7 +13,7 @@
 **Steps:**
 1. Read queue.md header → Get "Last Task ID" and increment by 1 for new task ID
 2. Extract keywords from content (see [Keyword Extraction Rules](#keyword-extraction-rules))
-3. Match contacts against [`stakeholders/registry.md`](../stakeholders/registry.md) and suggest RACI roles (see [RACI Rules](#raci-rules-by-task-type))
+3. Match contacts against [`contacts.md`](../contacts.md) and suggest RACI roles (see [RACI Rules](#raci-rules-by-task-type))
 4. Present RACI matrix to user for confirmation
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
 6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### Owed by me` and `### Owed to me` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.

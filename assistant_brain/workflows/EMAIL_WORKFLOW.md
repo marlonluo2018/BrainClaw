@@ -94,9 +94,11 @@ Task [TID](path) - Title:
 
 **Steps:**
 1. **Load skill** → Load the email skill
-2. **Check stakeholder** → Look up recipient in [`stakeholders/registry.md`](../stakeholders/registry.md)
-3. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
-4. **Present for approval** → NEVER send without user confirmation
+2. **Verify recipients** → For EVERY recipient email address, run `lookup-contact` to confirm correctness. Never assume or guess an email address — even if it appears in a task file or memory.
+3. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
+4. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
+5. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
+6. **Present for approval** → NEVER send without user confirmation
 
 ---
 
@@ -110,9 +112,11 @@ Task [TID](path) - Title:
 3. **Choose reply mode:**
    - **Default: `replyall`** — keeps all original recipients, `--to`/`--cc` append
    - **Narrow: `reply`** — sender only, `--to`/`--cc` specify exact extras
-4. **Check stakeholder** → Look up recipient in [`stakeholders/registry.md`](../stakeholders/registry.md)
-5. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
-6. **Present for approval** → NEVER send without user confirmation
+4. **Verify recipients** → For any NEW recipients added via `--to`/`--cc` (not already on the original email), run `lookup-contact` to confirm the address. Never guess email addresses.
+5. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
+6. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
+7. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
+8. **Present for approval** → NEVER send without user confirmation
 
 **Tone Guidelines:**
 
@@ -122,6 +126,33 @@ Task [TID](path) - Title:
 | Influencer (Medium Power) | Professional, collaborative | Balanced detail |
 | Executor (Low Power) | Clear, supportive | Detailed instructions |
 | Unknown | Professional, neutral | Standard format |
+
+---
+
+## Draft Review Checklist
+
+> After drafting, run through this checklist internally. If 1-2 items can be improved, show brief suggestions alongside the draft. Don't rewrite — just flag what could be better and why.
+
+| Check | What to look for |
+| ----- | ---------------- |
+| **Clarity** | Is the ask / next step obvious within the first 2 sentences? |
+| **Brevity** | Any sentence that can be cut without losing meaning? |
+| **Tone match** | Does it match the stakeholder type from the table above? |
+| **Action clarity** | Is there a clear call-to-action or next step? Who does what by when? |
+| **Recipient awareness** | Are we addressing the right person for this ask? |
+
+**Output format (shown with draft):**
+
+```text
+[Draft displayed here]
+
+💡 Suggestions:
+1. {concise improvement} — {why}
+2. {concise improvement} — {why}
+```
+
+- Show 0-2 suggestions max. If draft is already solid, skip the suggestions section entirely.
+- Never block on suggestions — always present the draft for approval regardless.
 
 ---
 

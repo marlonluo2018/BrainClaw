@@ -1,11 +1,17 @@
-# AWS Voucher Issuance (Philippines)
+# AWS Voucher Issuance
 
 **Effective:** 2026-05-18
-**Geo:** Philippines only
+**Geo:** Philippines
 
 ---
 
-## Process
+## When This Applies
+
+A Philippines learner has completed their learning path and mock exam, and needs an AWS certification exam voucher code issued.
+
+---
+
+## Steps
 
 1. **Check eligibility** — Validate learner completed learning path and mock exam
 2. **Get voucher code from Box** — Open the Box Excel file; select the correct sheet by level (Foundational / Associate / Professional); pick an available code and mark it as assigned to the learner
@@ -13,7 +19,19 @@
    - **To:** learner email
    - **Subject:** `AWS [Cert Name] - Exam Voucher - [Learner Name]`
 
-## Email Template (send voucher to learner)
+---
+
+## Key Rules
+
+- Validate eligibility before issuing any code
+- Mark code as assigned in Box Excel immediately after selection
+- Use the exact email template below
+
+---
+
+## Templates
+
+### Email Template (send voucher to learner)
 
 ```html
 <p>Pearsonvue Voucher Code: <strong>[CODE]</strong></p>

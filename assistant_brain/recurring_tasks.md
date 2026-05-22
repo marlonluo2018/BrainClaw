@@ -1,4 +1,4 @@
-# Recurring Tasks
+ # Recurring Tasks
 
 Tasks that automatically trigger on a schedule.
 

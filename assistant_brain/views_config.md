@@ -47,21 +47,23 @@ If a section has no content, omit it (don't print "(none)").
 
 ---
 
-## Owed / Waiting Cross-Task Defaults
+## Pending Series — Grep Patterns
 
-> **Implementation:** Both commands use Grep, not full-file reads. `Owed by me` items are unchecked checkboxes (`^- \[ \] .*→`); `Owed to me` items use `^- \d{4}-\d{2}-\d{2} ←`. Grep extracts these directly across all `tasks/T*.md`.
+> **Implementation:** All three `pending` commands use Grep, not full-file reads. `Owed by me` items are unchecked checkboxes (`^- \[ \] .*→`); `Owed to me` items use `^- \d{4}-\d{2}-\d{2} ←`. Grep extracts these directly across all `tasks/T*.md`.
 
-`owed` / `待我处理`:
+`pending:out` (alias: `owed` / `待我处理`):
+
 - Grep pattern across `tasks/T*.md`: `^- \[ \] .*→`
-- Group by recipient (person)
-- Within each group, sort by overdue severity (most overdue first)
-- Show: `→ {person}: {what} (T###, Nd overdue or Nd until due)`
+- Sort: priority → overdue severity (most overdue first)
 
-`waiting` / `等待`:
+`pending:in` (alias: `waiting` / `等待`):
+
 - Grep pattern across `tasks/T*.md`: `^- \d{4}-\d{2}-\d{2} ←`
-- Group by who-we're-waiting-on
-- Within each group, sort by wait duration (longest first)
-- Show: `← {person}: {what} (T###, waiting Nd)`
+- Sort: priority → wait duration (longest first)
+
+`pending` (unified):
+
+- Runs both patterns, outputs both sections
 
 ---
 

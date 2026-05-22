@@ -62,11 +62,10 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  ├── skills/               (I/O — 外部系统)            │  │
 │  │  │   ├── outlook-skill/    (Outlook COM 后端)          │  │
 │  │  │   ├── xlsx/             (Excel 读写)                │  │
-│  │  │   ├── pptx/             (PowerPoint 读写)           │  │
 │  │  │   └── skill-creator/    (新技能脚手架)              │  │
 │  │  ├── tasks/                (任务队列)                  │  │
 │  │  ├── memory/               (偏好记忆)                  │  │
-│  │  └── policy/               (业务规则)                  │  │
+│  │  └── process/              (操作流程)                  │  │
 │  └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -82,9 +81,9 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | **关联邮件发现** | 多策略搜索（线程 + 发件人 + 关键词）实现跨线程发现 |
 | **记忆系统** | 用户偏好、认知盲点模式、外部联系人、成就（述职事实库）|
 | **成就自动捕获** | 任务完成时 AI 从 `[decision]` / `[milestone]` / `[delivery]` 标签的 Timeline 抽取述职素材 |
-| **政策管理** | 结构化政策文件，带索引和参考系统 |
+| **流程管理** | 按地区分组的结构化流程文件，带索引和参考系统 |
 | **定期任务** | 自动创建定期任务（月度报告、季度流程） |
-| **Office 文档** | 通过 `xlsx` 和 `pptx` skill 处理 Excel / PowerPoint |
+| **Office 文档** | 通过 `xlsx` skill 处理 Excel 文件 |
 | **可扩展技能** | 通过模块化技能系统添加新能力 |
 
 ## 技能
@@ -95,7 +94,6 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 |------|------|----------|
 | **outlook-skill** | 查找、线程、关联、撰写、回复、批量转发 | Microsoft Outlook (COM) |
 | **xlsx** | Excel/电子表格文件读写 | `.xlsx`、`.csv` |
-| **pptx** | PowerPoint 文件读写 | `.pptx` |
 | **skill-creator** | 新技能脚手架 | (元) |
 
 ## 邮件命令
@@ -128,17 +126,15 @@ BrainClaw/
     ├── CONFIG.md             ⭐ # 系统参数（用户信息、格式）
     ├── views_config.md       ⭐ # 视图命令的阈值与默认值
     ├── recurring_tasks.md    ⭐ # 定期任务定义
-    ├── policy/
-    │   └── README.md         ⭐ # 政策索引
+    ├── process/
+    │   └── README.md         ⭐ # 流程索引（按地区分组）
     ├── workflows/               # 编排 + 业务逻辑（按需加载）
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── STAKEHOLDER_WORKFLOW.md
     │   ├── RECORDING_WORKFLOW.md
     │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
-    ├── stakeholders/
-    │   ├── registry.md       ⭐ # 利益相关方索引
-    │   └── SH0xx-xxx.md          # 单个利益相关方文件（按需加载）
+    ├── contacts.md          ⭐ # 联系人唯一数据源（语气、邮箱、角色）
     ├── memory/                  # 用户衍生数据（系统从用户身上学到的）
     │   ├── preferences.md       ⭐ # 用户偏好（语气、时间格式等）
     │   ├── things_to_avoid.md   ⭐ # 认知盲点模式 + 战术 Don'ts
@@ -151,7 +147,6 @@ BrainClaw/
     │   │   ├── scripts/          #   CLI 入口点
     │   │   └── backend/          #   搜索、撰写、会话管理
     │   ├── xlsx/                 # Excel 文件读写
-    │   ├── pptx/                 # PowerPoint 文件读写
     │   └── skill-creator/        # 新技能脚手架
     └── tasks/                   # 任务队列与历史
         ├── queue.md          ⭐ # 活跃任务 + 近期事件
@@ -174,8 +169,8 @@ BrainClaw/
 | `views_config.md` | 视图命令的阈值与默认值 |
 | `tasks/queue.md` | 活跃任务与近期事件 |
 | `recurring_tasks.md` | 定期任务定义 |
-| `stakeholders/registry.md` | 利益相关方数据库 |
-| `policy/README.md` | 政策索引 |
+| `contacts.md` | 联系人数据库 |
+| `process/README.md` | 流程索引 |
 | `skills/*/SKILL.md` frontmatter | 技能触发词与描述 |
 
 其他所有文件（工作流文件、技能实现、详细利益相关方档案等）在需要特定操作时**按需加载**。
@@ -258,7 +253,6 @@ OPERATIONAL_RULES.md (核心策略)
 │  Skills（I/O — 外部系统）                │
 │  - outlook-skill/  Outlook COM           │
 │  - xlsx/           Excel 文件            │
-│  - pptx/           PowerPoint 文件       │
 │  - skill-creator/  元技能                │
 └──────────────────────────────────────────┘
 ```

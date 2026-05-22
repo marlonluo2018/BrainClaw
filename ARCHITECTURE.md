@@ -13,7 +13,7 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
 - **Workflow orchestration**: Multi-step operations guided by workflow files
 - **Skill-based extensibility**: Modular skills for specific functionalities
 - **Task management**: Comprehensive task tracking with RACI stakeholder mapping
-- **Policy awareness**: Company-specific rules and procedures
+- **Process awareness**: Company-specific operational processes
 
 ---
 
@@ -49,19 +49,19 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │           Skills Layer (I/O — external systems)             │
-│  outlook-skill | xlsx | pptx | skill-creator                │
+│  outlook-skill | xlsx | skill-creator                        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   Data Layer                                 │
-│  Tasks | Stakeholders | Policies | Memory | Downloads       │
+│  Tasks | Stakeholders | Processes | Memory | Downloads      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Two-layer separation:**
 - **Workflow layer** holds all business logic (task lifecycle, RACI suggestion, event recording, email composition rules) directly inside the workflow `.md` files.
-- **Skills layer** is reserved for I/O against external systems (Outlook COM, Excel files, PowerPoint files). Skills are self-contained, project-agnostic, and have no business logic.
+- **Skills layer** is reserved for I/O against external systems (Outlook COM, Excel files). Skills are self-contained, project-agnostic, and have no business logic.
 
 There is no "workflow skill" middleware tier — workflows call I/O skills directly.
 
@@ -99,7 +99,6 @@ BrainClaw/
 │   ├── skills/                   # I/O against external systems
 │   │   ├── outlook-skill/        # Outlook COM (find/thread/compose)
 │   │   ├── xlsx/                 # Excel file I/O
-│   │   ├── pptx/                 # PowerPoint file I/O
 │   │   └── skill-creator/        # Author new skills
 │   │
 │   ├── tasks/                    # Task management
@@ -108,14 +107,13 @@ BrainClaw/
 │   │   ├── T001-xxx.md           # Task files
 │   │   └── history/              # Completed tasks
 │   │
-│   ├── stakeholders/             # Stakeholder management
-│   │   ├── registry.md           # Central stakeholder DB
-│   │   └── SH001-xxx.md          # Detailed profiles
+│   ├── contacts.md               # Single source of truth for people (tone, email, role)
 │   │
-│   ├── policy/                   # Company policies
-│   │   ├── README.md             # Policy index
-│   │   └── [topic-name]/         # Policy folders
-│   │       └── policy.md
+│   ├── process/                  # Operational processes (by geo)
+│   │   ├── README.md             # Process index
+│   │   ├── philippines/          # PH processes
+│   │   ├── china/                # CN processes
+│   │   └── global/               # Global processes
 │   │
 │   └── backups/                  # Backup files
 │
@@ -198,7 +196,7 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 |--------|----------|-------|
 | **Role** | **Orchestrator + business logic** | **I/O against external systems** |
 | **Content** | Step sequence, decision rules, RACI logic, format rules | CLI commands, file format readers/writers |
-| **Examples** | "Create Task," "Match Stakeholder," "Suggest RACI" | Read Outlook inbox, parse .xlsx, write .pptx |
+| **Examples** | "Create Task," "Match Stakeholder," "Suggest RACI" | Read Outlook inbox, parse .xlsx |
 | **Coupling** | Project-specific (knows about queue.md, tasks/, registry.md) | Project-agnostic (no BrainClaw imports) |
 
 **Why this split:** Business logic that is markdown-readable belongs in workflows so the AI can read and follow it without code execution. External-system I/O (COM, file formats, APIs) requires real code, so it lives in skills.
@@ -209,7 +207,7 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 # TASK_WORKFLOW.md → Create Task
 1. Read queue.md header → Get Last Task ID, increment
 2. Extract keywords (rules in workflow itself)
-3. Match contacts against stakeholders/registry.md, suggest RACI
+3. Match contacts against contacts.md, suggest RACI
 4. Present RACI matrix → Get user confirmation
 5. Generate filename: T{ID}-{kw1}-{kw2}.md
 6. Write task file using template from tasks/FORMATS.md
@@ -227,7 +225,6 @@ Skills are **modular I/O implementations** that workflows call when they need to
 |-------|---------|-----------------|
 | `outlook-skill` | Find/thread/compose/forward email | Microsoft Outlook (COM) |
 | `xlsx` | Read/write Excel files | `.xlsx` file format |
-| `pptx` | Read/write PowerPoint files | `.pptx` file format |
 | `skill-creator` | Scaffold new skills | (meta) |
 
 #### Skill structure
@@ -338,16 +335,16 @@ Tasks include RACI matrix:
 - **C** = Consulted (provides input)
 - **I** = Informed (kept updated)
 
-### 4.9 Policies
+### 4.9 Processes
 
-Policies are company-specific rules stored in structured folders.
+Operational processes grouped by geography.
 
 ```
-policy/
-├── README.md              # Policy index
-└── [topic-name]/
-    ├── policy.md          # Policy content
-    └── [attachments]      # Related files
+process/
+├── README.md              # Process index
+├── philippines/           # PH processes
+├── china/                 # CN processes
+└── global/                # Global processes
 ```
 
 ---
@@ -404,25 +401,28 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 
 3. **Update `OPERATIONAL_RULES.md`** reference table
 
-### 5.3 Adding a New Policy
+### 5.3 Adding a New Process
 
-1. **Create policy folder**: `policy/[topic-name]/`
+1. **Identify geo**: Determine which geo folder (`philippines/`, `china/`, `global/`) the process belongs to
 
-2. **Create policy.md**:
+2. **Create process file**: `process/{geo}/{descriptive-name}.md`
    ```markdown
-   # Policy Title
+   # Process Title
    
-   **Effective Date:** YYYY-MM-DD
-   **Contact:** Name (email)
+   **Effective:** YYYY-MM-DD
+   **Geo:** Philippines | China | Global
    
-   ## Summary
-   Brief description
+   ## When This Applies
+   Brief description of trigger
    
-   ## Details
-   Full policy content
+   ## Steps
+   1. **Action** — details
+   
+   ## Key Rules
+   - Critical constraint
    ```
 
-3. **Update `policy/README.md`** index
+3. **Update `process/README.md`** index
 
 ### 5.4 Adding a New Memory Type
 
@@ -445,7 +445,7 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 | System Prompt | Startup & loading rules | CLAUDE.md |
 | Brain Files | Knowledge & settings | SOUL, CONFIG, memory |
 | Workflows | Orchestration + business logic | TASK_WORKFLOW, EMAIL_WORKFLOW |
-| Skills | I/O against external systems | outlook-skill, xlsx, pptx |
+| Skills | I/O against external systems | outlook-skill, xlsx |
 | Data | Persistence | Task files, registry |
 
 **Key principle**: Workflows reference skills abstractly ("use outlook-skill to find thread"). Exact CLI commands live in `SKILL.md`. Skills are self-contained and project-agnostic.
@@ -476,7 +476,7 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 Always format IDs as clickable links:
 ```
 [T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md)
-[SH001](assistant_brain/stakeholders/SH001-beng-paulino.md)
+[Beng PAULINO](assistant_brain/contacts.md)
 ```
 
 ---
@@ -488,7 +488,7 @@ Always format IDs as clickable links:
 - **Tasks**: `T{ID}-{keyword1}-{keyword2}.md`
 - **Stakeholders**: `SH{ID}-{name}.md`
 - **Skills**: `skills/{domain}/{skill-name}/SKILL.md`
-- **Policies**: `policy/{topic-name}/policy.md`
+- **Processes**: `process/{geo}/{descriptive-name}.md`
 
 ### 7.2 Skill Triggers
 
@@ -526,7 +526,7 @@ Always format IDs as clickable links:
 2. Load memory files (preferences, things_to_avoid, contacts, tracking)
 3. Load task context (queue.md, recurring_tasks.md)
 4. Load stakeholder context (registry.md)
-5. Load policy index (policy/README.md)
+5. Load process index (process/README.md)
 6. Query OS for local date/time
 7. Archive old events
 8. Parse recurring tasks
@@ -538,11 +538,11 @@ Always format IDs as clickable links:
 ```
 ✅ Ready | [weekday] [date/time] | User: [Name] | OS: [OS Name]
 • Skills: [count] ([list of skill names])
-• Policies: [count] | Stakeholders: [count]
+• Processes: [count] | Stakeholders: [count]
 ```
 - **Count skills:** Count directories under `assistant_brain/skills/` that have a `SKILL.md`
 - **List skills:** Extract `name:` from each skill's frontmatter
-- Example: `• Skills: 4 (outlook-skill, xlsx, pptx, skill-creator)`
+- Example: `• Skills: 3 (outlook-skill, xlsx, skill-creator)`
 
 ---
 
@@ -559,7 +559,7 @@ Always format IDs as clickable links:
 - New skill domains
 - Additional workflows
 - Enhanced memory types
-- Policy versioning
+- Process versioning
 
 ---
 

@@ -37,7 +37,7 @@
 ## ✅ Ready | {weekday} {YYYY-MM-DD HH:mm} | User: {Name} | OS: {OS}
 
 Skills: `{skill_name_1}` · `{skill_name_2}` · `{skill_name_3}` · ...
-Policies: `{policy_name_1}` · `{policy_name_2}` · `{policy_name_3}` · ...
+Processes: `{process_name_1}` · `{process_name_2}` · `{process_name_3}` · ...
 Stakeholders: `{name_1}` · `{name_2}` · `{name_3}` · ... (+N more if > 10)
 Tasks: {N} active · {N} overdue · {N} owed · {N} waiting
 
@@ -68,7 +68,7 @@ Tasks: {N} active · {N} overdue · {N} owed · {N} waiting
 
 ---
 
-→ `status T###` · `待我处理` · `等待` · `before {person}` · `review`
+→ `status T###` · `pending` · `pending out` · `pending in` · `before {person}` · `review` · `taskboard`
 ```
 
 **Rules:**
@@ -76,8 +76,8 @@ Tasks: {N} active · {N} overdue · {N} owed · {N} waiting
 1. **Ready line is single-line h2** (`## ✅ Ready | {date} | User: {Name} | OS: {OS}`). Visual anchor confirming startup is complete. Use `|` separator.
 2. **Four info lines** under Ready:
    - `Skills: \`name1\` · \`name2\` · ...` — list each skill name (from `skills/*/SKILL.md` frontmatter), backtick-wrapped
-   - `Policies: \`name1\` · \`name2\` · ...` — list each policy name (from `policy/README.md` index)
-   - `Stakeholders: \`name1\` · \`name2\` · ...` — list each stakeholder display name (from `stakeholders/registry.md`). If more than 10, show the first 10 followed by "(+N more)"
+   - `Processes: \`name1\` · \`name2\` · ...` — list each process name (from `process/README.md` index)
+   - `Contacts: \`name1\` · \`name2\` · ...` — list each contact display name (from `contacts.md`). If more than 10, show the first 10 followed by "(+N more)"
    - `Tasks: {N} active · {N} overdue` — counts from queue.md
 3. **Two horizontal rules `---`**: after counts line, and before footer command bar. Three visual zones: Ready · Tasks · Commands.
 4. **Primary grouping = country** (h3 with national flag emoji). Country ordering: by total task count, descending. Ties broken alphabetically.
@@ -109,11 +109,11 @@ Tasks: {N} active · {N} overdue · {N} owed · {N} waiting
 **Country flag mapping** (extend as needed):
 - 🇨🇳 China · 🇮🇳 India · 🇵🇭 Philippines · 🇸🇬 Singapore · 🌏 APAC · 🌐 Global
 
-### `show all` (on-demand full task list)
+### `taskboard` (on-demand full task list)
 
-When the user says `show all`, `show queue`, or `全部任务` — re-render the **same output as startup** (see "Startup Display Format" above), including inline pending asks. Source is queue.md + active task file Asks sections.
+When the user says `taskboard`, `show queue`, or `全部任务` — re-render the **same output as startup** (see "Startup Display Format" above), including inline pending asks. Source is queue.md + active task file Asks sections.
 
-`show all` is effectively a "redisplay startup task list" shortcut for use mid-session.
+`taskboard` is effectively a "redisplay startup task list" shortcut for use mid-session.
 
 ## Paths
 - Windows: `%USERPROFILE%/assistant_brain/`

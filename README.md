@@ -62,11 +62,10 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  ├── skills/               (I/O — external systems)    │  │
 │  │  │   ├── outlook-skill/    (Outlook COM backend)       │  │
 │  │  │   ├── xlsx/             (Excel I/O)                 │  │
-│  │  │   ├── pptx/             (PowerPoint I/O)            │  │
 │  │  │   └── skill-creator/    (scaffold new skills)       │  │
 │  │  ├── tasks/                (task queue)                │  │
 │  │  ├── memory/               (preferences)               │  │
-│  │  └── policy/               (business rules)            │  │
+│  │  └── process/              (operational processes)      │  │
 │  └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -82,9 +81,9 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 | **Related Email Discovery** | Multi-strategy search (thread + sender + keyword) for cross-thread discovery |
 | **Memory System** | Preferences, cognitive blind-spot patterns, contacts, achievements (述职 fact base) |
 | **Achievement Auto-capture** | Task completion prompts the AI to extract 述职 material from `[decision]` / `[milestone]` / `[delivery]` Timeline entries |
-| **Policy Management** | Structured policy files with indexing and reference system |
+| **Process Management** | Structured process files grouped by geo with indexing and reference system |
 | **Recurring Tasks** | Auto-create scheduled tasks (monthly reports, quarterly invoices, etc.) |
-| **Office Documents** | Create/edit Excel/PowerPoint via `xlsx` and `pptx` skills |
+| **Office Documents** | Create/edit Excel files via `xlsx` skill |
 | **Extensible Skills** | Add new capabilities through modular skill system |
 
 ## Skills
@@ -95,7 +94,6 @@ Skills are reserved for I/O against external systems. Business logic (task lifec
 |-------|---------|-----------------|
 | **outlook-skill** | Find, thread, related, compose, reply, batch-forward | Microsoft Outlook (COM) |
 | **xlsx** | Read/write Excel/spreadsheet files | `.xlsx`, `.csv` |
-| **pptx** | Read/write PowerPoint files | `.pptx` |
 | **skill-creator** | Scaffold a new skill | (meta) |
 
 ## Email Commands
@@ -128,17 +126,15 @@ BrainClaw/
     ├── CONFIG.md             ⭐ # System parameters (user info, formats)
     ├── views_config.md       ⭐ # Thresholds + defaults for view ops
     ├── recurring_tasks.md    ⭐ # Scheduled recurring tasks
-    ├── policy/
-    │   └── README.md         ⭐ # Policy index
+    ├── process/
+    │   └── README.md         ⭐ # Process index (grouped by geo)
     ├── workflows/               # Orchestration + business logic (on-demand)
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── STAKEHOLDER_WORKFLOW.md
     │   ├── RECORDING_WORKFLOW.md
     │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
-    ├── stakeholders/
-    │   ├── registry.md       ⭐ # Stakeholder index
-    │   └── SH0xx-xxx.md          # Individual stakeholder files (on-demand)
+    ├── contacts.md          ⭐ # Single source of truth for people (tone, email, role)
     ├── memory/                  # User-derived data (learned over time)
     │   ├── preferences.md       ⭐ # User preferences (tone, time format, etc.)
     │   ├── things_to_avoid.md   ⭐ # Cognitive blind-spot patterns + tactical Don'ts
@@ -151,7 +147,6 @@ BrainClaw/
     │   │   ├── scripts/          #   CLI entry point
     │   │   └── backend/          #   Search, compose, session mgmt
     │   ├── xlsx/                 # Excel file I/O
-    │   ├── pptx/                 # PowerPoint file I/O
     │   └── skill-creator/        # Scaffold new skills
     └── tasks/                   # Task queue & history
         ├── queue.md          ⭐ # Active tasks + Recent Events
@@ -238,7 +233,6 @@ OPERATIONAL_RULES.md (Core policies)
 │   Skills (I/O — external systems)        │
 │  - outlook-skill/  Outlook COM           │
 │  - xlsx/           Excel files           │
-│  - pptx/           PowerPoint files      │
 │  - skill-creator/  meta                  │
 └──────────────────────────────────────────┘
 ```
@@ -256,7 +250,7 @@ OPERATIONAL_RULES.md (Core policies)
 | **Modular Extension** | Add new capabilities through `skills/` without modifying core |
 | **Local Autonomy** | All data stays local; no external services required (except AI IDE) |
 | **Learning System** | Learns from interactions and updates memory files |
-| **Policy Management** | Structured policy tracking with reference system |
+| **Process Management** | Structured process tracking grouped by geography |
 | **Scheduled Tasks** | Recurring tasks auto-trigger on schedule |
 | **Native Outlook** | Direct Outlook COM integration — no cloud, no API keys |
 
