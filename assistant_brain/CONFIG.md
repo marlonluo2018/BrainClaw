@@ -23,13 +23,10 @@
 - Bash syntax: `&&` for conditional chaining
 - Recent Events Window: 14 days (events older than this are archived to timeline)
 
-## Skill Paths
+## Skills
 
-> Absolute paths for skill scripts. Use these when invoking skills — decoupled from working directory.
-
-| Skill | Script Path |
-|-------|-------------|
-| outlook | `c:/Users/MengNingLuo/Desktop/BrainClaw/assistant_brain/skills/outlook-skill/scripts/outlook_skill.py` |
+> All skills live under `assistant_brain/skills/*/`. Scanned at startup by frontmatter.
+> To invoke: `py -3 "assistant_brain/skills/{skill-folder}/scripts/{script}" <command> [args]`
 
 ## Tasks
 
@@ -55,16 +52,16 @@ Tasks: {N} active · {N} overdue · {N} owed · {N} waiting
 
 **P1 · {N}**
 - {status_icon} [TID](path) {Title} — Due {date}
-  - → {person}: {what}
-  - ← {person}: {what}
+  - {date} {what} → {person}
+  - {date} {what} ← {person}
 - {status_icon} [TID](path) {Title} — was due {date} (**{N}d overdue**)
 
 **P2 · {N}**
 - {status_icon} [TID](path) {Title} — Due {date}
 - {status_icon} [TID](path) {Title} (Master) — Due {date}
   - ↳ {status_icon} [TID](path) {Subtask Title} — Due {date}
-    - → {person}: {what} (blocker note)
-    - ← {person}: {what}
+    - {date} {what} (blocker note) → {person}
+    - {date} {what} ← {person}
   - ↳ {status_icon} [TID](path) {Subtask Title} — P1 · was due {date} (**{N}d overdue**)
 
 **P3 · {N}**
@@ -108,10 +105,11 @@ Tasks: {N} active · {N} overdue · {N} owed · {N} waiting
 13. **Source: queue.md + active task file Asks sections.** Queue.md provides the task list structure; each active task file is scanned for its `## Asks` section to populate inline pending lines.
 14. **Asks rendering rules:**
     - Asks appear as indented sub-lines under their task (one extra indent level beyond the task row).
-    - Format: `- → {person}: {what}` (owed by me, unchecked `[ ]` items only) / `- ← {person}: {what}` (owed to me).
+    - Format: `- {date} {what} → {person}` (owed by me, unchecked `[ ]` items only) / `- {date} {what} ← {person}` (owed to me).
+    - Date comes first (MM-DD or full YYYY-MM-DD if not current year), then action, then person — reads as "by {date}, {action} directed at {person}" or "since {date}, {action} waiting on {person}".
     - For subtasks: asks indent one level deeper than the `↳` line (4 spaces total from root).
     - If a task has zero pending asks (both sections empty or all owed-by-me checked off), show no sub-lines — task stays single-line.
-    - Parenthetical notes (e.g., blocker conditions) from the task file are preserved: `- → LearnQuest: Request voucher codes (after PO completed)`.
+    - Parenthetical notes (e.g., blocker conditions) from the task file are preserved: `- Assign LDM (after EPD created) → Jibu`.
     - Info line counts: `{N} owed` = total unchecked owed-by-me items across all tasks; `{N} waiting` = total owed-to-me items across all tasks.
 
 **Country flag mapping** (extend as needed):
@@ -122,6 +120,55 @@ Tasks: {N} active · {N} overdue · {N} owed · {N} waiting
 When the user says `taskboard`, `show queue`, or `全部任务` — re-render the **same output as startup** (see "Startup Display Format" above), including inline pending asks. Source is queue.md + active task file Asks sections.
 
 `taskboard` is effectively a "redisplay startup task list" shortcut for use mid-session.
+
+### `pending` Display Format
+
+**Triggers:** `pending`, `show pending`, `show asks`
+**Variants:** `pending out` (I owe only), `pending in` (waiting on only)
+
+**Format: Hybrid — by task (I owe) + by person (Waiting on)**
+
+```markdown
+## → I owe ({N})
+
+**T### {Full Task Title}**
+- {date} {what} → {Person}
+- {date} {what} → {Person}
+
+**T### {Full Task Title}**
+- {date} {what} → {Person}
+
+---
+
+## ← Waiting on ({N})
+
+### {flag} {Country}
+
+**T### {Full Task Title}**
+- {date} {what} ← {Person}
+- {date} {what} ← {Person}
+
+**T### {Full Task Title}**
+- {date} {what} ← {Person}
+
+### {flag} {Country}
+
+**T### {Full Task Title}**
+- {what} ← {Person}
+```
+
+**Rules:**
+1. Section headers: `→ I owe` (my actions), `← Waiting on` (others' actions)
+2. Horizontal rule `---` separates the two sections
+3. **Both sections:** Primary grouping by Geo (h3 with flag emoji), secondary grouping by task (bold `T### {Full Task Title}`)
+4. **I owe items:** bullets with `→ {Person}` at end
+5. **Waiting on items:** bullets with `← {Person}` at end
+6. Task ID includes file link: `[T###](path) {Full Task Title}` — same link format as taskboard
+7. Use the full task title as it appears in queue.md — no abbreviations
+7. Country ordering: by item count descending. Tasks sorted by priority (P1 first), then due date within each country
+8. No tables — pure markdown list
+9. `pending out` shows only the "I owe" section; `pending in` shows only "Waiting on"
+10. Source: All active task file `## Asks` sections (unchecked `[ ]` owed-by-me + all owed-to-me non-struck items)
 
 ## Paths
 - Windows: `%USERPROFILE%/assistant_brain/`

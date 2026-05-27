@@ -108,15 +108,23 @@ Task [TID](path) - Title:
 
 **Steps:**
 1. **Load skill** → Load the email skill
-2. **Get context** → Read original email
-3. **Choose reply mode:**
+2. **Get context** → Read original email (or thread if multiple emails found)
+3. **Confirm target email** → Before drafting, show the user which email will be replied to/forwarded:
+   - **From:** {sender name}
+   - **Date:** {received date}
+   - **Subject:** {email subject}
+   - **To/CC:** {key recipients}
+   - **Preview:** {first line of body}
+
+   This is critical in multi-email threads — the wrong email means wrong recipients. Wait for user confirmation before proceeding.
+4. **Choose reply mode:**
    - **Default: `replyall`** — keeps all original recipients, `--to`/`--cc` append
    - **Narrow: `reply`** — sender only, `--to`/`--cc` specify exact extras
-4. **Verify recipients** → For any NEW recipients added via `--to`/`--cc` (not already on the original email), run `lookup-contact` to confirm the address. Never guess email addresses.
-5. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
-6. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
-7. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
-8. **Present for approval** → NEVER send without user confirmation
+5. **Verify recipients** → For any NEW recipients added via `--to`/`--cc` (not already on the original email), run `lookup-contact` to confirm the address. Never guess email addresses.
+6. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
+7. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
+8. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
+9. **Present for approval** → NEVER send without user confirmation
 
 **Tone Guidelines:**
 
@@ -153,6 +161,114 @@ Task [TID](path) - Title:
 
 - Show 0-2 suggestions max. If draft is already solid, skip the suggestions section entirely.
 - Never block on suggestions — always present the draft for approval regardless.
+
+---
+
+## Update Task Progress from Emails
+
+**Triggers:** "update tasks", "update progress", "sync tasks", "update task files"
+
+> Run this AFTER checking recent emails. Analyzes email content and updates task files with actual progress (timeline, current state, asks) — NOT email references.
+
+**Steps:**
+1. **Identify task-matched emails** → From the email summary, identify emails that indicate progress on active tasks
+2. **For each task with progress:**
+   - Determine what changed: PO released? Approval received? LDM assigned? Quotation received? Cancellation? New blocker?
+   - Update **Timeline** → Add dated entry with tag (e.g., `[PO Released]`, `[Approval]`, `[LDM Assigned]`)
+   - Update **Current State** → Mark completed checkboxes `[✅]`, advance `[⏳]` markers
+   - Update **Asks** → Strike through completed "Owed to me" items, check off completed "Owed by me" items, add new asks if discovered
+3. **Skip already-current tasks** → If the task file already reflects today's emails, skip it
+4. **Present summary** → Use format below (REQUIRED)
+
+**Progress Update Summary Format:**
+
+> Uses the same format as "Email Sync (Integrated)" — see [Combined Summary Format](#email-sync-integrated) below. Both commands produce identical output structure.
+
+---
+
+## Email Sync (Integrated)
+
+**Triggers:** "email sync", "sync emails", "check and update", "邮件同步"
+
+> One command to check recent emails AND update task progress. Combines "Check Recent Emails" + "Update Task Progress" into a single flow.
+
+**Days parameter:**
+- Default: **1 day** (today only — designed for daily use)
+- Override: user can specify days → "email sync 3", "sync emails 7 days", "邮件同步 3天"
+- If user says "email sync" with no number → use 1 day
+
+**Steps:**
+1. **Load skill** → Load the email skill
+2. **Fetch emails** → `find-recent --days {N}` (default 1)
+3. **Extract keywords & geo** → Match emails to tasks (same as "Check Recent Emails" steps 3-4)
+4. **Present email summary** → Show abbreviated email summary (condensed — task matches only, skip non-task emails unless action required)
+5. **Update task files** → For each task-matched email, update progress directly (same as "Update Task Progress" steps 2-3)
+6. **Present combined summary** → Use format below (REQUIRED)
+
+**Combined Summary Format:**
+
+> **CRITICAL:** ALL emails MUST display email numbers (#1, #80, etc.) so user can reference them later with "check email #XX".
+
+```
+## Email Sync Summary (Date Range) — N emails
+
+### {flag} Geo Name
+
+**[TID](path) Task Name**
+Updated:
+- Timeline: `YYYY-MM-DD [Tag]: Description`
+- Ask added: `YYYY-MM-DD ← Person: description`
+
+Emails:
+- #X — YYYY-MM-DD HH:MM — Sender: one-line summary
+- #Y — YYYY-MM-DD HH:MM — Sender: one-line summary
+
+→ Action: [suggested next step for this task]
+
+&nbsp;
+
+**[TID](path) Task Name**
+Updated: no changes — already up to date.
+
+Emails:
+- #X — YYYY-MM-DD HH:MM — Sender: one-line summary
+
+→ Action: [suggested next step for this task]
+
+### {flag} Another Geo
+
+**[TID](path) Task Name**
+Updated:
+- Timeline: `YYYY-MM-DD [Tag]: Description`
+
+Emails:
+- #X — YYYY-MM-DD HH:MM — Sender: one-line summary
+
+→ Action: [suggested next step for this task]
+
+### Non-Task
+
+Action needed:
+- #X — MM-DD HH:MM — Sender: brief description
+  → Action: [suggested response/action]
+- #Y — MM-DD HH:MM — Sender: brief description
+  → Action: [suggested response/action]
+
+Informational: #A, #B, #C, ...
+```
+
+**Format rules:**
+1. Email numbers are mandatory for ALL entries — handles for "check email #XX"
+2. Task File Updates must show what was written to each task file
+3. If a matched task required no updates, state "Updated: no changes — already up to date." — **ALWAYS still list their Emails section**
+4. Each task ends with `→ Action:` line suggesting the next step
+5. Separate tasks with `&nbsp;` (blank spacer line) for visual clarity — no `---` horizontal rules between tasks
+6. Non-Task "Action needed" items each get their own indented `→ Action:` line
+7. Email numbers are sequential across the entire summary (not per-task)
+
+**Key difference from separate commands:** Email Sync does NOT show the full geo-grouped email summary from "Check Recent Emails". It focuses on task-relevant changes and actions needed.
+
+**Token optimization:** When user requests full email content by number (e.g. "get email #40"), use the email ID from the last search output (`find-recent`, `find`, `find-thread`, or `find-related`). Do NOT run a new search — go directly to `get-email "<id>"` using the already-returned results.
 
 ---
 
@@ -283,6 +399,35 @@ Extraction:
 ```
 
 Email Reference row updates from `extracted: N` to `extracted: Y`.
+
+---
+
+## Embedded Image Intelligence
+
+**When:** Any email display shows `🖼 Embedded images (N): ...`
+
+**Purpose:** Embedded images often carry key information that isn't in the email body text (approval screenshots, charts, eCards, process diagrams, signature scans). The AI should proactively flag when images likely contain actionable content.
+
+**High-signal indicators** (advise user to check):
+
+| Indicator | Why |
+|-----------|-----|
+| Subject contains: approval, 批准, confirm, 确认, quotation, 报价, invoice, contract | Image may be a scanned approval or financial document |
+| Subject contains: chart, report, dashboard, data, 数据, 图表 | Image likely contains data/metrics |
+| Sender is a decision maker or approver (from task RACI) | Approval screenshot or signed doc |
+| Email is in "Owed to me" ask chain | Image may be the deliverable being awaited |
+| Image filename contains: screenshot, scan, approval, sign, chart, report | Self-explanatory |
+| Multiple embedded images in a single email | Higher chance of structured visual content |
+
+**Action:** When any high-signal indicator matches, append to the email summary line:
+
+```text
+  💡 Embedded images may contain key info — shall I check?
+```
+
+**If user confirms:** Run `get-email "<id>"` → Read auto-saved image paths → describe content.
+
+**Low-signal (skip advisory):** Email signatures, company logos, decorative banners (filenames like `image001.png` with size < 5 KB, or known logo patterns).
 
 ---
 

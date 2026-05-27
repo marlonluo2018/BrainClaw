@@ -52,7 +52,7 @@ powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 
 | Operation | Trigger Commands | Workflow |
 |-----------|------------------|----------|
-| Email operations | "check email", "list emails", "show emails", "emails from", "process email", "draft email", "reply", "forward" | [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md) |
+| Email operations | "check email", "list emails", "show emails", "emails from", "process email", "draft email", "reply", "forward", "update tasks", "update progress", "email sync", "sync emails", "check and update" | [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md) |
 | Task operations | "create task", "update task", "complete task", "block task" | [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md) |
 | Stakeholder management | "match stakeholder", "suggest RACI", "notify stakeholder" | [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md) |
 | Event recording | "record event", "archive events" | [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md) |
@@ -86,10 +86,14 @@ powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 > For startup Active Tasks display format (priority ordering, P1 warnings, master/subtask hierarchy), see [`CONFIG.md` → Startup Display Format](../CONFIG.md)
 
 ### Task References
-**Always format task IDs as clickable links:**
+**Always format task IDs as clickable links WITH the task name:**
 ```
-[T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md)
+[T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md) PMP Renewal - FutureNow Center Philippines
 ```
+
+**Rule:** Never display a bare task ID (e.g., `T025`) without both a link AND the task name. Users cannot recognize tasks by ID alone.
+
+**Format:** `[TID](path) Task Name`
 
 ---
 
