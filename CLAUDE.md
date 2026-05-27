@@ -1,4 +1,4 @@
-   nythril ; # Personal Assistant System Prompt
+# Personal Assistant System Prompt
 
 > Single source of truth for the BrainClaw system prompt. To use BrainClaw in another IDE, copy the contents of this file into that IDE's custom-instructions / system-prompt setting.
 
