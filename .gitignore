@@ -47,6 +47,9 @@ downloads/
 # Memory directory - keep files locally but don't sync to GitHub
 assistant_brain/memory/
 
+# Process directory - company processes, keep local only
+assistant_brain/process/
+
 # Tasks directory - all task files are personal work data, keep local only
 assistant_brain/tasks/
 Q2_Budget_HCD_Training_Certifications.xlsx
