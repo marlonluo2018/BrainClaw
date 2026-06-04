@@ -39,10 +39,12 @@ recurring_tasks:
       - "XU DONG XUAN <xuanxud@cn.ibm.com> (Finance Service sector focal)"
       - "HUI QING CHEN <huiqingc@cn.ibm.com> (Public & Communication sector focal)"
     cc: "Fei Ye <feiye@cn.ibm.com>"
-    folder_link: "https://ibm.ent.box.com/folder/368947686653"
-    note: "1) Upload previous month's L&K learning report to I&D sector Box folder; 2) Send email notification to contacts that folder has been updated with new data"
-    last_completed: "2026-04"  # When task was executed (April 2026)
-    last_period: "2026-03"  # Which month's report was sent (March 2026)
+    source_folder: "https://ibm.ent.box.com/folder/364440541230"
+    upload_folder: "https://ibm.ent.box.com/folder/368947686653"
+    note: "1) Download raw report files from source_folder to a local month folder (e.g. C:/Users/MengNingLuo/Downloads/June); 2) Run split script to generate per-focal Excel files; 3) Upload output to upload_folder (I&D sector Box); 4) Send email notification to contacts"
+    script: "py -3 assistant_brain/scripts/split_lk_report_by_focal.py \"<source_folder>\""
+    last_completed: "2026-06"  # When task was executed (June 2026)
+    last_period: "2026-05"  # Which month's report was sent (May 2026)
 
 ```
 
