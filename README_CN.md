@@ -56,12 +56,12 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  ├── workflows/            (编排 + 业务逻辑)           │  │
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
-│  │  │   ├── STAKEHOLDER_WORKFLOW.md                       │  │
+│  │  │   ├── PROCESS_WORKFLOW.md                            │  │
 │  │  │   ├── RECORDING_WORKFLOW.md                         │  │
 │  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — 外部系统)            │  │
 │  │  │   ├── outlook-skill/    (Outlook COM 后端)          │  │
-│  │  │   ├── xlsx/             (Excel 读写)                │  │
+│  │  │   ├── minimax-xlsx/     (Excel 读写)                │  │
 │  │  │   └── skill-creator/    (新技能脚手架)              │  │
 │  │  ├── tasks/                (任务队列)                  │  │
 │  │  ├── memory/               (偏好记忆)                  │  │
@@ -76,14 +76,14 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 |------|------|
 | **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、RACI 利益相关方、父子关系、结构化 `Asks`（我欠的 / 别人欠我的）|
 | **视图引擎** | `status T###`(或直接 `T###`) / `待我处理` / `等待` / `before {人}` / `review` —— 跨任务揭示逾期、欠回复、述职素材 |
-| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。匹配到任务时 AI 自动抽取 ask/decision/deadline 写入任务的结构化区块 |
-| **邮件线程追踪** | 通过 Outlook ConversationID 跨文件夹查找完整对话线程 |
+| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。三级匹配：ConversationID 线程 → 任务联系人 → 关键词+地区。自动抽取 ask/decision/deadline 写入任务 |
+| **邮件线程追踪** | 基于 ConversationID 的线程匹配——邮件一旦关联到任务，同线程后续邮件自动命中 |
 | **关联邮件发现** | 多策略搜索（线程 + 发件人 + 关键词）实现跨线程发现 |
 | **记忆系统** | 用户偏好、认知盲点模式、外部联系人、成就（述职事实库）|
 | **成就自动捕获** | 任务完成时 AI 从 `[decision]` / `[milestone]` / `[delivery]` 标签的 Timeline 抽取述职素材 |
-| **流程管理** | 按地区分组的结构化流程文件，带索引和参考系统 |
+| **流程智能** | 自动匹配任务到流程模板，建议下一步行动+联系人。Email sync 时检测未记录的流程步骤，重复模式自动固化为流程文件 |
 | **定期任务** | 自动创建定期任务（月度报告、季度流程） |
-| **Office 文档** | 通过 `xlsx` skill 处理 Excel 文件 |
+| **Office 文档** | 通过 `minimax-xlsx` skill 创建/读取/编辑/分析 Excel 文件 |
 | **可扩展技能** | 通过模块化技能系统添加新能力 |
 
 ## 技能
@@ -93,7 +93,7 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | 技能 | 用途 | 外部系统 |
 |------|------|----------|
 | **outlook-skill** | 查找、线程、关联、撰写、回复、批量转发 | Microsoft Outlook (COM) |
-| **xlsx** | Excel/电子表格文件读写 | `.xlsx`、`.csv` |
+| **minimax-xlsx** | 创建、读取、编辑、分析 Excel/电子表格文件 | `.xlsx`、`.xlsm`、`.csv` |
 | **skill-creator** | 新技能脚手架 | (元) |
 
 ## 邮件命令
@@ -109,6 +109,12 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | `get-email` | — | 通过 entry_id 查看完整邮件 |
 
 **策略：** 已发送邮件在任务文件中追踪（`## Email References`）。`find` 和 `find-recent` 默认仅搜索收件箱。线程和关联搜索自动包含已发送邮件以确保完整性。
+
+**邮件↔任务匹配（三级优先）：**
+
+1. **线程匹配** — 邮件的 ConversationID 已在某任务的 Email References 中 → 直接命中
+2. **联系人匹配** — 发件人出现在某任务的 `## Contacts` 段 → 高置信度
+3. **关键词+地区** — 兜底：关键词重叠 + 邮件域名地区检测
 
 ## 项目结构
 
@@ -131,22 +137,23 @@ BrainClaw/
     ├── workflows/               # 编排 + 业务逻辑（按需加载）
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
-    │   ├── STAKEHOLDER_WORKFLOW.md
+    │   ├── PROCESS_WORKFLOW.md        # 流程匹配、自动推进、学习
     │   ├── RECORDING_WORKFLOW.md
     │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
-    ├── contacts.md          ⭐ # 联系人唯一数据源（语气、邮箱、角色）
+    ├── contacts.md          ⭐ # 联系人唯一数据源（语气、邮箱、角色、流程角色）
+    ├── scripts/                 # Python 自动化脚本
+    │   └── dashboard.py            # 启动面板、taskboard、pending 视图
     ├── memory/                  # 用户衍生数据（系统从用户身上学到的）
     │   ├── preferences.md       ⭐ # 用户偏好（语气、时间格式等）
     │   ├── things_to_avoid.md   ⭐ # 认知盲点模式 + 战术 Don'ts
     │   ├── achievements.md         # 述职事实库（任务完成时自动喂养）
-    │   ├── contacts.md             # 外部联系人（按需加载）
-    │   └── tracking.md             # 已退役 — 功能转入任务的 Asks 区块
+    │   └── vendor-accounts.md      # 供应商门户账号与凭证
     ├── skills/                  # 与外部系统交互的 I/O
     │   ├── outlook-skill/        # Outlook COM — Python 后端 + CLI
     │   │   ├── SKILL.md          #   命令参考
     │   │   ├── scripts/          #   CLI 入口点
     │   │   └── backend/          #   搜索、撰写、会话管理
-    │   ├── xlsx/                 # Excel 文件读写
+    │   ├── minimax-xlsx/         # Excel 文件读写分析
     │   └── skill-creator/        # 新技能脚手架
     └── tasks/                   # 任务队列与历史
         ├── queue.md          ⭐ # 活跃任务 + 近期事件
@@ -157,7 +164,7 @@ BrainClaw/
 
 ### 启动时加载的文件 (⭐)
 
-以下文件在启动时加载，用于初始化助理：
+启动时运行 `py -3 assistant_brain/scripts/dashboard.py`，输出面板信息。以下文件在启动时加载：
 
 | 文件 | 用途 |
 |------|------|
@@ -169,11 +176,11 @@ BrainClaw/
 | `views_config.md` | 视图命令的阈值与默认值 |
 | `tasks/queue.md` | 活跃任务与近期事件 |
 | `recurring_tasks.md` | 定期任务定义 |
-| `contacts.md` | 联系人数据库 |
+| `contacts.md` | 联系人数据库（含流程角色速查表）|
 | `process/README.md` | 流程索引 |
 | `skills/*/SKILL.md` frontmatter | 技能触发词与描述 |
 
-其他所有文件（工作流文件、技能实现、详细利益相关方档案等）在需要特定操作时**按需加载**。
+其他所有文件（工作流文件、技能实现等）在需要特定操作时**按需加载**。
 
 ## 命令
 
@@ -190,6 +197,7 @@ BrainClaw/
 | **述职 / 总结** | "述职"、"半年述职"、"Q2 做了啥"、"总结这半年"、"年度总结"、"review Q2 2026" | bullet 概要 + narrative 草稿,从 achievements.md 整理 |
 | **看完整任务清单** | "全部任务"、"完整队列"、"show all" | 重新渲染启动同款分组任务列表 |
 | **任务操作** | "新建任务"、"完成 T033"、"block T040"、"create/update/complete/block task" | 任务生命周期 |
+| **流程推进** | "next step T033"、"推进 T033"、"下一步"、"固化流程" | 匹配流程模板，建议下一步行动+联系人；固化重复模式 |
 | **邮件操作** | "查邮件"、"找 Beng 的邮件"、"draft email"、"reply"、"forward" | 邮件生命周期(现在自动抽取写入任务) |
 
 ## 任务管理特性
@@ -227,8 +235,7 @@ BrainClaw 跨会话学习和记忆：
 | `memory/preferences.md` | 用户偏好（时区、语气、时间格式）|
 | `memory/things_to_avoid.md` | **Patterns**(认知盲点)+ **Tactical Don'ts**(输出格式错误)|
 | `memory/achievements.md` | 述职事实库 — 任务完成时自动喂养;季度 × 类别两轴结构 |
-| `memory/contacts.md` | 外部联系人（非同事）|
-| `memory/tracking.md` | **已退役** — 功能转入任务的 `## Asks` 区块 + `owed`/`waiting` 视图 |
+| `memory/vendor-accounts.md` | 供应商门户账号与凭证参考 |
 | `views_config.md` | (不是 memory — 系统配置) 视图命令的阈值和默认值。位于 `assistant_brain/` 根目录,不在 memory/ 下。 |
 
 ## 架构：工作流与技能
@@ -242,17 +249,17 @@ OPERATIONAL_RULES.md (核心策略)
         ↓
 ┌──────────────────────────────────────────┐
 │  Workflows（编排 + 业务逻辑）            │  ← 所有业务逻辑都在这里
-│  - TASK_WORKFLOW                         │     RACI 规则、关键词提取、
-│  - EMAIL_WORKFLOW                        │     事件记录、邮件撰写规范、
-│  - STAKEHOLDER_WORKFLOW                  │     成就抽取、视图(status/owed/
-│  - RECORDING_WORKFLOW                    │     waiting/before/...) 等
-│  - VIEWS_WORKFLOW                        │
+│  - TASK_WORKFLOW                         │     流程匹配、自动推进、
+│  - EMAIL_WORKFLOW                        │     关键词提取、邮件撰写、
+│  - PROCESS_WORKFLOW                      │     流程学习与固化、成就抽取、
+│  - RECORDING_WORKFLOW                    │     视图(status/owed/waiting/
+│  - VIEWS_WORKFLOW                        │     before/...) 等
 └──────────────┬───────────────────────────┘
                ↓ （仅在需要 I/O 时调用）
 ┌──────────────────────────────────────────┐
 │  Skills（I/O — 外部系统）                │
 │  - outlook-skill/  Outlook COM           │
-│  - xlsx/           Excel 文件            │
+│  - minimax-xlsx/   Excel 文件            │
 │  - skill-creator/  元技能                │
 └──────────────────────────────────────────┘
 ```
@@ -270,7 +277,7 @@ OPERATIONAL_RULES.md (核心策略)
 | **模块化扩展** | 通过 `skills/` 添加新能力，无需修改核心代码 |
 | **本地自治** | 所有数据留在本地；无需外部服务（除 AI IDE 本身） |
 | **学习系统** | 从交互中学习并更新记忆文件 |
-| **政策管理** | 结构化政策追踪带参考系统 |
+| **流程智能** | 自动匹配流程模板、推进建议、未记录步骤检测、模式固化 |
 | **定期任务** | 定期任务按计划自动触发 |
 | **原生 Outlook** | 直接 Outlook COM 集成 — 无需云端、无需 API 密钥 |
 

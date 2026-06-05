@@ -50,4 +50,19 @@
 - **Coco** <koufulin@shida-edu.cn> — 世达教育 (Shida Education)
 
 ---
-Contacts: 25 | Updated: 2026-05-25
+
+## Process Roles Quick Reference
+
+| Process Step | China | Philippines | India |
+|---|---|---|---|
+| Budget approval (quarterly) | JIANG YU WU (Janice) | Beng PAULINO / Erda AFABLE | ALPHONSA MATHAI |
+| Budget approval (offcycle) | JIANG YU WU (Janice) | Beng PAULINO | ALPHONSA MATHAI |
+| Procurement / PO | WEN WEI ZHAO (Mandy) | ASEAN Procurement Ops | B Sowmya |
+| EPD approval | GEORGE VARGHESE | GEORGE VARGHESE | GEORGE VARGHESE |
+| LDM assignment | Citra Ganeshty | Sneha Mathew | B Sowmya |
+| Vendor (Red Hat) | — | — | Kirk Abbott |
+| Vendor (LearnQuest) | — | LearnQuest MLS APAC (Madhushree/Manjula) | — |
+| Reimbursement ops | Yi Kuan Chiew | — | — |
+
+---
+Contacts: 25 | Updated: 2026-06-04

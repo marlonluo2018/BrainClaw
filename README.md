@@ -56,12 +56,12 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  ├── workflows/            (orchestration + logic)     │  │
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
-│  │  │   ├── STAKEHOLDER_WORKFLOW.md                       │  │
+│  │  │   ├── PROCESS_WORKFLOW.md                            │  │
 │  │  │   ├── RECORDING_WORKFLOW.md                         │  │
 │  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — external systems)    │  │
 │  │  │   ├── outlook-skill/    (Outlook COM backend)       │  │
-│  │  │   ├── xlsx/             (Excel I/O)                 │  │
+│  │  │   ├── minimax-xlsx/     (Excel I/O)                 │  │
 │  │  │   └── skill-creator/    (scaffold new skills)       │  │
 │  │  ├── tasks/                (task queue)                │  │
 │  │  ├── memory/               (preferences)               │  │
@@ -76,14 +76,14 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 |---------|-------------|
 | **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, RACI stakeholders, Parent-Child relationships, structured `Asks` (owed by me / owed to me) |
 | **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `review` — surface what's overdue, owed, and 述职-worthy across all tasks |
-| **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. On match, AI extracts asks/decisions/deadlines into the task's structured slots |
-| **Email Thread Tracking** | Find entire conversation threads across folders via Outlook ConversationID |
+| **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. Three-tier matching: ConversationID thread → task contacts → keyword+geo. Auto-extracts asks/decisions/deadlines into task slots |
+| **Email Thread Tracking** | ConversationID-based thread matching — once an email is linked to a task, all future emails in the same thread auto-match |
 | **Related Email Discovery** | Multi-strategy search (thread + sender + keyword) for cross-thread discovery |
 | **Memory System** | Preferences, cognitive blind-spot patterns, contacts, achievements (述职 fact base) |
 | **Achievement Auto-capture** | Task completion prompts the AI to extract 述职 material from `[decision]` / `[milestone]` / `[delivery]` Timeline entries |
-| **Process Management** | Structured process files grouped by geo with indexing and reference system |
+| **Process Intelligence** | Auto-match tasks to process templates, suggest next actions + contacts. Detect undocumented process steps during email sync and codify recurring patterns into process files |
 | **Recurring Tasks** | Auto-create scheduled tasks (monthly reports, quarterly invoices, etc.) |
-| **Office Documents** | Create/edit Excel files via `xlsx` skill |
+| **Office Documents** | Create/read/edit/analyze Excel files via `minimax-xlsx` skill |
 | **Extensible Skills** | Add new capabilities through modular skill system |
 
 ## Skills
@@ -93,7 +93,7 @@ Skills are reserved for I/O against external systems. Business logic (task lifec
 | Skill | Purpose | External system |
 |-------|---------|-----------------|
 | **outlook-skill** | Find, thread, related, compose, reply, batch-forward | Microsoft Outlook (COM) |
-| **xlsx** | Read/write Excel/spreadsheet files | `.xlsx`, `.csv` |
+| **minimax-xlsx** | Create, read, edit, analyze Excel/spreadsheet files | `.xlsx`, `.xlsm`, `.csv` |
 | **skill-creator** | Scaffold a new skill | (meta) |
 
 ## Email Commands
@@ -109,6 +109,11 @@ All commands use the `find-*` naming convention:
 | `get-email` | — | View full email by entry_id |
 
 **Strategy:** Sent emails are tracked in task files (`## Email References`). `find` and `find-recent` default to Inbox only. Thread and related search auto-include Sent Items for completeness.
+
+**Email↔Task Matching (3-tier priority):**
+1. **Thread match** — email's ConversationID already in a task's Email References → instant hit
+2. **Contact match** — sender appears in a task's `## Contacts` section → high confidence
+3. **Keyword + geo** — fallback to keyword overlap + email domain geo detection
 
 ## Project Structure
 
@@ -131,22 +136,23 @@ BrainClaw/
     ├── workflows/               # Orchestration + business logic (on-demand)
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
-    │   ├── STAKEHOLDER_WORKFLOW.md
+    │   ├── PROCESS_WORKFLOW.md        # Process matching, auto-advance, learning
     │   ├── RECORDING_WORKFLOW.md
     │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
-    ├── contacts.md          ⭐ # Single source of truth for people (tone, email, role)
+    ├── contacts.md          ⭐ # Single source of truth for people (tone, email, role, process roles)
+    ├── scripts/                 # Python automation scripts
+    │   └── dashboard.py            # Startup display, taskboard, pending views
     ├── memory/                  # User-derived data (learned over time)
     │   ├── preferences.md       ⭐ # User preferences (tone, time format, etc.)
     │   ├── things_to_avoid.md   ⭐ # Cognitive blind-spot patterns + tactical Don'ts
     │   ├── achievements.md         # 述职 fact base (auto-fed from Complete Task)
-    │   ├── contacts.md             # External contacts (on-demand)
-    │   └── tracking.md             # DEPRECATED — function moved to per-task Asks
+    │   └── vendor-accounts.md      # Vendor portal accounts & credentials
     ├── skills/                  # I/O against external systems
     │   ├── outlook-skill/        # Outlook COM — Python backend + CLI
     │   │   ├── SKILL.md          #   Command reference
     │   │   ├── scripts/          #   CLI entry point
     │   │   └── backend/          #   Search, compose, session mgmt
-    │   ├── xlsx/                 # Excel file I/O
+    │   ├── minimax-xlsx/         # Excel/spreadsheet I/O
     │   └── skill-creator/        # Scaffold new skills
     └── tasks/                   # Task queue & history
         ├── queue.md          ⭐ # Active tasks + Recent Events
@@ -170,6 +176,7 @@ BrainClaw/
 | **Performance review / 述职** | "述职", "半年述职", "Q2 做了啥", "总结这半年", "review Q2 2026" | Bullet summary + narrative draft from achievements.md |
 | **See full task list** | "show all", "全部任务", "完整队列" | Same output as startup — re-render the grouped task list |
 | **Task operations** | "新建任务", "完成 T033", "block T040", "create/update/complete/block task" | Task lifecycle |
+| **Process / next step** | "next step T033", "推进 T033", "下一步", "固化流程" | Match task to process template, suggest next action + contact; codify recurring patterns |
 | **Email operations** | "查邮件", "找 X 的邮件", "draft email", "reply", "forward" | Email lifecycle (now with auto-extraction into tasks) |
 
 ## Task Management Features
@@ -207,8 +214,7 @@ BrainClaw learns and remembers across sessions:
 | `memory/preferences.md` | User preferences (timezone, tone, time format) |
 | `memory/things_to_avoid.md` | **Patterns** (cognitive blind spots) + **Tactical Don'ts** (output-format mistakes) |
 | `memory/achievements.md` | 述职 fact base — auto-fed from Complete Task; 2-axis structure (quarter × category) |
-| `memory/contacts.md` | External contacts (non-colleagues) |
-| `memory/tracking.md` | **DEPRECATED** — replaced by per-task `## Asks` section + `owed`/`waiting` views |
+| `memory/vendor-accounts.md` | Vendor portal accounts & credentials reference |
 | `views_config.md` | (NOT memory — system config) Thresholds + defaults for view ops. Lives at `assistant_brain/` root, not in memory/. |
 
 ## Architecture: Workflows & Skills
@@ -222,17 +228,17 @@ OPERATIONAL_RULES.md (Core policies)
         ↓
 ┌──────────────────────────────────────────┐
 │    Workflows (orchestration + logic)     │  ← All business logic lives here
-│  - TASK_WORKFLOW                         │     RACI rules, keyword extraction,
-│  - EMAIL_WORKFLOW                        │     event recording, composition
-│  - STAKEHOLDER_WORKFLOW                  │     guidelines, achievement extraction,
-│  - RECORDING_WORKFLOW                    │     views (status/owed/waiting/...)
-│  - VIEWS_WORKFLOW                        │
+│  - TASK_WORKFLOW                         │     Process matching, auto-advance,
+│  - EMAIL_WORKFLOW                        │     keyword extraction, composition
+│  - PROCESS_WORKFLOW                      │     guidelines, achievement extraction,
+│  - RECORDING_WORKFLOW                    │     process learning & codification,
+│  - VIEWS_WORKFLOW                        │     views (status/owed/waiting/...)
 └──────────────┬───────────────────────────┘
                ↓ (only when external I/O needed)
 ┌──────────────────────────────────────────┐
 │   Skills (I/O — external systems)        │
 │  - outlook-skill/  Outlook COM           │
-│  - xlsx/           Excel files           │
+│  - minimax-xlsx/   Excel files           │
 │  - skill-creator/  meta                  │
 └──────────────────────────────────────────┘
 ```

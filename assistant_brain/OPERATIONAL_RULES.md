@@ -54,7 +54,7 @@ powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 |-----------|------------------|----------|
 | Email operations | "check email", "list emails", "show emails", "emails from", "process email", "draft email", "reply", "forward", "update tasks", "update progress", "email sync", "sync emails", "check and update" | [`workflows/EMAIL_WORKFLOW.md`](workflows/EMAIL_WORKFLOW.md) |
 | Task operations | "create task", "update task", "complete task", "block task" | [`workflows/TASK_WORKFLOW.md`](workflows/TASK_WORKFLOW.md) |
-| Stakeholder management | "match stakeholder", "suggest RACI", "notify stakeholder" | [`workflows/STAKEHOLDER_WORKFLOW.md`](workflows/STAKEHOLDER_WORKFLOW.md) |
+| Process intelligence | "next step", "推进", "下一步", "what process", "固化流程" | [`workflows/PROCESS_WORKFLOW.md`](workflows/PROCESS_WORKFLOW.md) |
 | Event recording | "record event", "archive events" | [`workflows/RECORDING_WORKFLOW.md`](workflows/RECORDING_WORKFLOW.md) |
 | **Views (cross-task / per-task)** | `status T###` (or bare `T###`), `pending`, `pending out`/`owed`/`待我处理`, `pending in`/`waiting`/`等待`, `before {person}`, `见 X 前`, `review {period}`, `述职`, `半年述职`, `annual review`, `taskboard`, `全部任务` | [`workflows/VIEWS_WORKFLOW.md`](workflows/VIEWS_WORKFLOW.md) |
 

@@ -35,7 +35,7 @@ Personal assistant for office productivity (IBM Learning Consultant context).
 |-----------|------------------|----------|
 | Email | "check email", "draft", "reply", "forward", "email sync" | `assistant_brain/workflows/EMAIL_WORKFLOW.md` |
 | Task | "create task", "update task", "complete task", "block task" | `assistant_brain/workflows/TASK_WORKFLOW.md` |
-| Stakeholder | "match stakeholder", "suggest RACI" | `assistant_brain/workflows/STAKEHOLDER_WORKFLOW.md` |
+| Process | "next step", "推进", "下一步", "what process", "固化流程" | `assistant_brain/workflows/PROCESS_WORKFLOW.md` |
 | Recording | "record event", "archive events" | `assistant_brain/workflows/RECORDING_WORKFLOW.md` |
 | Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard` | `assistant_brain/workflows/VIEWS_WORKFLOW.md` |
 

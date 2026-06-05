@@ -13,7 +13,7 @@
 **Steps:**
 1. Read queue.md header → Get "Last Task ID" and increment by 1 for new task ID
 2. Extract keywords from content (see [Keyword Extraction Rules](#keyword-extraction-rules))
-3. Match contacts against [`contacts.md`](../contacts.md) and suggest RACI roles (see [RACI Rules](#raci-rules-by-task-type))
+3. Match to process template (see [PROCESS_WORKFLOW](PROCESS_WORKFLOW.md)) → suggest RACI roles + initial Current State steps
 4. Present RACI matrix to user for confirmation
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
 6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### Owed by me` and `### Owed to me` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.
@@ -231,21 +231,6 @@
 
 ---
 
-## RACI Rules by Task Type
+## Process Matching
 
-| Task Type | R (Responsible) | A (Accountable) | C (Consulted) | I (Informed) |
-|-----------|-----------------|-----------------|---------------|--------------|
-| Budget | Task owner | High-power approver | Finance team | Other managers |
-| Procurement | Requester | Budget owner | Procurement team | End users |
-| Training | Trainee | Manager | Training provider | HR |
-| Approval | Executor | Approver | Subject experts | Stakeholders |
-| Technical | Developer | Tech lead | Architect | Product owner |
-| General | To/From → R | High Power → A | - | CC → I |
-
-**Power-Based Rules:**
-
-| Power Level | Typical RACI Role |
-|-------------|-------------------|
-| High | A (Accountable) or I (Informed) |
-| Medium | C (Consulted) or R (Responsible) |
-| Low | R (Responsible) or I (Informed) |
+For RACI assignment and process step mapping, see [PROCESS_WORKFLOW](PROCESS_WORKFLOW.md) and [`contacts.md` Process Roles](../contacts.md#process-roles-quick-reference).

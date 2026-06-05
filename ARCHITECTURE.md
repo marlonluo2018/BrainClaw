@@ -42,14 +42,14 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │         Workflow Layer (orchestration + business logic)     │
-│  TASK_WORKFLOW | EMAIL_WORKFLOW | STAKEHOLDER_WORKFLOW |    │
-│  RECORDING_WORKFLOW                                          │
+│  TASK_WORKFLOW | EMAIL_WORKFLOW | PROCESS_WORKFLOW |        │
+│  RECORDING_WORKFLOW | VIEWS_WORKFLOW                          │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │           Skills Layer (I/O — external systems)             │
-│  outlook-skill | xlsx | skill-creator                        │
+│  outlook-skill | minimax-xlsx | skill-creator                        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -84,21 +84,23 @@ BrainClaw/
 │   │
 │   ├── memory/                   # Learning & persistence
 │   │   ├── preferences.md        # User preferences
-│   │   ├── things_to_avoid.md    # Mistakes to avoid
-│   │   ├── contacts.md           # External contacts
-│   │   ├── tracking.md           # Cross-session tracking
-│   │   └── achievements.md       # Accomplishments
+│   │   ├── things_to_avoid.md    # Cognitive blind-spot patterns
+│   │   ├── achievements.md       # 述职 fact base
+│   │   └── vendor-accounts.md    # Vendor portal credentials
 │   │
 │   ├── workflows/                # Orchestration + business logic
 │   │   ├── TASK_WORKFLOW.md
 │   │   ├── EMAIL_WORKFLOW.md
-│   │   ├── STAKEHOLDER_WORKFLOW.md
+│   │   ├── PROCESS_WORKFLOW.md
 │   │   ├── RECORDING_WORKFLOW.md
 │   │   └── VIEWS_WORKFLOW.md
 │   │
+│   ├── scripts/                  # Python automation
+│   │   └── dashboard.py          # Startup display, taskboard, pending views
+│   │
 │   ├── skills/                   # I/O against external systems
 │   │   ├── outlook-skill/        # Outlook COM (find/thread/compose)
-│   │   ├── xlsx/                 # Excel file I/O
+│   │   ├── minimax-xlsx/         # Excel file I/O
 │   │   └── skill-creator/        # Author new skills
 │   │
 │   ├── tasks/                    # Task management
@@ -158,9 +160,8 @@ The memory system enables persistent learning across sessions. Memory files hold
 |------|---------|---------|
 | `memory/preferences.md` | User explicitly states preference | Store work preferences (tone, language, formatting) |
 | `memory/things_to_avoid.md` | Recurring failure mode (Pattern) OR composition Don't | Drives blind-spot prompts; tactical output Don'ts |
-| `memory/contacts.md` | External contact mentioned 3+ times | Track important contacts |
 | `memory/achievements.md` | Auto-fed from Complete Task; manual additions also welcome | 述职 fact base, used by `review` view command |
-| `memory/tracking.md` | DEPRECATED 2026-05-16 | Function replaced by per-task `## Asks` section + `owed`/`waiting` views |
+| `memory/vendor-accounts.md` | Vendor portal credentials discovered | Vendor login info for procurement portals |
 
 **Note:** `views_config.md` (view thresholds + defaults) is **not** memory — it's system config. Lives at `assistant_brain/` root next to `CONFIG.md`.
 
@@ -172,9 +173,9 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 
 | Workflow | Purpose | I/O Skills Used |
 |----------|---------|-----------------|
-| `TASK_WORKFLOW.md` | Task CRUD, RACI suggestion, keyword extraction, achievement extraction on completion | (none — pure file ops) |
+| `TASK_WORKFLOW.md` | Task CRUD, keyword extraction, achievement extraction on completion | (none — pure file ops) |
 | `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction | `outlook-skill` |
-| `STAKEHOLDER_WORKFLOW.md` | Stakeholder matching, RACI rules, communication styles | `outlook-skill` (for notifications) |
+| `PROCESS_WORKFLOW.md` | Process matching, auto-advance suggestions, process learning from email patterns, codification | (none — pure file ops) |
 | `RECORDING_WORKFLOW.md` | Event recording, memory recording, archival | (none — pure file ops) |
 | `VIEWS_WORKFLOW.md` | Per-task and cross-task views: status, owed, waiting, before, review/述职 | (none — pure file ops) |
 
@@ -195,8 +196,8 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 | Aspect | Workflow | Skill |
 |--------|----------|-------|
 | **Role** | **Orchestrator + business logic** | **I/O against external systems** |
-| **Content** | Step sequence, decision rules, RACI logic, format rules | CLI commands, file format readers/writers |
-| **Examples** | "Create Task," "Match Stakeholder," "Suggest RACI" | Read Outlook inbox, parse .xlsx |
+| **Content** | Step sequence, decision rules, process matching, format rules | CLI commands, file format readers/writers |
+| **Examples** | "Create Task," "Next Step," "Codify Process" | Read Outlook inbox, parse .xlsx |
 | **Coupling** | Project-specific (knows about queue.md, tasks/, registry.md) | Project-agnostic (no BrainClaw imports) |
 
 **Why this split:** Business logic that is markdown-readable belongs in workflows so the AI can read and follow it without code execution. External-system I/O (COM, file formats, APIs) requires real code, so it lives in skills.
@@ -224,7 +225,7 @@ Skills are **modular I/O implementations** that workflows call when they need to
 | Skill | Purpose | External system |
 |-------|---------|-----------------|
 | `outlook-skill` | Find/thread/compose/forward email | Microsoft Outlook (COM) |
-| `xlsx` | Read/write Excel files | `.xlsx` file format |
+| `minimax-xlsx` | Create/read/edit/analyze Excel files | `.xlsx`, `.xlsm`, `.csv` |
 | `skill-creator` | Scaffold new skills | (meta) |
 
 #### Skill structure
@@ -318,17 +319,20 @@ T{ID}-{keyword1}-{keyword2}.md
 - **Subtask**: Has "Parent Task: TXXX" field
 - **Queue display**: Subtasks indented under master with `↳` prefix
 
-### 4.8 Stakeholders
+### 4.8 Process Intelligence
 
-#### Registry Structure
-Each stakeholder has:
-- **ID**: SH001, SH002...
-- **Identity**: Name, Email, Title, Organization, Geo
-- **Influence**: Power Level, Interest Level, Role Type
-- **Communication**: Preferred channel, Style, Timezone
-- **Profile**: Interests, Concerns, Decision Criteria
+#### How It Works
+The process workflow connects tasks to operational processes:
+1. **Match**: Task Category + Geo → process file (from `process/README.md` index)
+2. **Track**: Scan task Current State → determine which step is complete
+3. **Suggest**: Output next action + responsible contact
+4. **Learn**: During email sync, detect steps not in existing process files
+5. **Codify**: When ≥2 tasks follow the same undocumented pattern → suggest creating a process file
 
-#### RACI Integration
+#### contacts.md Process Roles
+A quick-reference table maps process steps to responsible contacts by geo, enabling instant lookup during auto-advance suggestions.
+
+#### RACI in Tasks
 Tasks include RACI matrix:
 - **R** = Responsible (does the work)
 - **A** = Accountable (decision maker)
@@ -375,7 +379,7 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 
 4. **Reference from a workflow**: Add a step like `Call <skill-name> <command>` in the relevant workflow.
 
-**Example**: A `calendar` skill would be justified (it talks to Outlook/Graph). A `raci-suggest` skill would NOT — that's pure logic and belongs in `STAKEHOLDER_WORKFLOW.md`.
+**Example**: A `calendar` skill would be justified (it talks to Outlook/Graph). A `process-suggest` skill would NOT — that's pure logic and belongs in `PROCESS_WORKFLOW.md`.
 
 ### 5.2 Adding a New Workflow
 
@@ -542,7 +546,7 @@ Always format IDs as clickable links:
 ```
 - **Count skills:** Count directories under `assistant_brain/skills/` that have a `SKILL.md`
 - **List skills:** Extract `name:` from each skill's frontmatter
-- Example: `• Skills: 3 (outlook-skill, xlsx, skill-creator)`
+- Example: `• Skills: 3 (outlook-skill, minimax-xlsx, skill-creator)`
 
 ---
 
@@ -582,5 +586,5 @@ Always format IDs as clickable links:
 
 ---
 
-**Last Updated:** 2026-05-16
-**Version:** 1.1
+**Last Updated:** 2026-06-05
+**Version:** 1.2

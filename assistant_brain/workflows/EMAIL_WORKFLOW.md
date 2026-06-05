@@ -1,6 +1,7 @@
 # Email Workflow
 
 > **ALWAYS load the email skill before executing any email operation.**
+> Load by: read `assistant_brain/skills/*/SKILL.md` → match by trigger keywords. Do NOT guess the folder name — glob for it.
 
 ---
 
@@ -14,9 +15,14 @@
 3. **Extract keywords & geo** → For each email, identify:
    - Keywords (names, topics, ticket IDs)
    - Geo: `@ph.ibm.com`→Philippines, `@cn.ibm.com`→China, `@in.ibm.com`→India, or explicit mentions
-4. **Match tasks** → Search [`tasks/queue.md`](../tasks/queue.md) for matching tasks by keywords + geo
-5. **Present summary** → Use format below (REQUIRED)
-6. **Persist links** → After user confirms task matches, record email references in task files (see "Record Email Reference" section)
+4. **Match tasks** → Match emails to tasks using three signals (in priority order):
+   1. **Thread match (strongest):** Check if email's ConversationID exists in any task's `## Email References` table → instant hit, skip keyword matching
+   2. **Contact match (strong):** Check if sender/recipient appears in any task's `## Contacts` section → high-confidence match
+   3. **Keyword + geo (fallback):** Search [`tasks/queue.md`](../tasks/queue.md) by extracted keywords + geo
+   - If signal 1 or 2 hits, use that match even if keyword matching would suggest something else
+5. **Process-aware actions** → Load [`PROCESS_WORKFLOW.md`](PROCESS_WORKFLOW.md): for each matched task, determine current process step → generate `Action:` suggestions with specific contact + step (not generic advice)
+6. **Present summary** → Use format below (REQUIRED). The `Action:` line per task comes from step 5.
+7. **Persist links** → After user confirms task matches, record email references in task files (see "Record Email Reference" section)
 
 **Summary Format (REQUIRED):**
 ```
@@ -44,8 +50,8 @@ Task [TID](path) - Title:
 | 🇨🇳 | X tasks, Y emails | - | - |
 
 🎯 PRIORITY ACTIONS
-1. [Highest priority action with geo flag]
-2. [Next priority action]
+1. {geo flag} {action} ([TID](path) {Full Task Name}) — {contact}. {priority}, {overdue/due info}
+2. {geo flag} {action} ([TID](path) {Full Task Name}) — {contact}. {priority}, {due info}
 ```
 
 ---
@@ -178,19 +184,22 @@ Task [TID](path) - Title:
    - Update **Current State** → Mark completed checkboxes `[✅]`, advance `[⏳]` markers
    - Update **Asks** → Strike through completed "Owed to me" items, check off completed "Owed by me" items, add new asks if discovered
 3. **Skip already-current tasks** → If the task file already reflects today's emails, skip it
-4. **Present summary** → Use format below (REQUIRED)
+4. **Process intelligence** → Load [`PROCESS_WORKFLOW.md`](PROCESS_WORKFLOW.md):
+   - **Stale Detection**: Flag tasks exceeding threshold (P1 >2d, P2 >5d, P3 >10d) with follow-up contact
+   - **Process Learning**: Compare new timeline entries against process files → flag undocumented steps
+5. **Present summary** → Use format below (REQUIRED). Append `⚠️ Stale` and `📝 Process Observations` sections if applicable.
 
 **Progress Update Summary Format:**
 
-> Uses the same format as "Email Sync (Integrated)" — see [Combined Summary Format](#email-sync-integrated) below. Both commands produce identical output structure.
+> Uses the same format as "Email Sync (Integrated)" — see [Combined Summary Format](#email-sync-integrated) below. Both commands produce identical output structure. Additionally includes stale alerts and process observations at the end.
 
 ---
 
 ## Email Sync (Integrated)
 
-**Triggers:** "email sync", "sync emails", "check and update", "邮件同步"
+**Triggers:** "email sync", "sync emails", "check and update", "邮件同步", "同步邮件"
 
-> One command to check recent emails AND update task progress. Combines "Check Recent Emails" + "Update Task Progress" into a single flow.
+> **⚠️ KEY DIFFERENCE FROM "Check Email":** This operation **WRITES to task files directly** without asking for confirmation. "Check Email" is read-only (only shows info). Email Sync = Check + Update + Process Intelligence in one shot.
 
 **Days parameter:**
 - Default: **1 day** (today only — designed for daily use)
@@ -200,10 +209,18 @@ Task [TID](path) - Title:
 **Steps:**
 1. **Load skill** → Load the email skill
 2. **Fetch emails** → `find-recent --days {N}` (default 1)
-3. **Extract keywords & geo** → Match emails to tasks (same as "Check Recent Emails" steps 3-4)
-4. **Present email summary** → Show abbreviated email summary (condensed — task matches only, skip non-task emails unless action required)
-5. **Update task files** → For each task-matched email, update progress directly (same as "Update Task Progress" steps 2-3)
-6. **Present combined summary** → Use format below (REQUIRED)
+3. **Extract keywords & geo + Match tasks** → Same as "Check Recent Emails" steps 3-5 (thread match → contact match → keyword+geo fallback)
+4. **⚠️ WRITE to task files** → For EACH task-matched email, **immediately update the task file on disk**:
+   - Timeline → Add dated entry with tag
+   - Current State → Mark completed checkboxes `[✅]`, advance `[⏳]`
+   - Asks → Strike through completed items, add new asks
+   - **Email References** → Record entry_id in `## Email References` table (enables ConversationID thread matching for future emails)
+   - This is NOT optional. If an email indicates progress, the file MUST be updated NOW.
+5. **Process intelligence** → Load [`PROCESS_WORKFLOW.md`](PROCESS_WORKFLOW.md) and run:
+   - **Auto-Suggest**: For each updated task, match to process template → determine next step + responsible contact
+   - **Stale Detection**: Flag tasks exceeding stale threshold (P1 >2d, P2 >5d, P3 >10d)
+   - **Process Learning**: Compare new timeline entries against matched process files → note undocumented steps
+6. **Present combined summary** → Use format below (REQUIRED). The `→ Action:` line per task is informed by step 5's process matching. The `Updated:` section MUST show what was written to each file.
 
 **Combined Summary Format:**
 
@@ -214,7 +231,7 @@ Task [TID](path) - Title:
 
 ### {flag} Geo Name
 
-**[TID](path) Task Name**
+**[TID](path) Task Name** | Due: YYYY-MM-DD | Last activity: YYYY-MM-DD
 Updated:
 - Timeline: `YYYY-MM-DD [Tag]: Description`
 - Ask added: `YYYY-MM-DD ← Person: description`
@@ -223,28 +240,28 @@ Emails:
 - #X — YYYY-MM-DD HH:MM — Sender: one-line summary
 - #Y — YYYY-MM-DD HH:MM — Sender: one-line summary
 
-→ Action: [suggested next step for this task]
+→ Action: [suggested next step] — Contact: {name} | Due in {N}d
 
 &nbsp;
 
-**[TID](path) Task Name**
+**[TID](path) Task Name** | Due: YYYY-MM-DD | Last activity: YYYY-MM-DD
 Updated: no changes — already up to date.
 
 Emails:
 - #X — YYYY-MM-DD HH:MM — Sender: one-line summary
 
-→ Action: [suggested next step for this task]
+→ Action: [suggested next step] — Contact: {name} | Due in {N}d
 
 ### {flag} Another Geo
 
-**[TID](path) Task Name**
+**[TID](path) Task Name** | Due: YYYY-MM-DD | Last activity: YYYY-MM-DD
 Updated:
 - Timeline: `YYYY-MM-DD [Tag]: Description`
 
 Emails:
 - #X — YYYY-MM-DD HH:MM — Sender: one-line summary
 
-→ Action: [suggested next step for this task]
+→ Action: [suggested next step] — Contact: {name} | Due in {N}d
 
 ### Non-Task
 
@@ -255,6 +272,17 @@ Action needed:
   → Action: [suggested response/action]
 
 Informational: #A, #B, #C, ...
+
+### 📝 Process Observations (only if new findings)
+
+- T053: "vendor confirms entity" — not in offcycle-budget-approval.md (seen 2nd time)
+- T044: No process file for "China vendor training" — 3 tasks followed similar path
+  → Say "固化流程" to codify
+
+### ⚠️ Stale Tasks (only if any exceed threshold)
+
+- T0XX — Xd no activity | stuck at: "{process step}"
+  → Follow up: {contact} ({role})
 ```
 
 **Format rules:**
