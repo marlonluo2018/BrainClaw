@@ -36,8 +36,8 @@ Personal assistant for office productivity (IBM Learning Consultant context).
 | Operation | Trigger Commands | Workflow |
 |-----------|------------------|----------|
 | Email | "check email", "draft", "reply", "forward", "email sync" | `assistant_brain/workflows/EMAIL_WORKFLOW.md` |
-| Task | "create task", "update task", "complete task", "block task" | `assistant_brain/workflows/TASK_WORKFLOW.md` |
-| Process | "next step", "推进", "下一步", "what process", "固化流程" | `assistant_brain/workflows/PROCESS_WORKFLOW.md` |
+| Task | "create task", "update task", "complete task" | `assistant_brain/workflows/TASK_WORKFLOW.md` |
+| Process | "next step", "推进", "下一步", "what process", "create process", "save as process", "固化流程" | `assistant_brain/workflows/PROCESS_WORKFLOW.md` |
 | Follow-up | "follow up", "催办", "chase", "nudge", "提醒一下" | `assistant_brain/workflows/FOLLOWUP_WORKFLOW.md` |
 | Recording | "record event", "archive events" | `assistant_brain/workflows/RECORDING_WORKFLOW.md` |
 | Web | "search", "搜索", "查一下", "look up", "open URL", "查看网页", "抓取" | `assistant_brain/workflows/WEB_WORKFLOW.md` |

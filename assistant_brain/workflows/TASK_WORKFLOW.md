@@ -145,19 +145,6 @@
 
 ---
 
-## Block Task
-
-**Trigger:** Task cannot proceed due to dependency
-
-**Steps:**
-1. Set status to 🔴 Blocked, update queue.md
-2. Record in Recent Events: `- **{date}**: 🔴 Blocked [TID](path) - {title}`
-3. Read task RACI matrix → Identify Accountable (A) stakeholder
-4. Draft notification email to Accountable stakeholder
-5. Present drafted email: "Task blocked. Notification email drafted for [Stakeholder] (Accountable):"
-6. If approved → Follow [EMAIL_WORKFLOW](EMAIL_WORKFLOW.md) to send
-7. If declined → Skip notification (but record blocker reason in task)
-
 ---
 
 ## Master-Subtask Operations

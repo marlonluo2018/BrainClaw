@@ -564,6 +564,30 @@ def _render_ask_section(lines, grouped, arrow, count):
     lines.append("")
 
 
+def _count_stale_tasks(tasks, today):
+    """Count tasks whose last ask-in date exceeds their stale threshold."""
+    today_date = today.date() if hasattr(today, 'date') else today
+    count = 0
+    for t in tasks:
+        asks = list(t.asks_in)
+        for sub in t.subtasks:
+            asks.extend(sub.asks_in)
+        if not asks:
+            continue
+        oldest = asks[0]
+        date_m = re.match(r'^(\d{4}-\d{2}-\d{2})', oldest)
+        if date_m:
+            try:
+                ask_date = date.fromisoformat(date_m.group(1))
+                days = (today_date - ask_date).days
+                threshold = STALE_THRESHOLDS.get(t.priority, 10)
+                if days > threshold:
+                    count += 1
+            except ValueError:
+                pass
+    return count
+
+
 def format_pending_all(tasks, today):
     lines = []
     date_str = today.strftime('%Y-%m-%d')
@@ -582,6 +606,11 @@ def format_pending_all(tasks, today):
     lines.append(f"### ← Owed to me ({count_in})")
     lines.append("")
     _render_ask_section(lines, grouped_in, "←", count_in)
+
+    stale_count = _count_stale_tasks(tasks, today)
+    if stale_count:
+        lines.append(f"💡 {stale_count} task(s) past follow-up threshold — say \"follow up\" to draft chase emails.")
+        lines.append("")
 
     return '\n'.join(lines)
 
@@ -608,6 +637,11 @@ def format_pending_in(tasks, today):
     lines.append(f"## ← Owed to me ({count}) | {date_str}")
     lines.append("")
     _render_ask_section(lines, grouped, "←", count)
+
+    stale_count = _count_stale_tasks(tasks, today)
+    if stale_count:
+        lines.append(f"💡 {stale_count} task(s) past follow-up threshold — say \"follow up\" to draft chase emails.")
+        lines.append("")
 
     return '\n'.join(lines)
 
