@@ -20,6 +20,7 @@ MAX_CONTACTS_DISPLAY = 10
 
 STATUS_ICONS = {"Not Started": "📋", "In Progress": "⏳", "Blocked": "🔴"}
 ICON_TO_STATUS = {"📋": "Not Started", "⏳": "In Progress", "🔴": "Blocked"}
+STALE_THRESHOLDS = {"P1": 2, "P2": 5, "P3": 10}
 
 FLAG_MAP = {
     "China": "🇨🇳",
@@ -373,6 +374,27 @@ def compute_overdue_days(due_str: str, today: date):
 
 # --- Output Formatting ---
 
+
+def count_stale_tasks(tasks, today_date):
+    count = 0
+    for t in tasks:
+        threshold = STALE_THRESHOLDS.get(t.priority or "P3", 10)
+        task_path = PROJECT_ROOT / t.path
+        content = safe_read(task_path)
+        if not content:
+            continue
+        last_date_str = get_last_activity_date(content)
+        if not last_date_str:
+            continue
+        try:
+            last_date = date.fromisoformat(last_date_str)
+        except ValueError:
+            continue
+        if (today_date - last_date).days > threshold:
+            count += 1
+    return count
+
+
 def format_brief(tasks, skills, processes, contacts, today, recurring_due, events=None, dry_run_msg=""):
     weekday = today.strftime('%A')
     date_str = today.strftime('%Y-%m-%d %H:%M')
@@ -402,9 +424,13 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
     owed_out = sum(len(t.asks_out) for t in all_tasks_flat)
     owed_in = sum(len(t.asks_in) for t in all_tasks_flat)
 
+    stale_count = count_stale_tasks(all_tasks_flat, today.date())
+
     counts = f"Tasks: {len(all_tasks_flat)} active"
     if overdue_count:
         counts += f" · {overdue_count} overdue"
+    if stale_count:
+        counts += f" · ⚠️ {stale_count} stale"
     if owed_out:
         counts += f" · {owed_out} owed"
     if owed_in:
@@ -666,6 +692,451 @@ def run_events(filter_name, today):
     print(format_events(events, filter_name, today))
 
 
+# --- Digest ---
+
+
+def parse_timeline_from_file(content: str) -> list:
+    entries = []
+    in_timeline = False
+    for line in content.split('\n'):
+        if line.strip() == '## Timeline':
+            in_timeline = True
+            continue
+        if in_timeline and (line.startswith('## ') or line.strip() == '---'):
+            break
+        if in_timeline:
+            m = re.match(r'^- \*\*(\d{4}-\d{2}-\d{2})\*\*\s*\[(.+?)\]:?\s*(.+)$', line)
+            if m:
+                entries.append({"date": m.group(1), "tag": m.group(2), "desc": m.group(3)})
+    return entries
+
+
+def get_last_activity_date(content: str) -> str | None:
+    entries = parse_timeline_from_file(content)
+    return entries[-1]["date"] if entries else None
+
+
+def format_digest(tasks, events, today, days=7, since_date=None):
+    if since_date:
+        start_date = since_date
+    else:
+        start_date = today.date() - timedelta(days=days)
+    end_date = today.date()
+
+    lines = []
+    lines.append(f"📊 Weekly Digest: {start_date.isoformat()} → {end_date.isoformat()}")
+    lines.append("")
+
+    # Categorize events in window
+    completed = []
+    created = []
+    blocked = []
+    for ev in events:
+        try:
+            ev_date = date.fromisoformat(ev.date_str)
+        except ValueError:
+            continue
+        if ev_date < start_date or ev_date > end_date:
+            continue
+        if '✅' in ev.description:
+            completed.append(ev)
+        elif '📋' in ev.description:
+            created.append(ev)
+        elif '🔴' in ev.description:
+            blocked.append(ev)
+
+    # Scan task files for timeline activity in window
+    key_activity = []
+    stale_tasks = []
+    upcoming = []
+    asks_fulfilled_count = 0
+    asks_waiting = []
+
+    all_tasks_flat = tasks
+    for t in all_tasks_flat:
+        task_file = PROJECT_ROOT / t.path
+        if not task_file.exists():
+            continue
+        content = safe_read(task_file)
+        if not content:
+            continue
+
+        # Timeline entries in window
+        timeline = parse_timeline_from_file(content)
+        for entry in timeline:
+            try:
+                entry_date = date.fromisoformat(entry["date"])
+            except ValueError:
+                continue
+            if start_date <= entry_date <= end_date:
+                tag = entry["tag"].lower()
+                if tag in ("email-out", "email-in", "decision", "milestone", "delivery", "po issued"):
+                    key_activity.append(f"{t.id}: [{entry['tag']}] {entry['desc'][:80]}")
+
+        # Stale detection
+        last_date_str = get_last_activity_date(content)
+        if last_date_str:
+            try:
+                last_date = date.fromisoformat(last_date_str)
+                priority = t.priority or "P3"
+                threshold = STALE_THRESHOLDS.get(priority, 10)
+                days_inactive = (end_date - last_date).days
+                if days_inactive > threshold:
+                    stale_tasks.append((t, days_inactive, priority))
+            except ValueError:
+                pass
+
+        # Due dates in next 7 days
+        if t.due and 'TBD' not in t.due:
+            try:
+                due_date = date.fromisoformat(t.due[:10])
+                if end_date < due_date <= end_date + timedelta(days=7):
+                    upcoming.append((t, due_date))
+            except ValueError:
+                pass
+
+        # Asks stats
+        asks_out, asks_in = parse_asks_from_file(content)
+        for ask in asks_in:
+            # Extract date from ask string
+            date_m = re.match(r'^(\d{4}-\d{2}-\d{2})', ask)
+            if date_m:
+                try:
+                    ask_date = date.fromisoformat(date_m.group(1))
+                    days_waiting = (end_date - ask_date).days
+                    person_m = re.search(r'← (.+?): (.+)$', ask)
+                    if person_m:
+                        asks_waiting.append({
+                            "task": t.id,
+                            "person": person_m.group(1),
+                            "what": person_m.group(2)[:50],
+                            "days": days_waiting,
+                        })
+                except ValueError:
+                    pass
+
+    # Sort asks by days waiting descending
+    asks_waiting.sort(key=lambda x: -x["days"])
+
+    # --- Summary ---
+    lines.append("━━━ Summary ━━━")
+    lines.append(f"• Tasks completed: {len(completed)}  |  Tasks created: {len(created)}  |  Active: {len(all_tasks_flat)}")
+    if stale_tasks:
+        lines.append(f"• Stale tasks: {len(stale_tasks)} (need follow-up)")
+    if asks_waiting:
+        lines.append(f"• Pending asks (owed to me): {len(asks_waiting)}")
+    lines.append("")
+
+    # --- Completed ---
+    if completed:
+        lines.append(f"━━━ Completed ({len(completed)}) ━━━")
+        for ev in completed:
+            fixed = re.sub(r'\]\(\./(.+?)\)', r'](assistant_brain/tasks/\1)', ev.raw_line)
+            lines.append(fixed)
+        lines.append("")
+
+    # --- Key Activity ---
+    if key_activity:
+        lines.append(f"━━━ Key Activity ({len(key_activity)}) ━━━")
+        for act in key_activity[:15]:
+            lines.append(f"• {act}")
+        if len(key_activity) > 15:
+            lines.append(f"  ... +{len(key_activity) - 15} more")
+        lines.append("")
+
+    # --- Created ---
+    if created:
+        lines.append(f"━━━ Created ({len(created)}) ━━━")
+        for ev in created:
+            fixed = re.sub(r'\]\(\./(.+?)\)', r'](assistant_brain/tasks/\1)', ev.raw_line)
+            lines.append(fixed)
+        lines.append("")
+
+    # --- Attention Needed ---
+    if stale_tasks:
+        lines.append(f"━━━ Attention Needed ({len(stale_tasks)}) ━━━")
+        stale_tasks.sort(key=lambda x: ({"P1": 0, "P2": 1, "P3": 2}.get(x[2], 9), -x[1]))
+        for t, days_inactive, prio in stale_tasks[:10]:
+            lines.append(f"⚠️ [{t.id}]({t.path}) {t.title} — {prio}, {days_inactive}d no activity")
+        if len(stale_tasks) > 10:
+            lines.append(f"  ... +{len(stale_tasks) - 10} more")
+        lines.append("")
+
+    # --- Upcoming ---
+    if upcoming:
+        upcoming.sort(key=lambda x: x[1])
+        lines.append(f"━━━ Upcoming (Next 7 Days) ━━━")
+        for t, due_date in upcoming:
+            lines.append(f"• [{t.id}]({t.path}): Due {due_date.isoformat()} ({t.title})")
+        lines.append("")
+
+    # --- Asks Status ---
+    if asks_waiting:
+        lines.append(f"━━━ Pending Asks — Owed to Me ({len(asks_waiting)}) ━━━")
+        for aw in asks_waiting[:8]:
+            lines.append(f"• {aw['task']} ← {aw['person']}: {aw['what']} ({aw['days']}d)")
+        if len(asks_waiting) > 8:
+            lines.append(f"  ... +{len(asks_waiting) - 8} more")
+        lines.append("")
+
+    return '\n'.join(lines)
+
+
+def run_digest(args, today):
+    tasks, events, _, _ = load_tasks_with_asks()
+
+    since_date = None
+    if args.since:
+        try:
+            since_date = date.fromisoformat(args.since)
+        except ValueError:
+            print(f"Invalid date format: {args.since}. Use YYYY-MM-DD.", file=sys.stderr)
+            sys.exit(1)
+
+    print(format_digest(tasks, events, today, days=args.days, since_date=since_date))
+
+
+# --- Timesheet ---
+
+PRIORITY_MULTIPLIER = {"P1": 1.5, "P2": 1.0, "P3": 0.7}
+
+
+def extract_epd(content: str) -> str:
+    m = re.search(r'^\*\*EPD:\*\*\s*(.+)$', content, re.MULTILINE)
+    if m:
+        val = m.group(1).strip()
+        return val if val != '—' else ''
+    return ''
+
+
+def extract_category(content: str) -> str:
+    m = re.search(r'^\*\*Category:\*\*\s*(.+)$', content, re.MULTILINE)
+    return m.group(1).strip() if m else 'Other'
+
+
+TIMESHEET_CATEGORIES = [
+    ("Certification/Campaigns", [
+        "voucher", "certification", "exam", "retake", "bootcamp",
+        "cloud practitioner", "az-900", "ai-900", "ai900", "rhcsa",
+        "digital leader", "ai practitioner", "genai",
+    ]),
+    ("Quarterly Planning", [
+        "training calendar", "training collection", "procurement strategy",
+        "q2 planning", "q3 planning", "q4 planning",
+    ]),
+    ("Governance & Stakeholder Management", [
+        "bur review", "bur ", "highlights submission", "investment outcomes",
+        "roi justification", "nominations",
+    ]),
+    ("LRT Activities", [
+        "l&k", "lrt", "learning report",
+    ]),
+    ("EPD", [
+        "epd",
+    ]),
+]
+
+
+def classify_timesheet_category(title: str, content: str) -> str:
+    title_lower = title.lower()
+    for category, keywords in TIMESHEET_CATEGORIES:
+        for kw in keywords:
+            if kw in title_lower:
+                return category
+    return "Others"
+
+
+def count_activities_in_window(content: str, start_date: date, end_date: date) -> int:
+    entries = parse_timeline_from_file(content)
+    count = 0
+    for entry in entries:
+        try:
+            entry_date = date.fromisoformat(entry["date"])
+        except ValueError:
+            continue
+        if start_date <= entry_date <= end_date:
+            count += 1
+    return count
+
+
+def extract_priority(content: str) -> str:
+    m = re.search(r'^\*\*Priority:\*\*\s*(.+)$', content, re.MULTILINE)
+    return m.group(1).strip() if m else 'P3'
+
+
+def extract_geo(content: str) -> str:
+    m = re.search(r'^\*\*Geo:\*\*\s*(.+)$', content, re.MULTILINE)
+    return m.group(1).strip() if m else 'Global'
+
+
+def extract_task_id_title(content: str) -> tuple:
+    m = re.match(r'^#\s+T(\d+):\s*(.+)$', content, re.MULTILINE)
+    if m:
+        return f"T{m.group(1)}", m.group(2).strip()
+    return "", ""
+
+
+def load_history_tasks_in_window(start_date, end_date):
+    """Scan history/ for tasks with timeline activity within the date window."""
+    history_dir = BRAIN_DIR / 'tasks' / 'history'
+    results = []
+    for quarter_dir in sorted(history_dir.iterdir()):
+        if not quarter_dir.is_dir():
+            continue
+        for task_file in sorted(quarter_dir.glob('T*.md')):
+            content = safe_read(task_file)
+            if not content:
+                continue
+            activity_count = count_activities_in_window(content, start_date, end_date)
+            if activity_count == 0:
+                continue
+            task_id, title = extract_task_id_title(content)
+            if not task_id:
+                continue
+            rel_path = str(task_file.relative_to(PROJECT_ROOT)).replace('\\', '/')
+            t = Task(
+                id=task_id,
+                title=title,
+                status="Completed",
+                priority=extract_priority(content),
+                geo=extract_geo(content),
+                due="",
+                path=rel_path,
+            )
+            results.append((t, content, activity_count))
+    return results
+
+
+def format_timesheet(tasks, today, days=7, since_date=None, total_hours=40.0, history_entries=None):
+    if since_date:
+        start_date = since_date
+    else:
+        start_date = today.date() - timedelta(days=days)
+    end_date = today.date()
+
+    task_weights = []
+    for t in tasks:
+        if t.parent:
+            continue
+        task_file = PROJECT_ROOT / t.path
+        content = safe_read(task_file)
+        if not content:
+            continue
+
+        activity_count = count_activities_in_window(content, start_date, end_date)
+        if activity_count == 0:
+            continue
+
+        priority = t.priority or "P3"
+        multiplier = PRIORITY_MULTIPLIER.get(priority, 1.0)
+        weight = activity_count * multiplier
+        epd = extract_epd(content)
+        category = classify_timesheet_category(t.title, content)
+
+        task_weights.append({
+            "task": t,
+            "weight": weight,
+            "epd": epd,
+            "category": category,
+            "activity_count": activity_count,
+        })
+
+    # Include history tasks
+    if history_entries:
+        for t, content, activity_count in history_entries:
+            priority = t.priority or "P3"
+            multiplier = PRIORITY_MULTIPLIER.get(priority, 1.0)
+            weight = activity_count * multiplier
+            epd = extract_epd(content)
+            category = classify_timesheet_category(t.title, content)
+            task_weights.append({
+                "task": t,
+                "weight": weight,
+                "epd": epd,
+                "category": category,
+                "activity_count": activity_count,
+            })
+
+    if not task_weights:
+        return f"📊 Timesheet: {start_date.isoformat()} → {end_date.isoformat()} | {total_hours}h\n\n(No activity in window)"
+
+    total_weight = sum(tw["weight"] for tw in task_weights)
+
+    for tw in task_weights:
+        raw_hours = (tw["weight"] / total_weight) * total_hours
+        tw["hours"] = round(raw_hours * 2) / 2  # round to 0.5
+
+    # Adjust rounding remainder
+    allocated = sum(tw["hours"] for tw in task_weights)
+    diff = total_hours - allocated
+    if diff != 0:
+        task_weights.sort(key=lambda x: x["weight"], reverse=True)
+        step = 0.5 if diff > 0 else -0.5
+        i = 0
+        while abs(diff) >= 0.25 and i < len(task_weights):
+            task_weights[i]["hours"] += step
+            diff -= step
+            i += 1
+
+    # Group by category → geo
+    cat_groups = {}
+    for tw in task_weights:
+        cat = tw["category"]
+        geo = tw["task"].geo or "Global"
+        cat_groups.setdefault(cat, {}).setdefault(geo, []).append(tw)
+
+    lines = []
+    lines.append(f"## 📊 Timesheet: {start_date.isoformat()} → {end_date.isoformat()} | {total_hours}h")
+    lines.append("")
+
+    for cat in sorted(cat_groups.keys(), key=lambda c: -sum(
+        tw["hours"] for geo in cat_groups[c].values() for tw in geo
+    )):
+        cat_total = sum(tw["hours"] for geo in cat_groups[cat].values() for tw in geo)
+        lines.append(f"### {cat} ({cat_total:.1f}h)")
+        lines.append("")
+
+        for geo in sorted(cat_groups[cat].keys(), key=lambda g: -sum(
+            tw["hours"] for tw in cat_groups[cat][g]
+        )):
+            flag = FLAG_MAP.get(geo, "🌐")
+            geo_total = sum(tw["hours"] for tw in cat_groups[cat][geo])
+            lines.append(f"**{flag} {geo}** ({geo_total:.1f}h)")
+
+            for tw in sorted(cat_groups[cat][geo], key=lambda x: -x["hours"]):
+                epd_display = f"`{tw['epd']}`" if tw['epd'] else "—"
+                lines.append(f"- {tw['task'].id} {tw['task'].title} — **{tw['hours']:.1f}h** · {epd_display}")
+
+            lines.append("")
+
+    return '\n'.join(lines)
+
+
+def run_timesheet(args, today):
+    tasks, _, _, _ = load_tasks_with_asks()
+
+    since_date = None
+    if args.since:
+        try:
+            since_date = date.fromisoformat(args.since)
+        except ValueError:
+            print(f"Invalid date format: {args.since}. Use YYYY-MM-DD.", file=sys.stderr)
+            sys.exit(1)
+
+    # Determine window for history scan
+    if since_date:
+        start_date = since_date
+    else:
+        start_date = today.date() - timedelta(days=args.days)
+    end_date = today.date()
+
+    # Load completed tasks from history/ with activity in window
+    history_entries = load_history_tasks_in_window(start_date, end_date)
+
+    total_hours = getattr(args, 'hours', 40.0)
+    print(format_timesheet(tasks, today, days=args.days, since_date=since_date, total_hours=total_hours, history_entries=history_entries))
+
+
 # --- Main ---
 
 def main():
@@ -673,10 +1144,16 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='No file writes, show what would be archived')
     parser.add_argument('--no-archive', action='store_true', help='Skip archival step')
     parser.add_argument('command', nargs='?', default='startup',
-                        choices=['startup', 'pending', 'pending-out', 'pending-in', 'taskboard', 'events'],
+                        choices=['startup', 'pending', 'pending-out', 'pending-in', 'taskboard', 'events', 'digest', 'timesheet'],
                         help='Command to run (default: startup)')
     parser.add_argument('filter', nargs='?', default='all',
                         help='Filter for events command: all, created, closed, blocked')
+    parser.add_argument('--days', type=int, default=7,
+                        help='Number of days to cover for digest (default: 7)')
+    parser.add_argument('--since', type=str, default=None,
+                        help='Start date for digest/timesheet (YYYY-MM-DD)')
+    parser.add_argument('--hours', type=float, default=40.0,
+                        help='Total hours for timesheet (default: 40)')
 
     args = parser.parse_args()
     today = datetime.now()
@@ -691,6 +1168,10 @@ def main():
         run_pending(args.command, today)
     elif args.command == 'events':
         run_events(args.filter, today)
+    elif args.command == 'digest':
+        run_digest(args, today)
+    elif args.command == 'timesheet':
+        run_timesheet(args, today)
 
 
 def run_pending(mode, today):

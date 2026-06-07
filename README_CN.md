@@ -57,7 +57,9 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
 │  │  │   ├── PROCESS_WORKFLOW.md                            │  │
+│  │  │   ├── FOLLOWUP_WORKFLOW.md                          │  │
 │  │  │   ├── RECORDING_WORKFLOW.md                         │  │
+│  │  │   ├── WEB_WORKFLOW.md                               │  │
 │  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — 外部系统)            │  │
 │  │  │   ├── outlook-skill/    (Outlook COM 后端)          │  │
@@ -75,13 +77,17 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | 功能 | 描述 |
 |------|------|
 | **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、RACI 利益相关方、父子关系、结构化 `Asks`（我欠的 / 别人欠我的）|
-| **视图引擎** | `status T###`(或直接 `T###`) / `待我处理` / `等待` / `before {人}` / `review` —— 跨任务揭示逾期、欠回复、述职素材 |
+| **视图引擎** | `status T###`(或直接 `T###`) / `待我处理` / `等待` / `before {人}` / `review` / `digest` / `timesheet` —— 跨任务揭示逾期、欠回复、述职素材 |
 | **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。三级匹配：ConversationID 线程 → 任务联系人 → 关键词+地区。自动抽取 ask/decision/deadline 写入任务 |
 | **邮件线程追踪** | 基于 ConversationID 的线程匹配——邮件一旦关联到任务，同线程后续邮件自动命中 |
 | **关联邮件发现** | 多策略搜索（线程 + 发件人 + 关键词）实现跨线程发现 |
 | **记忆系统** | 用户偏好、认知盲点模式、外部联系人、成就（述职事实库）|
 | **成就自动捕获** | 任务完成时 AI 从 `[decision]` / `[milestone]` / `[delivery]` 标签的 Timeline 抽取述职素材 |
 | **流程智能** | 自动匹配任务到流程模板，建议下一步行动+联系人。Email sync 时检测未记录的流程步骤，重复模式自动固化为流程文件 |
+| **催办自动化** | 检测超期任务，自动起草语气适配的催办邮件，追踪催办历史 |
+| **网页搜索与浏览** | 通过 Tavily MCP 搜索网页、提取页面内容、爬取站点、深度调研 |
+| **周报生成** | 自动生成过去一周的任务活动、完成情况、关键事件摘要 |
+| **工时生成** | 按 Geo → Category 分组进行自上而下工时分配，含 EPD 编号 |
 | **定期任务** | 自动创建定期任务（月度报告、季度流程） |
 | **Office 文档** | 通过 `minimax-xlsx` skill 创建/读取/编辑/分析 Excel 文件 |
 | **可扩展技能** | 通过模块化技能系统添加新能力 |
@@ -138,11 +144,14 @@ BrainClaw/
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── PROCESS_WORKFLOW.md        # 流程匹配、自动推进、学习
+    │   ├── FOLLOWUP_WORKFLOW.md       # 催办 / 追踪 / 提醒
     │   ├── RECORDING_WORKFLOW.md
-    │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
+    │   ├── WEB_WORKFLOW.md            # 网页搜索与页面提取 (Tavily)
+    │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review/digest/timesheet
     ├── contacts.md          ⭐ # 联系人唯一数据源（语气、邮箱、角色、流程角色）
     ├── scripts/                 # Python 自动化脚本
-    │   └── dashboard.py            # 启动面板、taskboard、pending 视图
+    │   ├── dashboard.py            # 启动面板、taskboard、pending、digest、timesheet
+    │   └── followup.py             # 超期任务检测（供催办工作流使用）
     ├── memory/                  # 用户衍生数据（系统从用户身上学到的）
     │   ├── preferences.md       ⭐ # 用户偏好（语气、时间格式等）
     │   ├── things_to_avoid.md   ⭐ # 认知盲点模式 + 战术 Don'ts
@@ -198,7 +207,11 @@ BrainClaw/
 | **看完整任务清单** | "全部任务"、"完整队列"、"show all" | 重新渲染启动同款分组任务列表 |
 | **任务操作** | "新建任务"、"完成 T033"、"block T040"、"create/update/complete/block task" | 任务生命周期 |
 | **流程推进** | "next step T033"、"推进 T033"、"下一步"、"固化流程" | 匹配流程模板，建议下一步行动+联系人；固化重复模式 |
+| **催办 / 追踪** | "follow up"、"催办"、"chase"、"nudge T033"、"提醒一下" | 检测超期任务，起草语气适配的催办邮件 |
 | **邮件操作** | "查邮件"、"找 Beng 的邮件"、"draft email"、"reply"、"forward" | 邮件生命周期(现在自动抽取写入任务) |
+| **网页搜索** | "search DO188"、"搜索"、"查一下"、"look up"、"查看网页" | 通过 Tavily 搜索或提取网页内容 |
+| **周报** | "digest"、"周报"、"weekly summary"、"this week" | 自动生成过去7天的任务活动摘要 |
+| **工时** | "timesheet"、"工时"、"time allocation" | 按 Geo → Category 分组的工时分配表 |
 
 ## 任务管理特性
 
@@ -252,8 +265,10 @@ OPERATIONAL_RULES.md (核心策略)
 │  - TASK_WORKFLOW                         │     流程匹配、自动推进、
 │  - EMAIL_WORKFLOW                        │     关键词提取、邮件撰写、
 │  - PROCESS_WORKFLOW                      │     流程学习与固化、成就抽取、
-│  - RECORDING_WORKFLOW                    │     视图(status/owed/waiting/
-│  - VIEWS_WORKFLOW                        │     before/...) 等
+│  - FOLLOWUP_WORKFLOW                     │     催办自动化、网页搜索、
+│  - RECORDING_WORKFLOW                    │     周报与工时生成、
+│  - WEB_WORKFLOW                          │     视图(status/owed/waiting/
+│  - VIEWS_WORKFLOW                        │     before/digest/timesheet/...)
 └──────────────┬───────────────────────────┘
                ↓ （仅在需要 I/O 时调用）
 ┌──────────────────────────────────────────┐
@@ -275,7 +290,8 @@ OPERATIONAL_RULES.md (核心策略)
 | **状态持久化** | 基于文件的存储，跨会话保持记忆、日志和配置 |
 | **交互式响应** | 用户触发后执行任务（请求-响应模式） |
 | **模块化扩展** | 通过 `skills/` 添加新能力，无需修改核心代码 |
-| **本地自治** | 所有数据留在本地；无需外部服务（除 AI IDE 本身） |
+| **网页搜索与浏览** | 通过 Tavily MCP 搜索网页、提取页面、深度调研 |
+| **本地自治** | 所有数据留在本地；无需外部服务（除 AI IDE + Tavily API） |
 | **学习系统** | 从交互中学习并更新记忆文件 |
 | **流程智能** | 自动匹配流程模板、推进建议、未记录步骤检测、模式固化 |
 | **定期任务** | 定期任务按计划自动触发 |

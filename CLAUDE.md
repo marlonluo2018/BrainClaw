@@ -14,6 +14,8 @@
 
 **Taskboard refresh:** `py -3 assistant_brain/scripts/dashboard.py taskboard`
 **Pending views:** `py -3 assistant_brain/scripts/dashboard.py pending` | `pending-out` | `pending-in`
+**Weekly digest:** `py -3 assistant_brain/scripts/dashboard.py digest` | "周报"
+**Timesheet:** `py -3 assistant_brain/scripts/dashboard.py timesheet` | "timesheet" | "工时"
 
 ## Identity & Principles
 
@@ -36,8 +38,10 @@ Personal assistant for office productivity (IBM Learning Consultant context).
 | Email | "check email", "draft", "reply", "forward", "email sync" | `assistant_brain/workflows/EMAIL_WORKFLOW.md` |
 | Task | "create task", "update task", "complete task", "block task" | `assistant_brain/workflows/TASK_WORKFLOW.md` |
 | Process | "next step", "推进", "下一步", "what process", "固化流程" | `assistant_brain/workflows/PROCESS_WORKFLOW.md` |
+| Follow-up | "follow up", "催办", "chase", "nudge", "提醒一下" | `assistant_brain/workflows/FOLLOWUP_WORKFLOW.md` |
 | Recording | "record event", "archive events" | `assistant_brain/workflows/RECORDING_WORKFLOW.md` |
-| Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard` | `assistant_brain/workflows/VIEWS_WORKFLOW.md` |
+| Web | "search", "搜索", "查一下", "look up", "open URL", "查看网页", "抓取" | `assistant_brain/workflows/WEB_WORKFLOW.md` |
+| Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard`, `digest`, `timesheet` | `assistant_brain/workflows/VIEWS_WORKFLOW.md` |
 
 ### Skills
 

@@ -57,7 +57,9 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
 │  │  │   ├── PROCESS_WORKFLOW.md                            │  │
+│  │  │   ├── FOLLOWUP_WORKFLOW.md                          │  │
 │  │  │   ├── RECORDING_WORKFLOW.md                         │  │
+│  │  │   ├── WEB_WORKFLOW.md                               │  │
 │  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — external systems)    │  │
 │  │  │   ├── outlook-skill/    (Outlook COM backend)       │  │
@@ -75,13 +77,17 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 | Feature | Description |
 |---------|-------------|
 | **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, RACI stakeholders, Parent-Child relationships, structured `Asks` (owed by me / owed to me) |
-| **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `review` — surface what's overdue, owed, and 述职-worthy across all tasks |
+| **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `review`, `digest`, `timesheet` — surface what's overdue, owed, and 述职-worthy across all tasks |
 | **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. Three-tier matching: ConversationID thread → task contacts → keyword+geo. Auto-extracts asks/decisions/deadlines into task slots |
 | **Email Thread Tracking** | ConversationID-based thread matching — once an email is linked to a task, all future emails in the same thread auto-match |
 | **Related Email Discovery** | Multi-strategy search (thread + sender + keyword) for cross-thread discovery |
 | **Memory System** | Preferences, cognitive blind-spot patterns, contacts, achievements (述职 fact base) |
 | **Achievement Auto-capture** | Task completion prompts the AI to extract 述职 material from `[decision]` / `[milestone]` / `[delivery]` Timeline entries |
 | **Process Intelligence** | Auto-match tasks to process templates, suggest next actions + contacts. Detect undocumented process steps during email sync and codify recurring patterns into process files |
+| **Follow-up Automation** | Detect stale tasks, draft follow-up emails with tone-aware templates, track chase history |
+| **Web Search & Browse** | Search the web, extract page content, crawl sites, deep research via Tavily MCP |
+| **Weekly Digest** | Auto-generated weekly summary of task activity, completions, and key events |
+| **Timesheet Generation** | Top-down hour allocation across tasks grouped by Geo → Category with EPD numbers |
 | **Recurring Tasks** | Auto-create scheduled tasks (monthly reports, quarterly invoices, etc.) |
 | **Office Documents** | Create/read/edit/analyze Excel files via `minimax-xlsx` skill |
 | **Extensible Skills** | Add new capabilities through modular skill system |
@@ -137,11 +143,14 @@ BrainClaw/
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── PROCESS_WORKFLOW.md        # Process matching, auto-advance, learning
+    │   ├── FOLLOWUP_WORKFLOW.md       # Chase / nudge / remind stakeholders
     │   ├── RECORDING_WORKFLOW.md
+    │   ├── WEB_WORKFLOW.md            # Web search & page extraction (Tavily)
     │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
     ├── contacts.md          ⭐ # Single source of truth for people (tone, email, role, process roles)
     ├── scripts/                 # Python automation scripts
-    │   └── dashboard.py            # Startup display, taskboard, pending views
+    │   ├── dashboard.py            # Startup display, taskboard, pending, digest, timesheet
+    │   └── followup.py             # Stale task detection for follow-up workflow
     ├── memory/                  # User-derived data (learned over time)
     │   ├── preferences.md       ⭐ # User preferences (tone, time format, etc.)
     │   ├── things_to_avoid.md   ⭐ # Cognitive blind-spot patterns + tactical Don'ts
@@ -177,7 +186,11 @@ BrainClaw/
 | **See full task list** | "show all", "全部任务", "完整队列" | Same output as startup — re-render the grouped task list |
 | **Task operations** | "新建任务", "完成 T033", "block T040", "create/update/complete/block task" | Task lifecycle |
 | **Process / next step** | "next step T033", "推进 T033", "下一步", "固化流程" | Match task to process template, suggest next action + contact; codify recurring patterns |
+| **Follow-up / chase** | "follow up", "催办", "chase", "nudge T033", "提醒一下" | Detect stale tasks, draft follow-up emails with appropriate tone |
 | **Email operations** | "查邮件", "找 X 的邮件", "draft email", "reply", "forward" | Email lifecycle (now with auto-extraction into tasks) |
+| **Web search** | "search DO188", "搜索", "查一下", "look up", "查看网页" | Search the web or extract content from URLs via Tavily |
+| **Weekly digest** | "digest", "周报", "weekly summary", "this week" | Auto-generated summary of task activity over the past 7 days |
+| **Timesheet** | "timesheet", "工时", "time allocation" | Hour allocation across tasks grouped by Geo → Category |
 
 ## Task Management Features
 
@@ -231,7 +244,9 @@ OPERATIONAL_RULES.md (Core policies)
 │  - TASK_WORKFLOW                         │     Process matching, auto-advance,
 │  - EMAIL_WORKFLOW                        │     keyword extraction, composition
 │  - PROCESS_WORKFLOW                      │     guidelines, achievement extraction,
-│  - RECORDING_WORKFLOW                    │     process learning & codification,
+│  - FOLLOWUP_WORKFLOW                     │     process learning & codification,
+│  - RECORDING_WORKFLOW                    │     follow-up automation, web search,
+│  - WEB_WORKFLOW                          │     digest & timesheet generation,
 │  - VIEWS_WORKFLOW                        │     views (status/owed/waiting/...)
 └──────────────┬───────────────────────────┘
                ↓ (only when external I/O needed)
@@ -254,7 +269,8 @@ OPERATIONAL_RULES.md (Core policies)
 | **State Persistence** | File-based storage keeps memory, logs, and config across sessions |
 | **Interactive Response** | Execute tasks when triggered by user (request-response pattern) |
 | **Modular Extension** | Add new capabilities through `skills/` without modifying core |
-| **Local Autonomy** | All data stays local; no external services required (except AI IDE) |
+| **Web Search & Browse** | Search the web, extract pages, deep research via Tavily MCP server |
+| **Local Autonomy** | All data stays local; no external services required (except AI IDE + Tavily API) |
 | **Learning System** | Learns from interactions and updates memory files |
 | **Process Management** | Structured process tracking grouped by geography |
 | **Scheduled Tasks** | Recurring tasks auto-trigger on schedule |

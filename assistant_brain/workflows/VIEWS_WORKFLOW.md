@@ -70,6 +70,37 @@ Suggested agenda:
 
 ---
 
+## digest
+
+**Triggers:** "digest", "周报", "weekly summary", "this week"
+
+Run: `py -3 assistant_brain/scripts/dashboard.py digest [--days N] [--since YYYY-MM-DD]`
+
+Defaults to last 7 days. Copy the ENTIRE stdout output as the response.
+
+Options:
+
+- `--days N` — look back N days instead of 7
+- `--since YYYY-MM-DD` — start from a specific date
+
+---
+
+## timesheet
+
+**Triggers:** "timesheet", "工时", "time allocation", "hours"
+
+Run: `py -3 assistant_brain/scripts/dashboard.py timesheet [--days N] [--since YYYY-MM-DD] [--hours H]`
+
+Top-down allocation of 40h (default) across tasks with activity in the window, grouped by Geo → Category. Shows EPD numbers.
+
+Options:
+
+- `--days N` — look back N days instead of 7
+- `--since YYYY-MM-DD` — start from a specific date
+- `--hours H` — total hours to allocate (default: 40)
+
+---
+
 ## review {period}
 
 1. Resolve period (Q1-Q4, H1/H2, annual). Ask if ambiguous.
