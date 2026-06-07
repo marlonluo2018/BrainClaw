@@ -62,9 +62,9 @@ For each selected task:
    - Process Contact → direct, reference specific step/PO/ticket number
    - External vendor → polite, reference contract/quotation/order number
    - Peer/Executor → friendly, helpful
-3. **Compose email** using outlook-skill:
+3. **Compose email** using outlook-com-skill:
    ```
-   py -3 "assistant_brain/skills/outlook-skill/scripts/compose.py" --to "{email}" --subject "Re: {task title}" --body "{draft}"
+   py -3 "assistant_brain/skills/outlook-com-skill/scripts/compose.py" --to "{email}" --subject "Re: {task title}" --body "{draft}"
    ```
 
 **Email template guidance:**
@@ -100,7 +100,7 @@ To: {email}
 
 ### 4. Send on Approval
 
-- `send` → Use outlook-skill `send-draft`
+- `send` → Use outlook-com-skill `send-draft`
 - `edit` → User modifies, then send
 - `skip` → Move to next task
 
@@ -127,5 +127,5 @@ When user says "follow up T###" or "催办 T###":
 |--------|-------------|
 | Dashboard startup | Shows stale count indicator (e.g., "⚠️ 3 tasks stale") |
 | Process Workflow | Reuses process matching for step identification |
-| Email Workflow | Follows same tone rules; uses outlook-skill for compose/send |
+| Email Workflow | Follows same tone rules; uses outlook-com-skill for compose/send |
 | Task Workflow | Updates task timeline after follow-up sent |

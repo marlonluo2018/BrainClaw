@@ -49,7 +49,7 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │           Skills Layer (I/O — external systems)             │
-│  outlook-skill | minimax-xlsx | skill-creator                        │
+│  outlook-com-skill | minimax-xlsx | skill-creator                        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -99,7 +99,7 @@ BrainClaw/
 │   │   └── dashboard.py          # Startup display, taskboard, pending views
 │   │
 │   ├── skills/                   # I/O against external systems
-│   │   ├── outlook-skill/        # Outlook COM (find/thread/compose)
+│   │   ├── outlook-com-skill/        # Outlook COM (find/thread/compose)
 │   │   ├── minimax-xlsx/         # Excel file I/O
 │   │   └── skill-creator/        # Author new skills
 │   │
@@ -174,7 +174,7 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 | Workflow | Purpose | I/O Skills Used |
 |----------|---------|-----------------|
 | `TASK_WORKFLOW.md` | Task CRUD, keyword extraction, achievement extraction on completion | (none — pure file ops) |
-| `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction | `outlook-skill` |
+| `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction | `outlook-com-skill` |
 | `PROCESS_WORKFLOW.md` | Process matching, auto-advance suggestions, process learning from email patterns, codification | (none — pure file ops) |
 | `RECORDING_WORKFLOW.md` | Event recording, memory recording, archival | (none — pure file ops) |
 | `VIEWS_WORKFLOW.md` | Per-task and cross-task views: status, owed, waiting, before, review/述职 | (none — pure file ops) |
@@ -187,7 +187,7 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 
 **Steps:**
 1. Action → (inline business logic, e.g. read queue.md)
-2. Action → Call `outlook-skill` find-recent
+2. Action → Call `outlook-com-skill` find-recent
 3. ...
 ```
 
@@ -224,7 +224,7 @@ Skills are **modular I/O implementations** that workflows call when they need to
 
 | Skill | Purpose | External system |
 |-------|---------|-----------------|
-| `outlook-skill` | Find/thread/compose/forward email | Microsoft Outlook (COM) |
+| `outlook-com-skill` | Find/thread/compose/forward email | Microsoft Outlook (COM) |
 | `minimax-xlsx` | Create/read/edit/analyze Excel files | `.xlsx`, `.xlsm`, `.csv` |
 | `skill-creator` | Scaffold new skills | (meta) |
 
@@ -239,10 +239,10 @@ skills/
 
 ### 4.6 Outlook Skill Architecture
 
-The `outlook-skill` is a self-contained Python application that interfaces with Microsoft Outlook via COM. It is **decoupled from BrainClaw** — the skill has its own config, backend, and CLI and can run standalone.
+The `outlook-com-skill` is a self-contained Python application that interfaces with Microsoft Outlook via COM. It is **decoupled from BrainClaw** — the skill has its own config, backend, and CLI and can run standalone.
 
 ```
-skills/outlook-skill/
+skills/outlook-com-skill/
 ├── SKILL.md                  # Command reference & triggers for AI
 ├── scripts/
 │   └── outlook_skill.py      # CLI entry point (all commands)
@@ -273,7 +273,7 @@ skills/outlook-skill/
 
 **Design Principles:**
 - **Decoupled**: No imports from BrainClaw. Works standalone with `py -3 scripts/outlook_skill.py`.
-- **Workflow-agnostic**: Workflows reference skills abstractly ("use outlook-skill to find emails"); exact CLI commands are in SKILL.md.
+- **Workflow-agnostic**: Workflows reference skills abstractly ("use outlook-com-skill to find emails"); exact CLI commands are in SKILL.md.
 - **Command convention**: All search uses `find-*` prefix (`find`, `find-recent`, `find-thread`, `find-related`).
 - **Scope strategy**: Regular search defaults to Inbox only (sent emails are tracked in tasks); thread/related auto-include Sent Items.
 - **Event detection**: Meeting invites detected via Outlook `MeetingStatus`; event announcements via subject/sender heuristics.
@@ -449,10 +449,10 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 | System Prompt | Startup & loading rules | CLAUDE.md |
 | Brain Files | Knowledge & settings | SOUL, CONFIG, memory |
 | Workflows | Orchestration + business logic | TASK_WORKFLOW, EMAIL_WORKFLOW |
-| Skills | I/O against external systems | outlook-skill, xlsx |
+| Skills | I/O against external systems | outlook-com-skill, xlsx |
 | Data | Persistence | Task files, registry |
 
-**Key principle**: Workflows reference skills abstractly ("use outlook-skill to find thread"). Exact CLI commands live in `SKILL.md`. Skills are self-contained and project-agnostic.
+**Key principle**: Workflows reference skills abstractly ("use outlook-com-skill to find thread"). Exact CLI commands live in `SKILL.md`. Skills are self-contained and project-agnostic.
 
 ### 6.2 On-Demand Loading
 
@@ -546,7 +546,7 @@ Always format IDs as clickable links:
 ```
 - **Count skills:** Count directories under `assistant_brain/skills/` that have a `SKILL.md`
 - **List skills:** Extract `name:` from each skill's frontmatter
-- Example: `• Skills: 3 (outlook-skill, minimax-xlsx, skill-creator)`
+- Example: `• Skills: 3 (outlook-com-skill, minimax-xlsx, skill-creator)`
 
 ---
 

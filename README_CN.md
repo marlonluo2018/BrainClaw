@@ -62,7 +62,7 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  │   ├── WEB_WORKFLOW.md                               │  │
 │  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — 外部系统)            │  │
-│  │  │   ├── outlook-skill/    (Outlook COM 后端)          │  │
+│  │  │   ├── outlook-com-skill/    (Outlook COM 后端)          │  │
 │  │  │   ├── minimax-xlsx/     (Excel 读写)                │  │
 │  │  │   └── skill-creator/    (新技能脚手架)              │  │
 │  │  ├── tasks/                (任务队列)                  │  │
@@ -98,7 +98,7 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 
 | 技能 | 用途 | 外部系统 |
 |------|------|----------|
-| **outlook-skill** | 查找、线程、关联、撰写、回复、批量转发 | Microsoft Outlook (COM) |
+| **outlook-com-skill** | 查找、线程、关联、撰写、回复、批量转发 | Microsoft Outlook (COM) |
 | **minimax-xlsx** | 创建、读取、编辑、分析 Excel/电子表格文件 | `.xlsx`、`.xlsm`、`.csv` |
 | **skill-creator** | 新技能脚手架 | (元) |
 
@@ -158,7 +158,7 @@ BrainClaw/
     │   ├── achievements.md         # 述职事实库（任务完成时自动喂养）
     │   └── vendor-accounts.md      # 供应商门户账号与凭证
     ├── skills/                  # 与外部系统交互的 I/O
-    │   ├── outlook-skill/        # Outlook COM — Python 后端 + CLI
+    │   ├── outlook-com-skill/        # Outlook COM — Python 后端 + CLI
     │   │   ├── SKILL.md          #   命令参考
     │   │   ├── scripts/          #   CLI 入口点
     │   │   └── backend/          #   搜索、撰写、会话管理
@@ -273,7 +273,7 @@ OPERATIONAL_RULES.md (核心策略)
                ↓ （仅在需要 I/O 时调用）
 ┌──────────────────────────────────────────┐
 │  Skills（I/O — 外部系统）                │
-│  - outlook-skill/  Outlook COM           │
+│  - outlook-com-skill/  Outlook COM           │
 │  - minimax-xlsx/   Excel 文件            │
 │  - skill-creator/  元技能                │
 └──────────────────────────────────────────┘

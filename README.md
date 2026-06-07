@@ -62,7 +62,7 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  │   ├── WEB_WORKFLOW.md                               │  │
 │  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — external systems)    │  │
-│  │  │   ├── outlook-skill/    (Outlook COM backend)       │  │
+│  │  │   ├── outlook-com-skill/    (Outlook COM backend)       │  │
 │  │  │   ├── minimax-xlsx/     (Excel I/O)                 │  │
 │  │  │   └── skill-creator/    (scaffold new skills)       │  │
 │  │  ├── tasks/                (task queue)                │  │
@@ -98,7 +98,7 @@ Skills are reserved for I/O against external systems. Business logic (task lifec
 
 | Skill | Purpose | External system |
 |-------|---------|-----------------|
-| **outlook-skill** | Find, thread, related, compose, reply, batch-forward | Microsoft Outlook (COM) |
+| **outlook-com-skill** | Find, thread, related, compose, reply, batch-forward | Microsoft Outlook (COM) |
 | **minimax-xlsx** | Create, read, edit, analyze Excel/spreadsheet files | `.xlsx`, `.xlsm`, `.csv` |
 | **skill-creator** | Scaffold a new skill | (meta) |
 
@@ -157,7 +157,7 @@ BrainClaw/
     │   ├── achievements.md         # 述职 fact base (auto-fed from Complete Task)
     │   └── vendor-accounts.md      # Vendor portal accounts & credentials
     ├── skills/                  # I/O against external systems
-    │   ├── outlook-skill/        # Outlook COM — Python backend + CLI
+    │   ├── outlook-com-skill/        # Outlook COM — Python backend + CLI
     │   │   ├── SKILL.md          #   Command reference
     │   │   ├── scripts/          #   CLI entry point
     │   │   └── backend/          #   Search, compose, session mgmt
@@ -252,7 +252,7 @@ OPERATIONAL_RULES.md (Core policies)
                ↓ (only when external I/O needed)
 ┌──────────────────────────────────────────┐
 │   Skills (I/O — external systems)        │
-│  - outlook-skill/  Outlook COM           │
+│  - outlook-com-skill/  Outlook COM           │
 │  - minimax-xlsx/   Excel files           │
 │  - skill-creator/  meta                  │
 └──────────────────────────────────────────┘
