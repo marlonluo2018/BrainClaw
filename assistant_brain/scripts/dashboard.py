@@ -501,6 +501,9 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
                     lines.append(f"  - → {ask}")
                 for ask in t.asks_in:
                     lines.append(f"  - ← {ask}")
+                # Warn if open task has no pending items and no subtasks with pending
+                if not t.asks_in and not t.asks_out and not t.subtasks:
+                    lines.append(f"  - ⚠️ **no pending** — add an active item to `Owed to me`")
 
                 # Subtasks
                 for sub in t.subtasks:
@@ -510,6 +513,8 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
                         lines.append(f"    - → {ask}")
                     for ask in sub.asks_in:
                         lines.append(f"    - ← {ask}")
+                    if not sub.asks_in and not sub.asks_out:
+                        lines.append(f"    - ⚠️ **no pending** — add an active item to `Owed to me`")
 
             lines.append("")
 

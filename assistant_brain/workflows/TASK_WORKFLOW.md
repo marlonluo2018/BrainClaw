@@ -48,8 +48,9 @@
    - When ambiguous which existing item is being closed, ask before flipping/removing.
 6a. **Reclassify Current State items that are actually Asks.** Scan `## Current State` for items that have an external recipient (an action like "send X to {person}" / "notify {team}" / "deliver to {role}"). For each such item, propose to upgrade it to `Asks > Owed by me` and remove from Current State (or leave if it's also a meaningful internal step). This keeps cross-task views (`owed`/`waiting`) accurate. Apply the [Asks vs Current State](../tasks/FORMATS.md#asks) rules from FORMATS.md. Ask user before moving — don't auto-rewrite long-standing items silently.
 7. After approval, update task file (status, fields, Asks, timeline entry)
-8. Update queue.md if status/priority/due changed (see [Queue Update](#queue-update))
-9. Notify user of changes
+8. **Pending-item gate (mandatory):** After every update, verify the task has at least one active (non-struck-through) item in `### Owed to me`. If all items are struck through or the section is empty, the task MUST have a new pending item added before the update is considered complete. Principle: *"if it is not closed, there should be something waiting."* If you cannot determine the next waiting item, ask the user.
+9. Update queue.md if status/priority/due changed (see [Queue Update](#queue-update))
+10. Notify user of changes
 
 **Update Types:**
 
