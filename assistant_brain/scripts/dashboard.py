@@ -13,14 +13,13 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-BRAIN_DIR = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = BRAIN_DIR.parent
+from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS
+
 EVENTS_WINDOW_DAYS = 14
 MAX_CONTACTS_DISPLAY = 10
 
 STATUS_ICONS = {"Not Started": "📋", "In Progress": "⏳", "Blocked": "🔴"}
 ICON_TO_STATUS = {"📋": "Not Started", "⏳": "In Progress", "🔴": "Blocked"}
-STALE_THRESHOLDS = {"P1": 2, "P2": 5, "P3": 10}
 
 FLAG_MAP = {
     "China": "🇨🇳",
@@ -1270,4 +1269,21 @@ def run_startup(args, today):
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"## ⚠️ Dashboard Error — Degraded Mode\n", file=sys.stdout)
+        print(f"Script error: `{type(e).__name__}: {e}`\n", file=sys.stdout)
+        # Fallback: show raw queue.md task list
+        queue_path = BRAIN_DIR / 'tasks' / 'queue.md'
+        try:
+            content = queue_path.read_text(encoding='utf-8')
+            lines = [l for l in content.split('\n') if l.startswith('## T') or l.startswith('### ↳')]
+            if lines:
+                print("Active tasks (raw):\n")
+                for l in lines:
+                    print(f"  {l}")
+        except Exception:
+            print("Cannot read queue.md — check file system.")
+        print(f"\nFix the error and run `start` again.", file=sys.stdout)
+        sys.exit(1)

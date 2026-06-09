@@ -50,9 +50,6 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │                        ↓                                     │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │  Brain 文件 (assistant_brain/)                        │  │
-│  │  ├── SOUL.md               (身份与价值观)              │  │
-│  │  ├── OPERATIONAL_RULES.md  (策略)                      │  │
-│  │  ├── CONFIG.md             (参数)                      │  │
 │  │  ├── workflows/            (编排 + 业务逻辑)           │  │
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
@@ -78,7 +75,7 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 |------|------|
 | **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、RACI 利益相关方、父子关系、结构化 `Asks`（我欠的 / 别人欠我的）|
 | **视图引擎** | `status T###`(或直接 `T###`) / `待我处理` / `等待` / `before {人}` / `review` / `digest` / `timesheet` —— 跨任务揭示逾期、欠回复、述职素材 |
-| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。三级匹配：ConversationID 线程 → 任务联系人 → 关键词+地区。自动抽取 ask/decision/deadline 写入任务 |
+| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。三级匹配：ConversationID 线程 → 任务联系人 → 关键词+地区。自动抽取 ask/decision/deadline 写入任务。所有发送命令自动输出 EntryID 供 Timeline 追踪 |
 | **邮件线程追踪** | 基于 ConversationID 的线程匹配——邮件一旦关联到任务，同线程后续邮件自动命中 |
 | **关联邮件发现** | 多策略搜索（线程 + 发件人 + 关键词）实现跨线程发现 |
 | **记忆系统** | 用户偏好、认知盲点模式、外部联系人、成就（述职事实库）|
@@ -98,7 +95,7 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 
 | 技能 | 用途 | 外部系统 |
 |------|------|----------|
-| **outlook-com-skill** | 查找、线程、关联、撰写、回复、批量转发 | Microsoft Outlook (COM) |
+| **outlook-com-skill** | 查找、线程、关联、撰写、回复、全部回复、转发、重定向、批量转发 | Microsoft Outlook (COM) |
 | **minimax-xlsx** | 创建、读取、编辑、分析 Excel/电子表格文件 | `.xlsx`、`.xlsm`、`.csv` |
 | **skill-creator** | 新技能脚手架 | (元) |
 
@@ -113,8 +110,11 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | `find-thread` | 收件箱 + 已发送 | 拉取完整对话链 |
 | `find-related` | 收件箱 + 已发送 | 发现跨线程关联邮件 |
 | `get-email` | — | 通过 entry_id 查看完整邮件 |
+| `compose` / `reply` / `replyall` / `forward` / `redirect` | — | 发送邮件（发送后自动输出 EntryID） |
 
 **策略：** 已发送邮件在任务文件中追踪（`## Email References`）。`find` 和 `find-recent` 默认仅搜索收件箱。线程和关联搜索自动包含已发送邮件以确保完整性。
+
+**EntryID 追踪：** 所有发送命令（`compose`、`reply`、`replyall`、`forward`、`redirect`）发送后自动输出邮件的 `EntryID`。用于在任务 Timeline 中添加 `<!-- email:ID -->` 标记，实现可靠的邮件追溯。追踪遵循统一的**关键邮件标准**（收发一致）：包含请求/审批/决策/承诺的邮件、交付/请求交付物的邮件、任务里程碑邮件、或可能需要后续回复/转发的邮件。纯 FYI 确认（"noted"、"thanks"、"got it"）豁免。
 
 **邮件↔任务匹配（三级优先）：**
 
@@ -133,9 +133,6 @@ BrainClaw/
 ├── README_CN.md                        # 中文说明（本文件）
 ├── ARCHITECTURE.md                     # 系统架构
 └── assistant_brain/
-    ├── SOUL.md               ⭐ # 身份与价值观（不变的核心）
-    ├── OPERATIONAL_RULES.md  ⭐ # 核心策略
-    ├── CONFIG.md             ⭐ # 系统参数（用户信息、格式）
     ├── views_config.md       ⭐ # 视图命令的阈值与默认值
     ├── recurring_tasks.md    ⭐ # 定期任务定义
     ├── process/
@@ -177,9 +174,6 @@ BrainClaw/
 
 | 文件 | 用途 |
 |------|------|
-| `SOUL.md` | 核心身份与原则 |
-| `OPERATIONAL_RULES.md` | 行为策略与政策 |
-| `CONFIG.md` | 用户设置与格式定义 |
 | `memory/preferences.md` | 用户偏好 |
 | `memory/things_to_avoid.md` | 认知盲点模式 + 战术 Don'ts |
 | `views_config.md` | 视图命令的阈值与默认值 |
@@ -256,9 +250,7 @@ BrainClaw 跨会话学习和记忆：
 BrainClaw 采用分层架构，更好地组织代码：
 
 ```
-CLAUDE.md (启动规则)
-        ↓
-OPERATIONAL_RULES.md (核心策略)
+CLAUDE.md (单一可信源 — 启动规则 + 核心策略)
         ↓
 ┌──────────────────────────────────────────┐
 │  Workflows（编排 + 业务逻辑）            │  ← 所有业务逻辑都在这里

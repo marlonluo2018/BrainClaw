@@ -12,28 +12,7 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-BRAIN_DIR = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = BRAIN_DIR.parent
-
-STALE_THRESHOLDS = {"P1": 2, "P2": 5, "P3": 10}
-
-PROCESS_MATCH_RULES = [
-    {"keywords": ["procurement", "vendor", "po", "offcycle", "新增"], "geo": "China", "file": "china/offcycle-budget-approval.md"},
-    {"keywords": ["procurement", "vendor", "po"], "geo": "Philippines", "file": "philippines/vendor-procurement.md"},
-    {"keywords": ["voucher", "aws"], "geo": "Philippines", "file": "philippines/aws-voucher-issuance.md"},
-    {"keywords": ["voucher", "azure"], "geo": "Philippines", "file": "philippines/azure-voucher-issuance.md"},
-    {"keywords": ["retake", "failed", "补考"], "geo": "Philippines", "file": "philippines/exam-retake.md"},
-    {"keywords": ["reimbursement", "报销"], "geo": "China", "file": "china/futurenow-quarterly-reimbursement.md"},
-    {"keywords": ["snowflake"], "geo": None, "file": "global/snowflake-certification.md"},
-    {"keywords": ["google", "gcp"], "geo": None, "file": "global/google-exam-voucher-discount.md"},
-]
-
-
-def safe_read(path: Path) -> str:
-    try:
-        return path.read_text(encoding='utf-8')
-    except (FileNotFoundError, UnicodeDecodeError):
-        return ""
+from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS, PROCESS_MATCH_RULES, safe_read
 
 
 def parse_queue_tasks(content: str) -> list:
@@ -82,6 +61,7 @@ def parse_task_file(content: str) -> dict:
         "last_timeline_date": None,
         "timeline_entries": [],
         "asks_in": [],
+        "asks_out": [],
         "current_state_items": [],
         "contacts": [],
     }
@@ -147,6 +127,18 @@ def parse_task_file(content: str) -> dict:
             am = re.match(r'^- (.+?) ← (.+?): (.+)$', line)
             if am:
                 result["asks_in"].append({
+                    "date": am.group(1).strip(),
+                    "person": am.group(2).strip(),
+                    "what": am.group(3).strip(),
+                })
+
+        # Parse owed-by-me asks
+        elif section == 'asks_out':
+            if line.strip().startswith('- ~~') or line.strip().startswith('- [x]'):
+                continue
+            am = re.match(r'^- \[.\]\s*(.+?) → (.+?): (.+)$', line)
+            if am:
+                result["asks_out"].append({
                     "date": am.group(1).strip(),
                     "person": am.group(2).strip(),
                     "what": am.group(3).strip(),
@@ -281,20 +273,21 @@ def find_stale_tasks(today: date, target_task: str = None) -> list:
             "last_activity": last_date_str,
         }
 
-        # Waiting on (oldest pending ask owed to me)
+        # All pending asks owed to me
         if parsed["asks_in"]:
-            oldest_ask = parsed["asks_in"][0]
-            ask_date = oldest_ask["date"]
-            try:
-                ask_days = (today - date.fromisoformat(ask_date)).days
-            except ValueError:
-                ask_days = None
-            entry["waiting_on"] = {
-                "person": oldest_ask["person"],
-                "ask": oldest_ask["what"],
-                "since": ask_date,
-                "days_waiting": ask_days,
-            }
+            entry["waiting_on"] = []
+            for ask in parsed["asks_in"]:
+                ask_date = ask["date"]
+                try:
+                    ask_days = (today - date.fromisoformat(ask_date)).days
+                except ValueError:
+                    ask_days = None
+                entry["waiting_on"].append({
+                    "person": ask["person"],
+                    "ask": ask["what"],
+                    "since": ask_date,
+                    "days_waiting": ask_days,
+                })
 
         # Process step info
         category = parsed["category"] or qt.get("category", "")
@@ -307,15 +300,37 @@ def find_stale_tasks(today: date, target_task: str = None) -> list:
                 entry["process_step"] = f"Step {step_info['current_step']}/{step_info['total_steps']}: {step_info['step_description']}"
                 entry["process_file"] = process_file
 
-        # Suggested recipient (from task contacts or asks)
-        if parsed["asks_in"]:
-            entry["suggested_recipient"] = parsed["asks_in"][0]["person"]
+        # All pending actions I owe (from asks_out)
+        if parsed["asks_out"]:
+            entry["owed_by_me"] = []
+            for ask in parsed["asks_out"]:
+                out_date = ask["date"]
+                try:
+                    out_days = (today - date.fromisoformat(out_date)).days
+                except ValueError:
+                    out_days = None
+                entry["owed_by_me"].append({
+                    "person": ask["person"],
+                    "ask": ask["what"],
+                    "since": out_date,
+                    "days_pending": out_days,
+                })
+
+        # Suggested recipient: prioritize asks_out (action I need to take)
+        # over asks_in (chase someone else) — action items are more urgent
+        if entry.get("owed_by_me"):
+            entry["suggested_recipient"] = entry["owed_by_me"][0]["person"]
+            entry["action_type"] = "owed_by_me"
+        elif entry.get("waiting_on"):
+            entry["suggested_recipient"] = entry["waiting_on"][0]["person"]
+            entry["action_type"] = "waiting_on"
         elif parsed["contacts"]:
             for c in parsed["contacts"]:
                 if c["role"] not in ("Requester",):
                     entry["suggested_recipient"] = c["name"]
                     if c["email"]:
                         entry["suggested_email"] = c["email"]
+                    entry["action_type"] = "contact"
                     break
 
         results.append(entry)

@@ -50,9 +50,6 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │                        ↓                                     │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │  Brain Files (assistant_brain/)                        │  │
-│  │  ├── SOUL.md               (identity & values)         │  │
-│  │  ├── OPERATIONAL_RULES.md  (strategies)                │  │
-│  │  ├── CONFIG.md             (parameters)                │  │
 │  │  ├── workflows/            (orchestration + logic)     │  │
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
@@ -78,7 +75,7 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 |---------|-------------|
 | **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, RACI stakeholders, Parent-Child relationships, structured `Asks` (owed by me / owed to me) |
 | **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `review`, `digest`, `timesheet` — surface what's overdue, owed, and 述职-worthy across all tasks |
-| **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. Three-tier matching: ConversationID thread → task contacts → keyword+geo. Auto-extracts asks/decisions/deadlines into task slots |
+| **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. Three-tier matching: ConversationID thread → task contacts → keyword+geo. Auto-extracts asks/decisions/deadlines into task slots. All send commands auto-output EntryID for timeline tracking |
 | **Email Thread Tracking** | ConversationID-based thread matching — once an email is linked to a task, all future emails in the same thread auto-match |
 | **Related Email Discovery** | Multi-strategy search (thread + sender + keyword) for cross-thread discovery |
 | **Memory System** | Preferences, cognitive blind-spot patterns, contacts, achievements (述职 fact base) |
@@ -98,7 +95,7 @@ Skills are reserved for I/O against external systems. Business logic (task lifec
 
 | Skill | Purpose | External system |
 |-------|---------|-----------------|
-| **outlook-com-skill** | Find, thread, related, compose, reply, batch-forward | Microsoft Outlook (COM) |
+| **outlook-com-skill** | Find, thread, related, compose, reply, replyall, forward, redirect, batch-forward | Microsoft Outlook (COM) |
 | **minimax-xlsx** | Create, read, edit, analyze Excel/spreadsheet files | `.xlsx`, `.xlsm`, `.csv` |
 | **skill-creator** | Scaffold a new skill | (meta) |
 
@@ -113,8 +110,11 @@ All commands use the `find-*` naming convention:
 | `find-thread` | Inbox + Sent Items | Pull entire conversation chain |
 | `find-related` | Inbox + Sent Items | Discover cross-thread related emails |
 | `get-email` | — | View full email by entry_id |
+| `compose` / `reply` / `replyall` / `forward` / `redirect` | — | Send emails (all output EntryID after send) |
 
 **Strategy:** Sent emails are tracked in task files (`## Email References`). `find` and `find-recent` default to Inbox only. Thread and related search auto-include Sent Items for completeness.
+
+**EntryID Tracking:** All send commands (`compose`, `reply`, `replyall`, `forward`, `redirect`) automatically output the sent email's `EntryID` after sending. This enables reliable timeline tracking with `<!-- email:ID -->` markers in task files. Tracking follows unified **Key Email Criteria** (same for inbound and outbound): emails containing an ask/approval/decision/commitment, delivering/requesting a deliverable, representing a task milestone, or likely needing future reply/forward. Pure FYI acknowledgements ("noted", "thanks", "got it") are exempt.
 
 **Email↔Task Matching (3-tier priority):**
 1. **Thread match** — email's ConversationID already in a task's Email References → instant hit
@@ -132,9 +132,6 @@ BrainClaw/
 ├── README_CN.md                        # Chinese documentation
 ├── ARCHITECTURE.md                     # System architecture
 └── assistant_brain/
-    ├── SOUL.md               ⭐ # Identity & values (unchanging core)
-    ├── OPERATIONAL_RULES.md  ⭐ # Core operational strategies
-    ├── CONFIG.md             ⭐ # System parameters (user info, formats)
     ├── views_config.md       ⭐ # Thresholds + defaults for view ops
     ├── recurring_tasks.md    ⭐ # Scheduled recurring tasks
     ├── process/
@@ -235,9 +232,7 @@ BrainClaw learns and remembers across sessions:
 BrainClaw uses a layered architecture with clear separation of concerns:
 
 ```
-CLAUDE.md (Startup rules)
-        ↓
-OPERATIONAL_RULES.md (Core policies)
+CLAUDE.md (Single source of truth — startup rules + core policies)
         ↓
 ┌──────────────────────────────────────────┐
 │    Workflows (orchestration + logic)     │  ← All business logic lives here

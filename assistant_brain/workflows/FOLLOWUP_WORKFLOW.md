@@ -36,19 +36,30 @@ Script outputs JSON array of stale tasks with: task ID, title, days inactive, pr
 ⚠️ {N} tasks need follow-up:
 
 1. [T###](path) {Title} — {days}d stale ({priority}, threshold {threshold}d)
-   📥 Waiting on {person}: {ask} ({days_waiting}d)
+   📥 Waiting on:
+      • {person}: {ask} ({days_waiting}d)
+      • {person}: {ask} ({days_waiting}d)
    🔄 Process: {process_step}
 
 2. [T###](path) {Title} — {days}d stale ({priority}, threshold {threshold}d)
-   📥 Waiting on {person}: {ask} ({days_waiting}d)
+   📤 I owe:
+      • {person}: {ask} ({days_pending}d)
 
 Draft follow-up emails? [all / pick numbers / skip]
 ```
 
 **Display rules:**
-- Show `📥 Waiting on` line only if `waiting_on` field exists in JSON
+- `waiting_on` and `owed_by_me` are **arrays** — show ALL items, one bullet per ask
+- Show `📥 Waiting on` section only if `waiting_on` array exists and is non-empty
+- Show `📤 I owe` section only if `owed_by_me` array exists and is non-empty
 - Show `🔄 Process` line only if `process_step` field exists in JSON
 - Sort by priority (P1 first), then by days_inactive descending (already sorted by script)
+- **Contact attribution:** `suggested_recipient` is context-aware: if `action_type` = "owed_by_me", the recipient is the person I owe an action to (NOT the person I'm waiting on). Draft the email TO that person.
+- **Overdue vs stale vs ask age:** These are distinct signals:
+  - "overdue" = task's Due date has passed (task-level)
+  - "stale" = days since last Timeline entry exceeds threshold (inactivity)
+  - "ask age" = days since a specific ask was created (per-ask)
+  - When displaying: show stale days for the task, show ask age for specific items. Do NOT apply task-level overdue to individual asks.
 
 ### 3. Draft Follow-up Emails
 
@@ -64,7 +75,7 @@ For each selected task:
    - Peer/Executor → friendly, helpful
 3. **Compose email** using outlook-com-skill:
    ```
-   py -3 "assistant_brain/skills/outlook-com-skill/scripts/compose.py" --to "{email}" --subject "Re: {task title}" --body "{draft}"
+   py -3 "assistant_brain/skills/outlook-com-skill/scripts/outlook_skill.py" compose --to "{email}" --subject "Re: {task title}" --body "{draft}"
    ```
 
 **Email template guidance:**
@@ -100,13 +111,15 @@ To: {email}
 
 ### 4. Send on Approval
 
-- `send` → Use outlook-com-skill `send-draft`
+- `send` → Use outlook-com-skill `compose` (send directly after user approval)
 - `edit` → User modifies, then send
 - `skip` → Move to next task
 
 After sending, update task file:
-- Add timeline entry: `- **{today}** [email-out] Follow-up sent to {person} re: {ask}`
+- The `compose` command outputs `EntryID: {ID}` — capture this value
+- Add timeline entry with EntryID: `- **{today HH:mm}** [email-out]: Follow-up sent to {person} re: {ask} <!-- email:{EntryID} -->`
 - If applicable, update `## Asks > Owed to me` with note about follow-up
+- **Rule:** Follow-up emails always meet Key Email Criteria (they contain asks) — always include the EntryID
 
 ---
 

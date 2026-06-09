@@ -1,6 +1,8 @@
 # Views Config
 
 > Thresholds and display preferences for view commands (`status`, `owed`, `waiting`, `before`, `review`). The view workflow MUST read this file before computing — never hardcode thresholds elsewhere.
+>
+> **Implementation:** Scripts consume these values via `assistant_brain/scripts/shared_config.py`. If thresholds change here, update `shared_config.py` to match.
 
 **Last Updated:** 2026-05-16
 
@@ -16,7 +18,7 @@
 | Any status: 🔴 Blocked | 14 days no follow-up on blocker |
 | Any task waiting on a stakeholder | 14 days no inbound from them |
 
-> "Activity" = any Timeline entry OR any Email Reference dated after threshold.
+> "Activity" = any Timeline entry dated after threshold.
 
 ---
 
@@ -77,7 +79,7 @@ If a section has no content, omit it (don't print "(none)").
 - For each task, show:
   - Task ID, title, status
   - Their RACI role
-  - Last Timeline entry mentioning them (or last Email Reference from/to them)
+  - Last Timeline entry mentioning them
   - Open Asks owed by/to them on this task
 - Suggest a draft agenda: open asks first, then long-untouched items, then heads-up items
 

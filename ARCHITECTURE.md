@@ -28,14 +28,10 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Brain Files                               │
-│  ┌──────────┐  ┌──────────┐  ┌────────────┐                │
-│  │  SOUL    │  │ CONFIG   │  │OPERATIONAL │                │
-│  │          │  │          │  │  RULES     │                │
-│  └──────────┘  └──────────┘  └────────────┘                │
 │  ┌──────────────────────────────────────────┐              │
 │  │         Memory Files                     │              │
 │  │  preferences | things_to_avoid |         │              │
-│  │  contacts | tracking | achievements      │              │
+│  │  contacts | achievements                 │              │
 │  └──────────────────────────────────────────┘              │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -43,7 +39,8 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
 ┌─────────────────────────────────────────────────────────────┐
 │         Workflow Layer (orchestration + business logic)     │
 │  TASK_WORKFLOW | EMAIL_WORKFLOW | PROCESS_WORKFLOW |        │
-│  RECORDING_WORKFLOW | VIEWS_WORKFLOW                          │
+│  FOLLOWUP_WORKFLOW | RECORDING_WORKFLOW | WEB_WORKFLOW |    │
+│  VIEWS_WORKFLOW                                              │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -77,10 +74,8 @@ BrainClaw/
 ├── ARCHITECTURE.md               # This file
 │
 ├── assistant_brain/              # Core brain directory
-│   ├── SOUL.md                   # Personality & core principles
-│   ├── CONFIG.md                 # User settings & formats
-│   ├── OPERATIONAL_RULES.md      # Operational policies
 │   ├── recurring_tasks.md        # Recurring task definitions
+│   ├── views_config.md           # View thresholds & display config
 │   │
 │   ├── memory/                   # Learning & persistence
 │   │   ├── preferences.md        # User preferences
@@ -96,7 +91,8 @@ BrainClaw/
 │   │   └── VIEWS_WORKFLOW.md
 │   │
 │   ├── scripts/                  # Python automation
-│   │   └── dashboard.py          # Startup display, taskboard, pending views
+│   │   ├── dashboard.py          # Startup display, taskboard, pending, digest, timesheet
+│   │   └── followup.py           # Stale task detection for follow-up workflow
 │   │
 │   ├── skills/                   # I/O against external systems
 │   │   ├── outlook-com-skill/        # Outlook COM (find/thread/compose)
@@ -126,31 +122,11 @@ BrainClaw/
 
 ## 4. Component Details
 
-### 4.1 Brain Files
+### 4.1 CLAUDE.md (Root)
 
-#### SOUL.md
-**Purpose**: Defines AI personality and unchanging values
-**Content**:
-- Identity statement
-- Core principles (User-Centric, Memory-Driven, Professional Excellence)
-- Unchanging values (approval requirements, security)
+**Purpose**: Single source of truth for all system rules — identity, values, user config, operational rules, workflow routing, on-demand loading gates.
 
-#### CONFIG.md
-**Purpose**: User settings and format definitions
-**Content**:
-- User profile (name, email, title, timezone)
-- Email signature
-- System settings (OS, shell, paths)
-- Task format definitions (status, priority, naming, template)
-- Download settings
-
-#### OPERATIONAL_RULES.md
-**Purpose**: Core behavior strategies and policies
-**Content**:
-- Workflow reference table
-- Autonomous actions policy (what needs approval)
-- Display format rules
-- Task status change actions
+All behavioral rules, user config, and operational policies live in `CLAUDE.md` (always in context). Workflows and skills are loaded on-demand per the routing table in CLAUDE.md.
 
 ### 4.2 Memory System
 
@@ -163,7 +139,7 @@ The memory system enables persistent learning across sessions. Memory files hold
 | `memory/achievements.md` | Auto-fed from Complete Task; manual additions also welcome | 述职 fact base, used by `review` view command |
 | `memory/vendor-accounts.md` | Vendor portal credentials discovered | Vendor login info for procurement portals |
 
-**Note:** `views_config.md` (view thresholds + defaults) is **not** memory — it's system config. Lives at `assistant_brain/` root next to `CONFIG.md`.
+**Note:** `views_config.md` (view thresholds + defaults) is **not** memory — it's system config. Lives at `assistant_brain/` root.
 
 **Recording Threshold**: See `RECORDING_WORKFLOW.md`
 
@@ -174,10 +150,12 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 | Workflow | Purpose | I/O Skills Used |
 |----------|---------|-----------------|
 | `TASK_WORKFLOW.md` | Task CRUD, keyword extraction, achievement extraction on completion | (none — pure file ops) |
-| `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction | `outlook-com-skill` |
+| `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction, Key Email Criteria for EntryID tracking | `outlook-com-skill` |
 | `PROCESS_WORKFLOW.md` | Process matching, auto-advance suggestions, process learning from email patterns, codification | (none — pure file ops) |
+| `FOLLOWUP_WORKFLOW.md` | Stale task detection, follow-up email drafting with tone-aware templates, chase history | `outlook-com-skill` |
 | `RECORDING_WORKFLOW.md` | Event recording, memory recording, archival | (none — pure file ops) |
-| `VIEWS_WORKFLOW.md` | Per-task and cross-task views: status, owed, waiting, before, review/述职 | (none — pure file ops) |
+| `WEB_WORKFLOW.md` | Web search, page extraction, site crawling, deep research via Tavily MCP | (Tavily MCP) |
+| `VIEWS_WORKFLOW.md` | Per-task and cross-task views: status, owed, waiting, before, review/述職, digest, timesheet | (none — pure file ops) |
 
 **Design Pattern:**
 ```markdown
@@ -268,8 +246,12 @@ skills/outlook-com-skill/
 | `find-thread` | All emails in conversation | Inbox + Sent Items (auto) |
 | `find-related` | Cross-thread discovery | Inbox + Sent Items (auto) |
 | `get-email` | Full email by entry_id | — |
-| `compose` / `reply` | Send emails | — |
+| `compose` | Compose and send new email | — |
+| `reply` / `replyall` | Reply to an email | — |
+| `forward` / `redirect` | Forward/redirect an email | — |
 | `batch-forward` | Mass BCC forward | — |
+
+All send commands (`compose`, `reply`, `replyall`, `forward`, `redirect`) auto-output the sent email's `EntryID` after sending via the `_print_sent_entry_id()` helper. This enables workflows to capture the ID and write `<!-- email:ID -->` markers in task timeline entries.
 
 **Design Principles:**
 - **Decoupled**: No imports from BrainClaw. Works standalone with `py -3 scripts/outlook_skill.py`.
@@ -403,7 +385,7 @@ Skills are reserved for I/O against external systems. If a capability can be exp
    |-------|---------|
    ```
 
-3. **Update `OPERATIONAL_RULES.md`** reference table
+3. **Update `CLAUDE.md`** workflow table if adding new triggers
 
 ### 5.3 Adding a New Process
 
@@ -447,10 +429,10 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 | Layer | Responsibility | Example |
 |-------|---------------|---------|
 | System Prompt | Startup & loading rules | CLAUDE.md |
-| Brain Files | Knowledge & settings | SOUL, CONFIG, memory |
-| Workflows | Orchestration + business logic | TASK_WORKFLOW, EMAIL_WORKFLOW |
-| Skills | I/O against external systems | outlook-com-skill, xlsx |
-| Data | Persistence | Task files, registry |
+| Memory | Learned preferences & patterns | preferences, things_to_avoid, achievements |
+| Workflows | Orchestration + business logic | TASK_WORKFLOW, EMAIL_WORKFLOW, FOLLOWUP_WORKFLOW |
+| Skills | I/O against external systems | outlook-com-skill, minimax-xlsx |
+| Data | Persistence | Task files, contacts, processes |
 
 **Key principle**: Workflows reference skills abstractly ("use outlook-com-skill to find thread"). Exact CLI commands live in `SKILL.md`. Skills are self-contained and project-agnostic.
 
@@ -526,10 +508,10 @@ Always format IDs as clickable links:
 ## 8. Startup Process
 
 ```
-1. Load core files (SOUL, CONFIG, OPERATIONAL_RULES)
-2. Load memory files (preferences, things_to_avoid, contacts, tracking)
+1. Run dashboard script (py -3 assistant_brain/scripts/dashboard.py)
+2. Load memory files (preferences, things_to_avoid)
 3. Load task context (queue.md, recurring_tasks.md)
-4. Load stakeholder context (registry.md)
+4. Load contacts (contacts.md)
 5. Load process index (process/README.md)
 6. Query OS for local date/time
 7. Archive old events
@@ -586,5 +568,5 @@ Always format IDs as clickable links:
 
 ---
 
-**Last Updated:** 2026-06-05
-**Version:** 1.2
+**Last Updated:** 2026-06-09
+**Version:** 1.3

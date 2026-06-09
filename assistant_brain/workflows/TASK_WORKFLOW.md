@@ -14,6 +14,7 @@
 1. Read queue.md header → Get "Last Task ID" and increment by 1 for new task ID
 2. Extract keywords from content (see [Keyword Extraction Rules](#keyword-extraction-rules))
 3. Match to process template (see [PROCESS_WORKFLOW](PROCESS_WORKFLOW.md)) → suggest RACI roles + initial Current State steps
+3a. **Define Scope** → Write a one-line boundary statement (what belongs in this task and what doesn't). Check active tasks in queue.md for same vendor/geo/topic overlap — if overlap found, sharpen BOTH Scopes to disambiguate. Scope is mandatory; never leave it empty.
 4. Present RACI matrix to user for confirmation
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
 6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### Owed by me` and `### Owed to me` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.
@@ -62,6 +63,7 @@
 | priority | Update priority + queue.md |
 | asks (owed by me) | Append `- [ ] {date} → {person}: {what}` to `### Owed by me`; flip `[x]` when fulfilled |
 | asks (owed to me) | Append `- {date} ← {person}: {what}` to `### Owed to me`; remove line when received |
+| scope | Update Scope field (e.g., after sync mismatch or discovering overlap with another task) |
 
 ---
 

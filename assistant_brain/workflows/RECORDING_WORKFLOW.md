@@ -37,7 +37,8 @@
 **Trigger:** Startup, events exceed window
 
 **Steps:**
-1. Check CONFIG.md "Recent Events Window" (default: 14 days)
+
+1. Recent Events Window: 14 days (configured in CLAUDE.md → System Config)
 2. Find events older than window
 3. Move to `tasks/history/timeline_YYYY-MM.md`
 4. Create monthly file if not exists

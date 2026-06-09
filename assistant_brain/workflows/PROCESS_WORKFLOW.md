@@ -30,7 +30,7 @@
 | Procurement, vendor, PO (quarterly) | Philippines | `philippines/vendor-procurement.md` |
 | Voucher + AWS | Philippines | `philippines/aws-voucher-issuance.md` |
 | Voucher + Azure | Philippines | `philippines/azure-voucher-issuance.md` |
-| Retake, failed, 补考 | Philippines | `philippines/exam-retake.md` |
+| Retake, failed, 补考, reimbursement, 报销, no voucher | Philippines | `philippines/exam-reimbursement.md` |
 | Reimbursement, 报销 | China | `china/futurenow-quarterly-reimbursement.md` |
 | Snowflake | any | `global/snowflake-certification.md` |
 | Google, GCP | any | `global/google-exam-voucher-discount.md` |
@@ -175,6 +175,7 @@ For tasks that don't match a specific process file.
 
 7. Present draft to user for confirmation
 8. On confirm → write to `process/{geo}/{name}.md` + update `process/README.md`
+9. Update `scripts/shared_config.py` → add entry to `PROCESS_MATCH_RULES` with keywords, geo, and file path from the new process
 
 ---
 
