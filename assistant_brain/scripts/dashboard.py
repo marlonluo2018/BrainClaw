@@ -13,13 +13,10 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS
+from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS, scan_tasks, ScannedTask
 
-EVENTS_WINDOW_DAYS = 14
-MAX_CONTACTS_DISPLAY = 10
 
 STATUS_ICONS = {"Not Started": "📋", "In Progress": "⏳", "Blocked": "🔴"}
-ICON_TO_STATUS = {"📋": "Not Started", "⏳": "In Progress", "🔴": "Blocked"}
 
 FLAG_MAP = {
     "China": "🇨🇳",
@@ -79,83 +76,51 @@ def safe_read(path: Path) -> str:
 
 # --- Parsers ---
 
-def parse_queue(content: str):
-    tasks = []
-    events = []
-    lines = content.split('\n')
 
-    # Parse events
-    event_pattern = re.compile(r'^- \*\*(\d{4}-\d{2}-\d{2})\*\*: (.+)$')
-    for line in lines:
-        m = event_pattern.match(line)
-        if m:
-            events.append(Event(
-                date_str=m.group(1),
-                icon=m.group(2)[:1] if m.group(2) else "",
-                description=m.group(2),
-                raw_line=line
-            ))
 
-    # Parse tasks
-    task_heading = re.compile(
-        r'^(##|### ↳)\s+T(\d+)\s+(📋|⏳|🔴)\s+(.+?)\s+\[`?([^`\]]+)`?\]\(([^)]+)\)'
-    )
+def _parse_date_str(raw: str):
+    """Parse date from string, supporting both YYYY-MM-DD and Wkd Mon DD, YYYY formats.
+    Returns (date_obj, remaining_str) or (None, raw) if no match."""
+    m = re.match(r'^(\d{4}-\d{2}-\d{2})', raw)
+    if m:
+        try:
+            return date.fromisoformat(m.group(1)), raw[len(m.group(1)):]
+        except ValueError:
+            pass
+    m2 = re.match(r'^([A-Z][a-z]{2} [A-Z][a-z]{2} \d{2}, \d{4})', raw)
+    if m2:
+        try:
+            d = datetime.strptime(m2.group(1), '%a %b %d, %Y').date()
+            return d, raw[len(m2.group(1)):]
+        except ValueError:
+            pass
+    return None, raw
 
-    current_task = None
-    in_master_section = False
 
-    for line in lines:
-        if line.strip() == '## Master Task with Subtasks':
-            in_master_section = True
-            continue
+def _parse_due_date(raw: str):
+    """Parse a Due field value supporting both YYYY-MM-DD and Wkd Mon DD, YYYY."""
+    raw = raw.strip()
+    m = re.match(r'(\d{4}-\d{2}-\d{2})', raw)
+    if m:
+        try:
+            return date.fromisoformat(m.group(1))
+        except ValueError:
+            pass
+    m2 = re.match(r'([A-Z][a-z]{2} [A-Z][a-z]{2} \d{2}, \d{4})', raw)
+    if m2:
+        try:
+            return datetime.strptime(m2.group(0), '%a %b %d, %Y').date()
+        except ValueError:
+            pass
+    return None
 
-        m = task_heading.match(line)
-        if m:
-            level = m.group(1)
-            tid = f"T{m.group(2)}"
-            icon = m.group(3)
-            title = m.group(4).strip()
-            filename = m.group(5)
-            path = m.group(6)
 
-            display_path = path.replace('./', 'assistant_brain/tasks/')
-
-            task = Task(
-                id=tid,
-                title=title,
-                status=ICON_TO_STATUS.get(icon, "Unknown"),
-                priority="",
-                geo="",
-                due="",
-                path=display_path,
-            )
-
-            if level == "### ↳":
-                task.parent = current_task.id if current_task else ""
-            elif in_master_section and level == "##":
-                task.is_master = True
-
-            current_task = task
-            tasks.append(task)
-            continue
-
-        if current_task and line.startswith('- **'):
-            kv = re.match(r'^- \*\*(.+?):\*\*\s*(.+)$', line)
-            if kv:
-                key = kv.group(1)
-                val = kv.group(2).strip()
-                if key == "Priority":
-                    current_task.priority = val
-                elif key == "Geo":
-                    current_task.geo = val
-                elif key == "Due":
-                    current_task.due = val
-                elif key == "Subtasks":
-                    current_task.subtask_ids = [f"T{x.strip().lstrip('T')}" for x in val.split(',')]
-                elif key == "Parent Task":
-                    current_task.parent = f"T{val.strip().lstrip('T')}"
-
-    return tasks, events
+def _format_ask_date(raw: str) -> str:
+    """Convert date prefix to display format (Mon Jun 08, 2026)."""
+    d, rest = _parse_date_str(raw)
+    if d:
+        return d.strftime('%a %b %d, %Y') + rest
+    return raw
 
 
 def parse_asks_from_file(content: str):
@@ -178,16 +143,16 @@ def parse_asks_from_file(content: str):
 
         if section == 'out':
             # Only unchecked items
-            m = re.match(r'^- \[ \] (.+?) → (.+?): (.+)$', line)
+            m = re.match(r'^- \[ \] (.+?) 🎯 (.+?): (.+)$', line)
             if m:
-                asks_out.append(f"{m.group(1)} → {m.group(2)}: {m.group(3)}")
+                asks_out.append(f"{_format_ask_date(m.group(1))} |🎯 |{m.group(2)} | {m.group(3)}")
         elif section == 'in':
             # Skip struck-through
             if line.strip().startswith('- ~~'):
                 continue
-            m = re.match(r'^- (.+?) ← (.+?): (.+)$', line)
+            m = re.match(r'^- (.+?) ⏳ (.+?): (.+)$', line)
             if m:
-                asks_in.append(f"{m.group(1)} ← {m.group(2)}: {m.group(3)}")
+                asks_in.append(f"{_format_ask_date(m.group(1))} |⏳ |{m.group(2)} | {m.group(3)}")
 
     return asks_out, asks_in
 
@@ -267,78 +232,15 @@ def parse_processes(content: str) -> list:
 
 # --- Business Logic ---
 
-def archive_old_events(events: list, today: date):
-    kept = []
-    archived = {}
-    cutoff = today - timedelta(days=EVENTS_WINDOW_DAYS)
-
-    for ev in events:
-        try:
-            ev_date = date.fromisoformat(ev.date_str)
-        except ValueError:
-            kept.append(ev)
-            continue
-
-        if ev_date < cutoff:
-            month_key = ev.date_str[:7]  # YYYY-MM
-            archived.setdefault(month_key, []).append(ev)
-        else:
-            kept.append(ev)
-
-    return kept, archived
 
 
-def write_archived_events(archived: dict, dry_run: bool = False):
-    for month_key, events in archived.items():
-        year, month = int(month_key[:4]), int(month_key[5:7])
-        quarter = (month - 1) // 3 + 1
-        quarter_dir = BRAIN_DIR / 'tasks' / 'history' / f'{year}-Q{quarter}'
-        timeline_file = quarter_dir / f'timeline_{month_key}.md'
-
-        if dry_run:
-            print(f"  [dry-run] Would archive {len(events)} events to {timeline_file.relative_to(PROJECT_ROOT)}", file=sys.stderr)
-            continue
-
-        quarter_dir.mkdir(parents=True, exist_ok=True)
-
-        if not timeline_file.exists():
-            timeline_file.write_text(
-                f"# Timeline {month_key}\n\n> Archived events from queue.md\n\n",
-                encoding='utf-8'
-            )
-
-        with open(timeline_file, 'a', encoding='utf-8') as f:
-            for ev in events:
-                f.write(ev.raw_line + '\n')
-
-
-def rewrite_queue_events(queue_path: Path, content: str, kept_events: list, dry_run: bool = False):
-    if dry_run:
-        return content
-
-    lines = content.split('\n')
-    new_lines = []
-    event_pattern = re.compile(r'^- \*\*(\d{4}-\d{2}-\d{2})\*\*: (.+)$')
-    kept_dates = {ev.raw_line for ev in kept_events}
-
-    for line in lines:
-        if event_pattern.match(line):
-            if line in kept_dates:
-                new_lines.append(line)
-        else:
-            new_lines.append(line)
-
-    new_content = '\n'.join(new_lines)
-    queue_path.write_text(new_content, encoding='utf-8')
-    return new_content
-
-
-def check_recurring_due(recurring: list, tasks: list, today: date, queue_content: str = "") -> list:
+def check_recurring_due(recurring: list, tasks: list, today: date, recurring_ids_in_use: set = None) -> list:
     due = []
+    if recurring_ids_in_use is None:
+        recurring_ids_in_use = set()
 
     for rt in recurring:
-        # Check if already in queue via "Recurring Task ID: R00X"
-        if f"Recurring Task ID:** {rt.id}" in queue_content:
+        if rt.id in recurring_ids_in_use:
             continue
 
         is_due = False
@@ -363,12 +265,11 @@ def check_recurring_due(recurring: list, tasks: list, today: date, queue_content
 def compute_overdue_days(due_str: str, today: date):
     if not due_str or 'TBD' in due_str:
         return None
-    try:
-        due_date = date.fromisoformat(due_str.strip()[:10])
+    due_date = _parse_due_date(due_str)
+    if due_date:
         delta = (today - due_date).days
         return delta if delta > 0 else None
-    except ValueError:
-        return None
+    return None
 
 
 # --- Output Formatting ---
@@ -394,12 +295,11 @@ def count_stale_tasks(tasks, today_date):
     return count
 
 
-def format_brief(tasks, skills, processes, contacts, today, recurring_due, events=None, dry_run_msg=""):
-    weekday = today.strftime('%A')
-    date_str = today.strftime('%Y-%m-%d %H:%M')
+def format_brief(tasks, skills, processes, contacts, today, recurring_due, events=None):
+    date_str = today.strftime('%A %b %d, %Y %H:%M')
     lines = []
 
-    lines.append(f"## ✅ Ready | {weekday} {date_str} | User: Marlon Luo | OS: Windows 11")
+    lines.append(f"## ✅ Ready | {date_str} | User: Marlon Luo | OS: Windows 11")
     lines.append("")
 
     # Info lines
@@ -409,11 +309,7 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
     proc_str = ' · '.join(f'`{p}`' for p in processes) if processes else '(none)'
     lines.append(f"Processes: {proc_str}")
 
-    if len(contacts) > MAX_CONTACTS_DISPLAY:
-        contact_str = ' · '.join(f'`{c}`' for c in contacts[:MAX_CONTACTS_DISPLAY])
-        contact_str += f" (+{len(contacts) - MAX_CONTACTS_DISPLAY} more)"
-    else:
-        contact_str = ' · '.join(f'`{c}`' for c in contacts)
+    contact_str = ' · '.join(f'`{c}`' for c in contacts)
     lines.append(f"Contacts: {contact_str}")
 
     # Task counts
@@ -441,10 +337,6 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
         lines.append("")
         for rt in recurring_due:
             lines.append(f"⚠️ Recurring due: {rt.id} - {rt.name}")
-
-    if dry_run_msg:
-        lines.append("")
-        lines.append(dry_run_msg)
 
     lines.append("")
     lines.append("---")
@@ -498,9 +390,9 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
 
                 # Asks
                 for ask in t.asks_out:
-                    lines.append(f"  - → {ask}")
+                    lines.append(f"  - {ask}")
                 for ask in t.asks_in:
-                    lines.append(f"  - ← {ask}")
+                    lines.append(f"  - {ask}")
                 # Warn if open task has no pending items and no subtasks with pending
                 if not t.asks_in and not t.asks_out and not t.subtasks:
                     lines.append(f"  - ⚠️ **no pending** — add an active item to `Owed to me`")
@@ -510,9 +402,9 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
                     sub_line = format_task_line(sub, today.date(), indent="  ")
                     lines.append(sub_line)
                     for ask in sub.asks_out:
-                        lines.append(f"    - → {ask}")
+                        lines.append(f"    - {ask}")
                     for ask in sub.asks_in:
-                        lines.append(f"    - ← {ask}")
+                        lines.append(f"    - {ask}")
                     if not sub.asks_in and not sub.asks_out:
                         lines.append(f"    - ⚠️ **no pending** — add an active item to `Owed to me`")
 
@@ -520,7 +412,7 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
 
     lines.append("---")
     lines.append("")
-    lines.append("→ `status T###` · `pending` · `pending out` · `pending in` · `before {person}` · `review` · `taskboard`")
+    lines.append("💡 `status T###` · `pending` · `pending out` · `pending in` · `before {person}` · `review` · `taskboard`")
 
     return '\n'.join(lines)
 
@@ -532,9 +424,14 @@ def format_task_line(task: Task, today: date, indent: str = "") -> str:
 
     overdue = compute_overdue_days(task.due, today)
     if overdue:
-        due_str = f"— was due {task.due[:10]} (**{overdue}d overdue**)"
+        due_dt = _parse_due_date(task.due)
+        if due_dt:
+            due_str = f"— was due {due_dt.strftime('%a %b %d, %Y')} (**{overdue}d overdue**)"
+        else:
+            due_str = f"— was due {task.due} (**{overdue}d overdue**)"
     elif task.due and 'TBD' not in task.due:
-        due_str = f"— Due {task.due[:10]}"
+        due_dt = _parse_due_date(task.due)
+        due_str = f"— Due {due_dt.strftime('%a %b %d, %Y')}" if due_dt else f"— Due {task.due}"
     elif task.due:
         due_str = f"— Due {task.due}"
     else:
@@ -564,7 +461,7 @@ def _render_ask_section(lines, grouped, arrow, count):
     for t, asks in grouped:
         lines.append(f"- [{t.id}]({t.path}) {t.title}")
         for ask in asks:
-            lines.append(f"  - {arrow} {ask}")
+            lines.append(f"  - {ask}")
     lines.append("")
 
 
@@ -579,10 +476,9 @@ def _count_stale_tasks(tasks, today):
         if not asks:
             continue
         oldest = asks[0]
-        date_m = re.match(r'^(\d{4}-\d{2}-\d{2})', oldest)
-        if date_m:
+        ask_date, _ = _parse_date_str(oldest)
+        if ask_date:
             try:
-                ask_date = date.fromisoformat(date_m.group(1))
                 days = (today_date - ask_date).days
                 threshold = STALE_THRESHOLDS.get(t.priority, 10)
                 if days > threshold:
@@ -594,7 +490,7 @@ def _count_stale_tasks(tasks, today):
 
 def format_pending_all(tasks, today):
     lines = []
-    date_str = today.strftime('%Y-%m-%d')
+    date_str = today.strftime('%a %b %d, %Y')
     lines.append(f"## Pending Asks | {date_str}")
     lines.append("")
 
@@ -603,13 +499,13 @@ def format_pending_all(tasks, today):
     count_out = sum(len(asks) for _, asks in grouped_out)
     count_in = sum(len(asks) for _, asks in grouped_in)
 
-    lines.append(f"### → Owed by me ({count_out})")
+    lines.append(f"### 🎯 Owed by me ({count_out})")
     lines.append("")
-    _render_ask_section(lines, grouped_out, "→", count_out)
+    _render_ask_section(lines, grouped_out, "🎯", count_out)
 
-    lines.append(f"### ← Owed to me ({count_in})")
+    lines.append(f"### ⏳ Owed to me ({count_in})")
     lines.append("")
-    _render_ask_section(lines, grouped_in, "←", count_in)
+    _render_ask_section(lines, grouped_in, "⏳", count_in)
 
     stale_count = _count_stale_tasks(tasks, today)
     if stale_count:
@@ -621,26 +517,26 @@ def format_pending_all(tasks, today):
 
 def format_pending_out(tasks, today):
     lines = []
-    date_str = today.strftime('%Y-%m-%d')
+    date_str = today.strftime('%a %b %d, %Y')
     grouped = _collect_asks_by_task(tasks, 'out')
     count = sum(len(asks) for _, asks in grouped)
 
-    lines.append(f"## → Owed by me ({count}) | {date_str}")
+    lines.append(f"## 🎯 Owed by me ({count}) | {date_str}")
     lines.append("")
-    _render_ask_section(lines, grouped, "→", count)
+    _render_ask_section(lines, grouped, "🎯", count)
 
     return '\n'.join(lines)
 
 
 def format_pending_in(tasks, today):
     lines = []
-    date_str = today.strftime('%Y-%m-%d')
+    date_str = today.strftime('%a %b %d, %Y')
     grouped = _collect_asks_by_task(tasks, 'in')
     count = sum(len(asks) for _, asks in grouped)
 
-    lines.append(f"## ← Owed to me ({count}) | {date_str}")
+    lines.append(f"## ⏳ Owed to me ({count}) | {date_str}")
     lines.append("")
-    _render_ask_section(lines, grouped, "←", count)
+    _render_ask_section(lines, grouped, "⏳", count)
 
     stale_count = _count_stale_tasks(tasks, today)
     if stale_count:
@@ -653,13 +549,30 @@ def format_pending_in(tasks, today):
 # --- Shared Data Loading ---
 
 def load_tasks_with_asks():
-    queue_path = BRAIN_DIR / 'tasks' / 'queue.md'
-    queue_content = safe_read(queue_path)
-    if not queue_content:
-        print("ERROR: Cannot read tasks/queue.md", file=sys.stderr)
-        sys.exit(1)
+    scanned_tasks, scanned_events, last_task_id = scan_tasks()
 
-    tasks, events = parse_queue(queue_content)
+    # Convert ScannedTask → local Task dataclass
+    tasks = []
+    for st in scanned_tasks:
+        t = Task(
+            id=st.id,
+            title=st.title,
+            status=st.status,
+            priority=st.priority,
+            geo=st.geo,
+            due=st.due,
+            path=st.path,
+            parent=st.parent,
+            subtask_ids=st.subtask_ids,
+            is_master=st.is_master,
+        )
+        tasks.append(t)
+
+    # Convert ScannedEvent → local Event dataclass
+    events = [Event(
+        date_str=se.date_str, icon=se.icon,
+        description=se.description, raw_line=se.raw_line
+    ) for se in scanned_events]
 
     # Extract pending asks
     for task in tasks:
@@ -676,7 +589,10 @@ def load_tasks_with_asks():
             parent = task_map[t.parent]
             parent.subtasks.append(t)
 
-    return tasks, events, queue_content, queue_path
+    # Collect recurring IDs from scanned tasks for recurring-due check
+    recurring_ids_in_use = {st.recurring_id for st in scanned_tasks if st.recurring_id}
+
+    return tasks, events, last_task_id, recurring_ids_in_use
 
 
 # --- Events View ---
@@ -691,7 +607,7 @@ EVENT_FILTERS = {
 
 def format_events(events, filter_name, today):
     lines = []
-    date_str = today.strftime('%Y-%m-%d')
+    date_str = today.strftime('%a %b %d, %Y')
     icon_filter = EVENT_FILTERS.get(filter_name)
 
     if icon_filter:
@@ -721,7 +637,7 @@ def format_events(events, filter_name, today):
 
 
 def run_events(filter_name, today):
-    _, events, _, _ = load_tasks_with_asks()
+    _, events, _, _ = load_tasks_with_asks()  # last_task_id, recurring_ids unused
 
     if filter_name not in EVENT_FILTERS:
         print(f"Unknown filter: {filter_name}. Use: all, created, closed, blocked", file=sys.stderr)
@@ -743,9 +659,19 @@ def parse_timeline_from_file(content: str) -> list:
         if in_timeline and (line.startswith('## ') or line.strip() == '---'):
             break
         if in_timeline:
+            # Match ISO format: - **2026-06-10** [tag]: desc
             m = re.match(r'^- \*\*(\d{4}-\d{2}-\d{2})\*\*\s*\[(.+?)\]:?\s*(.+)$', line)
             if m:
                 entries.append({"date": m.group(1), "tag": m.group(2), "desc": m.group(3)})
+                continue
+            # Match new format: - **Mon Jun 09, 2026** [tag]: desc
+            m2 = re.match(r'^- \*\*([A-Z][a-z]{2} [A-Z][a-z]{2} \d{2}, \d{4})\*\*\s*\[(.+?)\]:?\s*(.+)$', line)
+            if m2:
+                try:
+                    d = datetime.strptime(m2.group(1), '%a %b %d, %Y').date()
+                    entries.append({"date": d.isoformat(), "tag": m2.group(2), "desc": m2.group(3)})
+                except ValueError:
+                    pass
     return entries
 
 
@@ -762,7 +688,7 @@ def format_digest(tasks, events, today, days=7, since_date=None):
     end_date = today.date()
 
     lines = []
-    lines.append(f"📊 Weekly Digest: {start_date.isoformat()} → {end_date.isoformat()}")
+    lines.append(f"📊 Weekly Digest: {start_date.strftime('%a %b %d, %Y')} → {end_date.strftime('%a %b %d, %Y')}")
     lines.append("")
 
     # Categorize events in window
@@ -826,23 +752,18 @@ def format_digest(tasks, events, today, days=7, since_date=None):
 
         # Due dates in next 7 days
         if t.due and 'TBD' not in t.due:
-            try:
-                due_date = date.fromisoformat(t.due[:10])
-                if end_date < due_date <= end_date + timedelta(days=7):
-                    upcoming.append((t, due_date))
-            except ValueError:
-                pass
+            due_date = _parse_due_date(t.due)
+            if due_date and end_date < due_date <= end_date + timedelta(days=7):
+                upcoming.append((t, due_date))
 
         # Asks stats
         asks_out, asks_in = parse_asks_from_file(content)
         for ask in asks_in:
-            # Extract date from ask string
-            date_m = re.match(r'^(\d{4}-\d{2}-\d{2})', ask)
-            if date_m:
+            ask_date, _ = _parse_date_str(ask)
+            if ask_date:
                 try:
-                    ask_date = date.fromisoformat(date_m.group(1))
                     days_waiting = (end_date - ask_date).days
-                    person_m = re.search(r'← (.+?): (.+)$', ask)
+                    person_m = re.search(r'⏳ (.+?): (.+)$', ask)
                     if person_m:
                         asks_waiting.append({
                             "task": t.id,
@@ -905,14 +826,14 @@ def format_digest(tasks, events, today, days=7, since_date=None):
         upcoming.sort(key=lambda x: x[1])
         lines.append(f"━━━ Upcoming (Next 7 Days) ━━━")
         for t, due_date in upcoming:
-            lines.append(f"• [{t.id}]({t.path}): Due {due_date.isoformat()} ({t.title})")
+            lines.append(f"• [{t.id}]({t.path}): Due {due_date.strftime('%a %b %d, %Y')} ({t.title})")
         lines.append("")
 
     # --- Asks Status ---
     if asks_waiting:
         lines.append(f"━━━ Pending Asks — Owed to Me ({len(asks_waiting)}) ━━━")
         for aw in asks_waiting[:8]:
-            lines.append(f"• {aw['task']} ← {aw['person']}: {aw['what']} ({aw['days']}d)")
+            lines.append(f"• {aw['task']} ⏳ {aw['person']}: {aw['what']} ({aw['days']}d)")
         if len(asks_waiting) > 8:
             lines.append(f"  ... +{len(asks_waiting) - 8} more")
         lines.append("")
@@ -921,7 +842,7 @@ def format_digest(tasks, events, today, days=7, since_date=None):
 
 
 def run_digest(args, today):
-    tasks, events, _, _ = load_tasks_with_asks()
+    tasks, events, _, _ = load_tasks_with_asks()  # last_task_id, recurring_ids unused
 
     since_date = None
     if args.since:
@@ -1096,7 +1017,7 @@ def format_timesheet(tasks, today, days=7, since_date=None, total_hours=40.0, hi
             })
 
     if not task_weights:
-        return f"📊 Timesheet: {start_date.isoformat()} → {end_date.isoformat()} | {total_hours}h\n\n(No activity in window)"
+        return f"📊 Timesheet: {start_date.strftime('%a %b %d, %Y')} → {end_date.strftime('%a %b %d, %Y')} | {total_hours}h\n\n(No activity in window)"
 
     total_weight = sum(tw["weight"] for tw in task_weights)
 
@@ -1124,7 +1045,7 @@ def format_timesheet(tasks, today, days=7, since_date=None, total_hours=40.0, hi
         cat_groups.setdefault(cat, {}).setdefault(geo, []).append(tw)
 
     lines = []
-    lines.append(f"## 📊 Timesheet: {start_date.isoformat()} → {end_date.isoformat()} | {total_hours}h")
+    lines.append(f"## 📊 Timesheet: {start_date.strftime('%a %b %d, %Y')} → {end_date.strftime('%a %b %d, %Y')} | {total_hours}h")
     lines.append("")
 
     for cat in sorted(cat_groups.keys(), key=lambda c: -sum(
@@ -1151,7 +1072,7 @@ def format_timesheet(tasks, today, days=7, since_date=None, total_hours=40.0, hi
 
 
 def run_timesheet(args, today):
-    tasks, _, _, _ = load_tasks_with_asks()
+    tasks, _, _, _ = load_tasks_with_asks()  # last_task_id, recurring_ids unused
 
     since_date = None
     if args.since:
@@ -1179,8 +1100,6 @@ def run_timesheet(args, today):
 
 def main():
     parser = argparse.ArgumentParser(description='BrainClaw task dashboard')
-    parser.add_argument('--dry-run', action='store_true', help='No file writes, show what would be archived')
-    parser.add_argument('--no-archive', action='store_true', help='Skip archival step')
     parser.add_argument('command', nargs='?', default='startup',
                         choices=['startup', 'pending', 'pending-out', 'pending-in', 'taskboard', 'events', 'digest', 'timesheet'],
                         help='Command to run (default: startup)')
@@ -1196,11 +1115,7 @@ def main():
     args = parser.parse_args()
     today = datetime.now()
 
-    if args.command in (None, 'startup'):
-        run_startup(args, today)
-    elif args.command == 'taskboard':
-        args.no_archive = True
-        args.dry_run = False
+    if args.command in (None, 'startup', 'taskboard'):
         run_startup(args, today)
     elif args.command in ('pending', 'pending-out', 'pending-in'):
         run_pending(args.command, today)
@@ -1213,7 +1128,7 @@ def main():
 
 
 def run_pending(mode, today):
-    tasks, _, _, _ = load_tasks_with_asks()
+    tasks, _, _, _ = load_tasks_with_asks()  # last_task_id, recurring_ids unused
 
     # Only use top-level tasks (subtasks are nested inside)
     top_tasks = [t for t in tasks if not t.parent]
@@ -1227,31 +1142,13 @@ def run_pending(mode, today):
 
 
 def run_startup(args, today):
-    tasks, events, queue_content, queue_path = load_tasks_with_asks()
-
-    # Archive old events
-    dry_run_msg = ""
-    dry_run = getattr(args, 'dry_run', False)
-    no_archive = getattr(args, 'no_archive', False)
-
-    if not no_archive:
-        kept_events, archived = archive_old_events(events, today.date())
-        if archived:
-            total_archived = sum(len(v) for v in archived.values())
-            if dry_run:
-                dry_run_msg = f"[dry-run] Would archive {total_archived} events"
-                write_archived_events(archived, dry_run=True)
-            else:
-                write_archived_events(archived, dry_run=False)
-                queue_content = rewrite_queue_events(queue_path, queue_content, kept_events)
-                dry_run_msg = f"📦 Archived {total_archived} event(s) older than {EVENTS_WINDOW_DAYS} days from queue.md"
-        events = kept_events
+    tasks, events, last_task_id, recurring_ids_in_use = load_tasks_with_asks()
 
     # Parse recurring tasks
     recurring_path = BRAIN_DIR / 'recurring_tasks.md'
     recurring_content = safe_read(recurring_path)
     recurring = parse_recurring_tasks(recurring_content) if recurring_content else []
-    recurring_due = check_recurring_due(recurring, tasks, today.date(), queue_content)
+    recurring_due = check_recurring_due(recurring, tasks, today.date(), recurring_ids_in_use)
 
     # Scan skills
     skills = []
@@ -1269,7 +1166,7 @@ def run_startup(args, today):
     processes = parse_processes(safe_read(BRAIN_DIR / 'process' / 'README.md'))
 
     # Output brief
-    brief = format_brief(tasks, skills, processes, contacts, today, recurring_due, events, dry_run_msg)
+    brief = format_brief(tasks, skills, processes, contacts, today, recurring_due, events)
     print(brief)
 
 
@@ -1279,16 +1176,15 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"## ⚠️ Dashboard Error — Degraded Mode\n", file=sys.stdout)
         print(f"Script error: `{type(e).__name__}: {e}`\n", file=sys.stdout)
-        # Fallback: show raw queue.md task list
-        queue_path = BRAIN_DIR / 'tasks' / 'queue.md'
+        # Fallback: list active task files
+        tasks_dir = BRAIN_DIR / 'tasks'
         try:
-            content = queue_path.read_text(encoding='utf-8')
-            lines = [l for l in content.split('\n') if l.startswith('## T') or l.startswith('### ↳')]
-            if lines:
+            task_files = sorted(tasks_dir.glob('T*.md'))
+            if task_files:
                 print("Active tasks (raw):\n")
-                for l in lines:
-                    print(f"  {l}")
+                for f in task_files:
+                    print(f"  {f.name}")
         except Exception:
-            print("Cannot read queue.md — check file system.")
+            print("Cannot read tasks directory — check file system.")
         print(f"\nFix the error and run `start` again.", file=sys.stdout)
         sys.exit(1)

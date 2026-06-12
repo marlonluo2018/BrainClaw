@@ -110,11 +110,11 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | `find-thread` | 收件箱 + 已发送 | 拉取完整对话链 |
 | `find-related` | 收件箱 + 已发送 | 发现跨线程关联邮件 |
 | `get-email` | — | 通过 entry_id 查看完整邮件 |
-| `compose` / `reply` / `replyall` / `forward` / `redirect` | — | 发送邮件（发送后自动输出 EntryID） |
+| `compose` / `reply` / `forward` / `redirect` | — | 发送邮件（发送后自动输出 EntryID） |
 
 **策略：** 已发送邮件在任务文件中追踪（`## Email References`）。`find` 和 `find-recent` 默认仅搜索收件箱。线程和关联搜索自动包含已发送邮件以确保完整性。
 
-**EntryID 追踪：** 所有发送命令（`compose`、`reply`、`replyall`、`forward`、`redirect`）发送后自动输出邮件的 `EntryID`。用于在任务 Timeline 中添加 `<!-- email:ID -->` 标记，实现可靠的邮件追溯。追踪遵循统一的**关键邮件标准**（收发一致）：包含请求/审批/决策/承诺的邮件、交付/请求交付物的邮件、任务里程碑邮件、或可能需要后续回复/转发的邮件。纯 FYI 确认（"noted"、"thanks"、"got it"）豁免。
+**EntryID 追踪：** 所有发送命令（`compose`、`reply`、`forward`、`redirect`）发送后自动输出邮件的 `EntryID`。用于在任务 Timeline 中添加 `<!-- email:ID -->` 标记，实现可靠的邮件追溯。追踪遵循统一的**关键邮件标准**（收发一致）：包含请求/审批/决策/承诺的邮件、交付/请求交付物的邮件、任务里程碑邮件、或可能需要后续回复/转发的邮件。纯 FYI 确认（"noted"、"thanks"、"got it"）豁免。
 
 **邮件↔任务匹配（三级优先）：**
 

@@ -194,7 +194,62 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 8. Record event in queue.md "Recent Events"
 ```
 
-### 4.5 Skills
+### 4.5 Email Sync Pipeline (`email_sync.py`)
+
+The email sync pre-processor offloads deterministic matching work from the AI context window into Python, reducing context consumption by ~78%.
+
+```
+outlook_skill.py find-recent --days 1 --json
+        │ JSON via stdout
+        ▼
+email_sync.py  (reads stdin → builds task index → matches → filters noise)
+        │ Compact pre-matched markdown (~250 lines)
+        ▼
+Claude  (semantic judgment: scope validation, ask extraction, task updates)
+```
+
+#### Matching Signals (priority order)
+
+| Signal | Confidence | How it works |
+| ------ | ---------- | ------------ |
+| Thread match | 1.0 | Email entry_id found in task's `<!-- email:XXX -->` timeline comments |
+| Contact match | 0.8 | Sender/recipient email in task's Contacts or RACI table |
+| Keyword+geo | 0.5+ | Subject/preview tokens overlap task keywords; geo agrees |
+
+#### Keyword Scoring Weights
+
+| Token type | Weight | Example |
+| ---------- | ------ | ------- |
+| EPD (plan row ID, 6-8 digits) | 3.0 | `1032769` — unique per task, highest discriminator |
+| Alphanumeric codes | 1.5 | `DO288`, `IG291921` — course/PO codes |
+| English words | 1.0 | `training`, `procurement` |
+| Chinese 3+ char | 1.0 | `培训计划` |
+| Chinese 2-char | 0.5 | `培训` — too common to score full weight |
+
+#### Task Index Sources
+
+`build_task_index()` extracts matching signals from each active task file:
+
+- **`## Contacts`** section → email addresses, names (via `followup.parse_task_file()`)
+- **RACI table** → additional `<email>` addresses and names not in Contacts
+- **`## Tags`** → backtick-delimited curated keywords (e.g., `` `Red Hat`, `FNC India` ``)
+- **`**EPD:**`** field → pure numeric plan row IDs (stored separately for weight boost)
+- **Full content** → alphanumeric codes (`[A-Za-z]+\d+[\w]*`)
+- **Timeline** → `<!-- email:ENTRY_ID -->` markers (for thread-match signal)
+
+#### Subject Line Strategy (outgoing emails)
+
+To maximize reply auto-matching, outgoing emails include the highest-priority identifier in the subject:
+
+1. EPD: `[1032769] Red Hat Q3 TU Order` (weight 3.0 on all replies)
+2. Course code: `DO288 Schedule Update — FNC India W5` (weight 1.5)
+3. Vendor + geo: `Temenos TLC — China User Setup` (weight 1.0 each)
+
+Replies inherit the subject → entire thread auto-matches back to the correct task.
+
+---
+
+### 4.6 Skills
 
 Skills are **modular I/O implementations** that workflows call when they need to touch external systems.
 
@@ -215,7 +270,7 @@ skills/
     └── [implementation]  # scripts/, backend/, etc. — varies per skill
 ```
 
-### 4.6 Outlook Skill Architecture
+### 4.7 Outlook Skill Architecture
 
 The `outlook-com-skill` is a self-contained Python application that interfaces with Microsoft Outlook via COM. It is **decoupled from BrainClaw** — the skill has its own config, backend, and CLI and can run standalone.
 
@@ -247,11 +302,11 @@ skills/outlook-com-skill/
 | `find-related` | Cross-thread discovery | Inbox + Sent Items (auto) |
 | `get-email` | Full email by entry_id | — |
 | `compose` | Compose and send new email | — |
-| `reply` / `replyall` | Reply to an email | — |
+| `reply` | Reply to an email (default: reply-all; `--only`: From only) | — |
 | `forward` / `redirect` | Forward/redirect an email | — |
 | `batch-forward` | Mass BCC forward | — |
 
-All send commands (`compose`, `reply`, `replyall`, `forward`, `redirect`) auto-output the sent email's `EntryID` after sending via the `_print_sent_entry_id()` helper. This enables workflows to capture the ID and write `<!-- email:ID -->` markers in task timeline entries.
+All send commands (`compose`, `reply`, `forward`, `redirect`) auto-output the sent email's `EntryID` after sending via the `_print_sent_entry_id()` helper. This enables workflows to capture the ID and write `<!-- email:ID -->` markers in task timeline entries.
 
 **Design Principles:**
 - **Decoupled**: No imports from BrainClaw. Works standalone with `py -3 scripts/outlook_skill.py`.
@@ -279,7 +334,7 @@ operations: ["op1", "op2"]
 ## Example
 ```
 
-### 4.7 Tasks
+### 4.8 Tasks
 
 #### Task File Naming
 ```
@@ -301,7 +356,7 @@ T{ID}-{keyword1}-{keyword2}.md
 - **Subtask**: Has "Parent Task: TXXX" field
 - **Queue display**: Subtasks indented under master with `↳` prefix
 
-### 4.8 Process Intelligence
+### 4.9 Process Intelligence
 
 #### How It Works
 The process workflow connects tasks to operational processes:
@@ -321,7 +376,7 @@ Tasks include RACI matrix:
 - **C** = Consulted (provides input)
 - **I** = Informed (kept updated)
 
-### 4.9 Processes
+### 4.10 Processes
 
 Operational processes grouped by geography.
 

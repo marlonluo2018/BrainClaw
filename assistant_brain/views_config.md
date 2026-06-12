@@ -51,16 +51,16 @@ If a section has no content, omit it (don't print "(none)").
 
 ## Pending Series — Grep Patterns
 
-> **Implementation:** All three `pending` commands use Grep, not full-file reads. `Owed by me` items are unchecked checkboxes (`^- \[ \] .*→`); `Owed to me` items use `^- \d{4}-\d{2}-\d{2} ←`. Grep extracts these directly across all `tasks/T*.md`.
+> **Implementation:** All three `pending` commands use Grep, not full-file reads. `Owed by me` items are unchecked checkboxes (`^- \[ \] .*🎯`); `Owed to me` items use `^- \d{4}-\d{2}-\d{2} ⏳`. Grep extracts these directly across all `tasks/T*.md`.
 
 `pending:out` (alias: `owed` / `待我处理`):
 
-- Grep pattern across `tasks/T*.md`: `^- \[ \] .*→`
+- Grep pattern across `tasks/T*.md`: `^- \[ \] .*🎯`
 - Sort: priority → overdue severity (most overdue first)
 
 `pending:in` (alias: `waiting` / `等待`):
 
-- Grep pattern across `tasks/T*.md`: `^- \d{4}-\d{2}-\d{2} ←`
+- Grep pattern across `tasks/T*.md`: `^- \d{4}-\d{2}-\d{2} ⏳`
 - Sort: priority → wait duration (longest first)
 
 `pending` (unified):
@@ -100,7 +100,7 @@ If a section has no content, omit it (don't print "(none)").
 
 ## Notes for AI
 
-- **Startup is minimal.** Only overdue tasks (queue `**Due:**` < today) are listed by ID at startup. No global dashboard, no per-task status lines.
+- **Startup is minimal.** Only overdue tasks (`**Due:**` < today) are listed by ID at startup. No global dashboard, no per-task status lines.
 - **All operations are read-time and focus-driven.** `status T###` reads one task file. `owed` / `waiting` use a single Grep across `tasks/T*.md`. `before {person}` greps for the person's name then reads only the matching subset. `review` reads `achievements.md`.
 - **Never store view results.** Always recompute from task files + grep + this config.
 - **Empty sections collapse.** Don't print headings for sections with zero items.

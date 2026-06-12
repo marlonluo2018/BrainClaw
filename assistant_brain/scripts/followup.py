@@ -12,45 +12,7 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS, PROCESS_MATCH_RULES, safe_read
-
-
-def parse_queue_tasks(content: str) -> list:
-    tasks = []
-    task_heading = re.compile(
-        r'^(##|### ↳)\s+T(\d+)\s+(📋|⏳|🔴)\s+(.+?)\s+\[`?([^`\]]+)`?\]\(([^)]+)\)'
-    )
-    current = None
-
-    for line in content.split('\n'):
-        m = task_heading.match(line)
-        if m:
-            current = {
-                "id": f"T{m.group(2)}",
-                "title": m.group(4).strip(),
-                "status_icon": m.group(3),
-                "path": m.group(6).replace('./', 'assistant_brain/tasks/'),
-                "priority": "",
-                "geo": "",
-                "category": "",
-                "due": "",
-                "is_subtask": m.group(1) == "### ↳",
-            }
-            tasks.append(current)
-            continue
-
-        if current and line.startswith('- **'):
-            kv = re.match(r'^- \*\*(.+?):\*\*\s*(.+)$', line)
-            if kv:
-                key, val = kv.group(1), kv.group(2).strip()
-                if key == "Priority":
-                    current["priority"] = val
-                elif key == "Geo":
-                    current["geo"] = val
-                elif key == "Due":
-                    current["due"] = val
-
-    return tasks
+from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS, PROCESS_MATCH_RULES, safe_read, scan_tasks, _parse_date_field
 
 
 def parse_task_file(content: str) -> dict:
@@ -102,29 +64,47 @@ def parse_task_file(content: str) -> dict:
                 section = None
             continue
 
-        # Parse timeline entries
+        # Parse timeline entries (both ISO and Wkd Mon DD, YYYY formats)
         if section == 'timeline':
             tm = re.match(r'^- \*\*(\d{4}-\d{2}-\d{2})\*\*\s*\[(.+?)\]:?\s*(.+)$', line)
-            if not tm:
-                tm = re.match(r'^- \*\*(\d{4}-\d{2}-\d{2})\*\*\s+(.+)$', line)
-                if tm:
-                    result["timeline_entries"].append({
-                        "date": tm.group(1),
-                        "tag": "",
-                        "description": tm.group(2),
-                    })
-            else:
+            if tm:
                 result["timeline_entries"].append({
                     "date": tm.group(1),
                     "tag": tm.group(2),
                     "description": tm.group(3),
+                })
+                continue
+            tm = re.match(r'^- \*\*(\d{4}-\d{2}-\d{2})\*\*\s+(.+)$', line)
+            if tm:
+                result["timeline_entries"].append({
+                    "date": tm.group(1),
+                    "tag": "",
+                    "description": tm.group(2),
+                })
+                continue
+            tm2 = re.match(r'^- \*\*([A-Z][a-z]{2} [A-Z][a-z]{2} \d{2}, \d{4})\*\*\s*\[(.+?)\]:?\s*(.+)$', line)
+            if tm2:
+                d = _parse_date_field(tm2.group(1))
+                result["timeline_entries"].append({
+                    "date": d.isoformat() if d else tm2.group(1),
+                    "tag": tm2.group(2),
+                    "description": tm2.group(3),
+                })
+                continue
+            tm2 = re.match(r'^- \*\*([A-Z][a-z]{2} [A-Z][a-z]{2} \d{2}, \d{4})\*\*\s+(.+)$', line)
+            if tm2:
+                d = _parse_date_field(tm2.group(1))
+                result["timeline_entries"].append({
+                    "date": d.isoformat() if d else tm2.group(1),
+                    "tag": "",
+                    "description": tm2.group(2),
                 })
 
         # Parse owed-to-me asks
         elif section == 'asks_in':
             if line.strip().startswith('- ~~'):
                 continue
-            am = re.match(r'^- (.+?) ← (.+?): (.+)$', line)
+            am = re.match(r'^- (.+?) ⏳ (.+?): (.+)$', line)
             if am:
                 result["asks_in"].append({
                     "date": am.group(1).strip(),
@@ -136,7 +116,7 @@ def parse_task_file(content: str) -> dict:
         elif section == 'asks_out':
             if line.strip().startswith('- ~~') or line.strip().startswith('- [x]'):
                 continue
-            am = re.match(r'^- \[.\]\s*(.+?) → (.+?): (.+)$', line)
+            am = re.match(r'^- \[.\]\s*(.+?) 🎯 (.+?): (.+)$', line)
             if am:
                 result["asks_out"].append({
                     "date": am.group(1).strip(),
@@ -222,27 +202,20 @@ def get_process_step_info(process_file: str, current_state: list) -> dict | None
 
 
 def find_stale_tasks(today: date, target_task: str = None) -> list:
-    queue_path = BRAIN_DIR / 'tasks' / 'queue.md'
-    queue_content = safe_read(queue_path)
-    if not queue_content:
-        print("ERROR: Cannot read tasks/queue.md", file=sys.stderr)
-        return []
-
-    queue_tasks = parse_queue_tasks(queue_content)
+    scanned_tasks, _, _ = scan_tasks()
     results = []
 
-    for qt in queue_tasks:
-        # Skip if targeting a specific task
-        if target_task and qt["id"] != target_task:
+    for st in scanned_tasks:
+        if target_task and st.id != target_task:
             continue
 
-        task_file = PROJECT_ROOT / qt["path"]
+        task_file = PROJECT_ROOT / st.path
         content = safe_read(task_file)
         if not content:
             continue
 
         parsed = parse_task_file(content)
-        priority = qt["priority"] or "P3"
+        priority = st.priority or "P3"
         threshold = STALE_THRESHOLDS.get(priority, 10)
 
         # Calculate days since last activity
@@ -263,11 +236,11 @@ def find_stale_tasks(today: date, target_task: str = None) -> list:
 
         # Build result
         entry = {
-            "task_id": qt["id"],
-            "title": qt["title"],
-            "path": qt["path"],
+            "task_id": st.id,
+            "title": st.title,
+            "path": st.path,
             "priority": priority,
-            "geo": qt["geo"],
+            "geo": st.geo,
             "days_inactive": days_inactive,
             "threshold": threshold,
             "last_activity": last_date_str,
@@ -278,10 +251,8 @@ def find_stale_tasks(today: date, target_task: str = None) -> list:
             entry["waiting_on"] = []
             for ask in parsed["asks_in"]:
                 ask_date = ask["date"]
-                try:
-                    ask_days = (today - date.fromisoformat(ask_date)).days
-                except ValueError:
-                    ask_days = None
+                parsed_date = _parse_date_field(ask_date)
+                ask_days = (today - parsed_date).days if parsed_date else None
                 entry["waiting_on"].append({
                     "person": ask["person"],
                     "ask": ask["what"],
@@ -290,8 +261,8 @@ def find_stale_tasks(today: date, target_task: str = None) -> list:
                 })
 
         # Process step info
-        category = parsed["category"] or qt.get("category", "")
-        geo = parsed["geo"] or qt["geo"]
+        category = parsed["category"]
+        geo = parsed["geo"] or st.geo
         process_file = match_process(category, geo)
 
         if process_file:
@@ -305,10 +276,8 @@ def find_stale_tasks(today: date, target_task: str = None) -> list:
             entry["owed_by_me"] = []
             for ask in parsed["asks_out"]:
                 out_date = ask["date"]
-                try:
-                    out_days = (today - date.fromisoformat(out_date)).days
-                except ValueError:
-                    out_days = None
+                parsed_date = _parse_date_field(out_date)
+                out_days = (today - parsed_date).days if parsed_date else None
                 entry["owed_by_me"].append({
                     "person": ask["person"],
                     "ask": ask["what"],

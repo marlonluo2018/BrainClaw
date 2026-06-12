@@ -15,33 +15,17 @@
 
 ### Event Types & Formats
 
-| Event Type | Icon | Location | Format |
-|------------|------|----------|--------|
-| Task Created | 📋 | queue.md Recent Events | `- **{date}**: 📋 Created [{TID}](path) - {title}` |
-| Task Completed | ✅ | queue.md Recent Events | `- **{date}**: ✅ Completed [{TID}](path) - {title}` |
-| Task Blocked | 🔴 | queue.md Recent Events | `- **{date}**: 🔴 Blocked [{TID}](path) - {title}` |
-| Meeting/Decision | 🤝 | queue.md Recent Events | `- **{date}**: 🤝 {description}` |
-| Tracking Issue | 📊 | queue.md Recent Events | `- **{date}**: 📊 {description}` |
-| Task Update | - | Task file Timeline only | `- **{date}** [{source}]: {description}` |
+| Event Type | Icon | Source | Format |
+|------------|------|--------|--------|
+| Task Created | 📋 | Derived from `Created:` field | `- **{Wkd Mon DD, YYYY}**: 📋 Created [{TID}](path) - {title}` |
+| Task Completed | ✅ | Derived from `Completed:` field | `- **{Wkd Mon DD, YYYY}**: ✅ Completed [{TID}](path) - {title}` |
+| Task Blocked | 🔴 | Task file Status field | `- **{Wkd Mon DD, YYYY}**: 🔴 Blocked [{TID}](path) - {title}` |
+| Task Update | - | Task file Timeline only | `- **{Wkd Mon DD, YYYY}** [{source}]: {description}` |
 
-### What NOT to Record in queue.md
-
-- Email sent/received → Task file only
-- Task updates → Task file only
-- Minor progress → Task file only
+> **Note:** Recent Events are derived automatically by `dashboard.py` from task file metadata (Created/Completed fields within a 14-day window). No manual recording needed.
 
 ---
 
-## Archive Old Events
-
-**Trigger:** Startup, events exceed window
-
-**Steps:**
-
-1. Recent Events Window: 14 days (configured in CLAUDE.md → System Config)
-2. Find events older than window
-3. Move to `tasks/history/timeline_YYYY-MM.md`
-4. Create monthly file if not exists
 5. Keep last 12 months, delete older (optional)
 
 ---
@@ -88,11 +72,10 @@
 
 ### "What did I do recently?"
 
-1. Read queue.md Recent Events
-2. Show activities within window
+1. Run `py -3 assistant_brain/scripts/dashboard.py` → Recent Events section
+2. Show activities within 14-day window
 
 ### "What happened with T019?"
 
-1. Read queue.md Recent Events → Find T019 creation/completion
-2. Read T019.md Timeline → Get detailed history
-3. Combine information
+1. Read T019.md Timeline → Get detailed history
+2. Check `Created:`/`Completed:` fields for lifecycle dates

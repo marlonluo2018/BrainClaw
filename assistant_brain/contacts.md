@@ -28,7 +28,7 @@
 - Ian IBANA <ibanaje@ph.ibm.com> — Delivery Learning Consultant, FutureNow PH | Dept: LK9 | Mobile: +63-9988693557
 - ERDA FRANCES AFABLE <afableer@ph.ibm.com> — L&K Leader, CIC Philippines | Dept: LK8 | Mobile: +63-917-883-8389
 - Lani PEDRO <pedroml@ph.ibm.com> — Delivery Learning Consultant, FutureNow Centers (PH & China) | Dept: LK9 | Mobile: +63-917-857-0611
-- Darlene SARMIENTO <sarmiedb@ph.ibm.com> — Learning Portfolio Operations Lead, FutureNow Center PH | Dept: LK8 | Mobile: +63-9171228366
+- Darlene SARMIENTO <sarmiedb@ph.ibm.com> — PH L&K Operations Leader | Dept: LK8 | Mobile: +63-9171228366
 
 ## PH Practice Leaders (report to Beng)
 

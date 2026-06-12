@@ -11,22 +11,25 @@
 **Trigger:** User requests new task, email action item detected
 
 **Steps:**
-1. Read queue.md header → Get "Last Task ID" and increment by 1 for new task ID
+1. Determine next Task ID (auto-incremented from highest existing T-number in task files)
 2. Extract keywords from content (see [Keyword Extraction Rules](#keyword-extraction-rules))
 3. Match to process template (see [PROCESS_WORKFLOW](PROCESS_WORKFLOW.md)) → suggest RACI roles + initial Current State steps
-3a. **Define Scope** → Write a one-line boundary statement (what belongs in this task and what doesn't). Check active tasks in queue.md for same vendor/geo/topic overlap — if overlap found, sharpen BOTH Scopes to disambiguate. Scope is mandatory; never leave it empty.
+3a. **Define Scope** → Write a one-line boundary statement (what belongs in this task and what doesn't). Check active task files for same vendor/geo/topic overlap — if overlap found, sharpen BOTH Scopes to disambiguate. Scope is mandatory; never leave it empty.
 4. Present RACI matrix to user for confirmation
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
 6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### Owed by me` and `### Owed to me` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.
+6a. **Match-Friendly Metadata** — Ensure these fields are populated for `email_sync.py` auto-matching:
+   - **EPD:** Fill if a plan row ID exists (e.g., `1032769`). Pure numeric IDs score 3× in matching.
+   - **Tags:** Include the most discriminating identifiers — EPD numbers, course codes (`DO288`), vendor names (`Red Hat`), geo shorthand (`FNC India`), PO numbers. See [Tag Guidelines](../tasks/FORMATS.md#tag-guidelines).
+   - **Contacts:** List ALL known email correspondents (not just approvers) — every email address in Contacts/RACI enables contact-signal matching (0.8 confidence).
 7. **Initialize Asks** → From the trigger content (user request or email body), detect any explicit promises:
-   - "I'll send X to {person}" / "我会发给 {人}" → append to `### Owed by me` as `- [ ] {today} → {person}: {what}`
-   - "{person} will send X" / "等 {人} 回" → append to `### Owed to me` as `- {today} ← {person}: {what}`
-   - If a `response_due` date is mentioned, include `[response_due: YYYY-MM-DD]` on the owed-by-me line.
+   - "I'll send X to {person}" / "我会发给 {人}" → append to `### Owed by me` as `- [ ] {Wkd Mon DD, YYYY} 🎯 {person}: {what}`
+   - "{person} will send X" / "等 {人} 回" → append to `### Owed to me` as `- {Wkd Mon DD, YYYY} ⏳ {person}: {what}`
+   - If a `response_due` date is mentioned, include `[response_due: {Wkd Mon DD, YYYY}]` on the owed-by-me line.
    - If no explicit asks: leave both subsections empty (just the headings). Do **not** keep the placeholder example lines from the template.
-8. Add entry to queue.md (see [Queue Update](#queue-update))
-9. Update "Last Task ID" in queue.md header
-10. Record in Recent Events: `- **{date}**: 📋 Created [TID](path) - {title}`
-11. Confirm with user — show the populated Asks (if any) so the user can correct or add more before saving.
+8. Confirm with user — show the populated Asks (if any) so the user can correct or add more before saving.
+
+> **Note:** The dashboard derives task lists and Recent Events from file metadata (`Created:`/`Completed:` fields) — no manual index update needed.
 
 ---
 
@@ -41,29 +44,28 @@
 4. If duplicate → Notify user and skip
 5. If new → Show changes and get approval
 6. **Detect Asks signals** in the user input or referenced email content:
-   - **New owed-by-me** ("I'll do X" / "I'll send X" / "我会发" / "我会处理") → append `- [ ] {today} → {person}: {what} [response_due: {date if given}]` to `### Owed by me`
-   - **New owed-to-me** ("{person} will send X" / "等 {人} 回" / "等回复") → append `- {today} ← {person}: {what}` to `### Owed to me`
+   - **New owed-by-me** ("I'll do X" / "I'll send X" / "我会发" / "我会处理") → append `- [ ] {Wkd Mon DD, YYYY} 🎯 {person}: {what} [response_due: {Wkd Mon DD, YYYY}]` to `### Owed by me`
+   - **New owed-to-me** ("{person} will send X" / "等 {人} 回" / "等回复") → append `- {Wkd Mon DD, YYYY} ⏳ {person}: {what}` to `### Owed to me`
    - **Owed-by-me fulfilled** (user says "done" / "已发" / "处理完了" referencing a specific item) → flip the matching `[ ]` to `[x]` (do NOT delete — kept for history)
    - **Owed-to-me received** (user says "got reply from X" / "X 回了") → remove the matching line from `### Owed to me`
    - When ambiguous which existing item is being closed, ask before flipping/removing.
 6a. **Reclassify Current State items that are actually Asks.** Scan `## Current State` for items that have an external recipient (an action like "send X to {person}" / "notify {team}" / "deliver to {role}"). For each such item, propose to upgrade it to `Asks > Owed by me` and remove from Current State (or leave if it's also a meaningful internal step). This keeps cross-task views (`owed`/`waiting`) accurate. Apply the [Asks vs Current State](../tasks/FORMATS.md#asks) rules from FORMATS.md. Ask user before moving — don't auto-rewrite long-standing items silently.
 7. After approval, update task file (status, fields, Asks, timeline entry)
 8. **Pending-item gate (mandatory):** After every update, verify the task has at least one active (non-struck-through) item in `### Owed to me`. If all items are struck through or the section is empty, the task MUST have a new pending item added before the update is considered complete. Principle: *"if it is not closed, there should be something waiting."* If you cannot determine the next waiting item, ask the user.
-9. Update queue.md if status/priority/due changed (see [Queue Update](#queue-update))
-10. Notify user of changes
+9. Notify user of changes
 
 **Update Types:**
 
 | Field | Action |
 |-------|--------|
-| status | Update status field + queue.md |
+| status | Update status field in task file |
 | timeline | Append new entry |
 | notes | Append to notes section |
 | stakeholders | Update RACI matrix |
-| due_date | Update due field + queue.md |
-| priority | Update priority + queue.md |
-| asks (owed by me) | Append `- [ ] {date} → {person}: {what}` to `### Owed by me`; flip `[x]` when fulfilled |
-| asks (owed to me) | Append `- {date} ← {person}: {what}` to `### Owed to me`; remove line when received |
+| due_date | Update due field in task file |
+| priority | Update priority in task file |
+| asks (owed by me) | Append `- [ ] {Wkd Mon DD, YYYY} 🎯 {person}: {what}` to `### Owed by me`; flip `[x]` when fulfilled |
+| asks (owed to me) | Append `- {Wkd Mon DD, YYYY} ⏳ {person}: {what}` to `### Owed to me`; remove line when received |
 | scope | Update Scope field (e.g., after sync mismatch or discovering overlap with another task) |
 
 ---
@@ -77,11 +79,10 @@
 2. Update status to ✅
 3. If task has "Recurring Task ID" → Update recurring_tasks.md "last_completed"
 4. **Extract achievements** (NEW — see [Extract Achievements on Completion](#extract-achievements-on-completion) below) — runs BEFORE moving the file so we still have a clean path
-5. Move task file to `tasks/history/{YYYY}-Q{n}/` (quarter determined by completion date)
-6. Remove from queue.md (see [Queue Update](#queue-update))
-7. Record in Recent Events: `- **{date}**: ✅ Completed [TID](path) - {title}`
-8. Ask user: "Draft notification email to [stakeholders]?"
-9. If yes → Follow [EMAIL_WORKFLOW](EMAIL_WORKFLOW.md) to draft and send
+5. Add `**Completed:** {date}` to frontmatter
+6. Move task file to `tasks/history/{YYYY}-Q{n}/` (quarter determined by completion date)
+7. Ask user: "Draft notification email to [stakeholders]?"
+8. If yes → Follow [EMAIL_WORKFLOW](EMAIL_WORKFLOW.md) to draft and send
 
 ---
 
@@ -160,20 +161,19 @@
 ### Create Subtask
 1. Follow Create Task workflow
 2. Add "**Parent Task: TXXX**" field
-3. Place under master with `### ↳` prefix in queue.md
-4. Update master's Subtasks field
+3. Update master's Subtasks field
 
 ### Update Relationships
-- **Add subtask**: Update master's Subtasks field + queue placement
+- **Add subtask**: Update master's Subtasks field
 - **Remove subtask**: Update master + move/archive subtask
-- **Convert to master**: Add (Master) + Subtasks field + move section
+- **Convert to master**: Add (Master) + Subtasks field
 
 ---
 
 ## Task Queries
 
 ### By Keyword
-1. Search queue.md for keyword
+1. Search active task files for keyword (glob `tasks/T*.md`, grep content)
 2. Show matching tasks with links
 3. If details needed → Read specific task file
 
@@ -181,27 +181,6 @@
 1. Search all task files for stakeholder name in Stakeholders section
 2. Group by status: ⏳ In Progress → 📋 Not Started → 🔴 Blocked
 3. Display with RACI role
-
----
-
-## Queue Update
-
-### Add to Queue
-1. Increment Last Task ID in queue.md header
-2. Add task entry in correct section:
-   - Standalone tasks: "Standalone Tasks" section
-   - Master tasks: "Master Task with Subtasks" section
-   - Subtasks: Under parent task with `### ↳` prefix
-
-### Remove from Queue
-1. Remove task entry from queue
-2. If subtask: Update parent's "Subtasks:" field
-3. If master: Move all subtasks to standalone
-
-### Update in Queue
-1. Find task entry
-2. Update specified fields (status, priority, due)
-3. Preserve queue structure
 
 ---
 

@@ -2,9 +2,9 @@
 
 Tasks that automatically trigger on a schedule.
 
-## Queue Addition Rules
+## Task Creation Rules
 
-On startup, calculate next due date from schedule and last_completed. Add to queue ONLY if current date matches the schedule period.
+On startup, calculate next due date from schedule and last_completed. Create a new task file ONLY if current date matches the schedule period.
 
 ## Format Rules
 

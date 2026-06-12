@@ -33,9 +33,9 @@ T### {Title} | {emoji} {priority} | Created {Nd} ago
 
 📍 Now: {text}
 📤 Owed by me ({count}):
-   • {date} → {person}: {what} {[overdue/due]}
+   • 🎯 {date} → {person}: {what} {[overdue/due]}
 📥 Owed to me ({count}):
-   • {date} ← {person}: {what} (waiting {Nd})
+   • ⏳ {date} ← {person}: {what} (waiting {Nd})
 🤐 Stale: no activity in {Nd}
 📜 Recent activity:
    • {date} [tag] {description}

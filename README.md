@@ -95,7 +95,7 @@ Skills are reserved for I/O against external systems. Business logic (task lifec
 
 | Skill | Purpose | External system |
 |-------|---------|-----------------|
-| **outlook-com-skill** | Find, thread, related, compose, reply, replyall, forward, redirect, batch-forward | Microsoft Outlook (COM) |
+| **outlook-com-skill** | Find, thread, related, compose, reply, forward, redirect, batch-forward | Microsoft Outlook (COM) |
 | **minimax-xlsx** | Create, read, edit, analyze Excel/spreadsheet files | `.xlsx`, `.xlsm`, `.csv` |
 | **skill-creator** | Scaffold a new skill | (meta) |
 
@@ -110,16 +110,18 @@ All commands use the `find-*` naming convention:
 | `find-thread` | Inbox + Sent Items | Pull entire conversation chain |
 | `find-related` | Inbox + Sent Items | Discover cross-thread related emails |
 | `get-email` | — | View full email by entry_id |
-| `compose` / `reply` / `replyall` / `forward` / `redirect` | — | Send emails (all output EntryID after send) |
+| `compose` / `reply` / `forward` / `redirect` | — | Send emails (all output EntryID after send) |
 
 **Strategy:** Sent emails are tracked in task files (`## Email References`). `find` and `find-recent` default to Inbox only. Thread and related search auto-include Sent Items for completeness.
 
-**EntryID Tracking:** All send commands (`compose`, `reply`, `replyall`, `forward`, `redirect`) automatically output the sent email's `EntryID` after sending. This enables reliable timeline tracking with `<!-- email:ID -->` markers in task files. Tracking follows unified **Key Email Criteria** (same for inbound and outbound): emails containing an ask/approval/decision/commitment, delivering/requesting a deliverable, representing a task milestone, or likely needing future reply/forward. Pure FYI acknowledgements ("noted", "thanks", "got it") are exempt.
+**EntryID Tracking:** All send commands (`compose`, `reply`, `forward`, `redirect`) automatically output the sent email's `EntryID` after sending. This enables reliable timeline tracking with `<!-- email:ID -->` markers in task files. Tracking follows unified **Key Email Criteria** (same for inbound and outbound): emails containing an ask/approval/decision/commitment, delivering/requesting a deliverable, representing a task milestone, or likely needing future reply/forward. Pure FYI acknowledgements ("noted", "thanks", "got it") are exempt.
 
 **Email↔Task Matching (3-tier priority):**
 1. **Thread match** — email's ConversationID already in a task's Email References → instant hit
-2. **Contact match** — sender appears in a task's `## Contacts` section → high confidence
-3. **Keyword + geo** — fallback to keyword overlap + email domain geo detection
+2. **Contact match** — sender appears in a task's `## Contacts` or RACI table → high confidence
+3. **Keyword + geo** — subject/preview tokens scored against task keywords + domain geo detection
+
+**Keyword scoring weights:** EPD plan-row IDs (3.0×), course/PO codes (1.5×), English words (1.0×), Chinese 3+ char (1.0×). Data sources: `## Tags`, `**EPD:**` field, RACI table contacts, alphanumeric codes in content. Outgoing emails carry the highest-priority identifier in the subject so replies auto-match back. See [ARCHITECTURE.md §4.5](ARCHITECTURE.md) for full details.
 
 ## Project Structure
 
@@ -147,6 +149,7 @@ BrainClaw/
     ├── contacts.md          ⭐ # Single source of truth for people (tone, email, role, process roles)
     ├── scripts/                 # Python automation scripts
     │   ├── dashboard.py            # Startup display, taskboard, pending, digest, timesheet
+    │   ├── email_sync.py           # Email pre-processor: 3-signal matching, noise filter, context reduction (~78%)
     │   └── followup.py             # Stale task detection for follow-up workflow
     ├── memory/                  # User-derived data (learned over time)
     │   ├── preferences.md       ⭐ # User preferences (tone, time format, etc.)
