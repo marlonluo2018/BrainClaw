@@ -2,6 +2,8 @@
 
 > **ALWAYS load the email skill before executing any email operation.**
 > Load by: read `assistant_brain/skills/*/SKILL.md` → match by trigger keywords. Do NOT guess the folder name — glob for it.
+>
+> **Sync results archive:** `assistant_brain/sync_results/` — timestamped `.md` files from each sync run. Read these for entry_ids and prior output; do NOT re-fetch from outlook.
 
 ---
 
@@ -47,6 +49,10 @@
 
 ## Compose New Email
 
+> ⚠️ **MANDATORY DRAFT REVIEW:** Steps 6–8 (review → recipients → approval) are NEVER skippable.
+> User saying "do it" or "yes" for the action item does NOT constitute send approval.
+> Send approval = user explicitly confirms AFTER seeing the rendered draft.
+
 **Triggers:** "draft email", "compose", "write email", "new email", "send to [person]"
 
 **Steps:**
@@ -56,14 +62,39 @@
 4. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
 5. **Subject line** → Apply [Subject Line Rules](#subject-line-rules) — include at least one high-weight identifier from the related task.
 6. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
-7. **Present for approval** → NEVER send without user confirmation
-8. **Send via --body-file** → Write HTML body to `./downloads/temp_body.html`, then pass `--body-file "./downloads/temp_body.html"`. NEVER pass body content as inline argument (shell expansion corrupts `$` signs).
+7. **Recipient review** → Show To/CC list and suggest changes (see [Recipient Review](#recipient-review) below).
+8. **Present for approval** → NEVER send without user confirmation
+9. **Send via --body-stdin** → Pipe HTML body via stdin: `echo "body" | py -3 ... --body-stdin`. NEVER pass body content as inline argument (shell expansion corrupts `$` signs). Non-ASCII characters (em dashes, curly quotes, etc.) are safe — the script handles UTF-8 stdin.
 
 ---
 
-## Reply / Forward
+## Reply / Forward / Redirect
 
-**Triggers:** "reply", "reply all", "forward"
+> ⚠️ **MANDATORY DRAFT REVIEW:** Steps 7–10 (draft → review → recipients → approval) are NEVER skippable.
+> User saying "do it" or "yes" for the action item does NOT constitute send approval.
+> Send approval = user explicitly confirms AFTER seeing the rendered draft.
+
+**Triggers:** "reply", "reply all", "forward", "redirect"
+
+### Command Selection (before drafting)
+
+| User intent | Command |
+|-------------|---------|
+| Respond in same thread, keep recipients | `reply` (reply-all) |
+| Respond to sender only | `reply --only` |
+| Send thread context to NEW people (not on original) | `forward` |
+| Re-route email to entirely different recipients | `redirect` |
+| Fresh email, no thread context needed | `compose` |
+
+**Key signals → forward/redirect:**
+- User names recipients NOT on the original thread
+- "use the thread" / "include the context" + different To/CC
+- "send this to X" / "let X know" (where X is new)
+- Thread context is needed but original recipients should NOT receive it
+
+**Key signals → reply:**
+- "reply", "respond", "tell them", "confirm"
+- Recipients stay the same (or add via --cc)
 
 **Steps:**
 1. **Load skill** → Load the email skill
@@ -83,8 +114,9 @@
 6. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
 7. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
 8. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
-9. **Present for approval** → NEVER send without user confirmation
-10. **Send via --body-file** → Write HTML body to `./downloads/temp_body.html`, then pass `--body-file "./downloads/temp_body.html"`. NEVER pass body content as inline argument (shell expansion corrupts `$` signs).
+9. **Recipient review** → Show To/CC list and suggest changes (see [Recipient Review](#recipient-review) below).
+10. **Present for approval** → NEVER send without user confirmation
+11. **Send via --body-stdin** → Pipe HTML body via stdin: `echo "body" | py -3 ... --body-stdin`. NEVER pass body content as inline argument (shell expansion corrupts `$` signs). Non-ASCII characters (em dashes, curly quotes, etc.) are safe — the script handles UTF-8 stdin.
 
 **Tone Guidelines:**
 
@@ -161,7 +193,57 @@ Thread: "{subject}" — last from {sender}, {date}
 
 - Show 0-2 suggestions max. If draft is already solid, skip the suggestions section entirely.
 - Never block on suggestions — always present the draft for approval regardless.
-- **Draft body must be rendered as readable plain text** — never show raw HTML tags (`<p>`, `<br>`, `<strong>`, etc.) to the user. Use markdown formatting (bold, lists, line breaks) for readability. HTML is only for the `--body-file` at send time.
+- **Draft body must be rendered as readable plain text** — never show raw HTML tags (`<p>`, `<br>`, `<strong>`, etc.) to the user. Use markdown formatting (bold, lists, line breaks) for readability. HTML is only for the `--body-stdin` pipe at send time.
+
+---
+
+## Recipient Review
+
+> Shown as part of every draft presentation — BEFORE user approves sending.
+
+**Purpose:** Catch wrong recipients before sending. On reply-all threads CC lists grow stale; on compose the right stakeholders may be missing.
+
+**Output format (shown with every draft):**
+
+```text
+👥 Recipients:
+  To: {Name} <email>, ...
+  CC: {Name} <email>, ...
+
+  💡 Suggestions: {one-line per suggestion, or "— None" if list looks correct}
+```
+
+**When to suggest changes:**
+
+| Situation                                                                     | Suggestion                                                      |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Someone on CC is no longer relevant to this stage                             | "Consider removing {Name} — not involved in activation step"    |
+| A stakeholder from the task RACI or contacts.md is missing                    | "Consider adding {Name} to CC — {role} on this task"            |
+| Reply-all includes a large DL but the message is only relevant to one person  | "Consider reply --only to {Name}"                               |
+| A new recipient was added by user but not on the original thread              | "Adding {Name} — not on original thread (FYI)"                  |
+| To/CC looks correct for the context                                           | "— None"                                                        |
+
+**Rules:**
+
+- Always show the full To/CC list — even when no changes suggested
+- For reply-all: inherited recipients come from the original email; show them all
+- For compose: recipients come from user instruction + contacts.md lookup
+- Suggestions are advisory — user decides; never block on this
+
+---
+
+## Stakeholder Separation
+
+> When drafting emails to business requesters (I-level stakeholders), do NOT name vendor contacts directly. Use role/company references instead.
+
+| ❌ Don't | ✅ Do |
+|----------|-------|
+| "Kirk confirmed activations are in progress" | "Red Hat confirmed activations are in progress" |
+| "Sunni sent the trainer list" | "The Red Hat team sent the trainer list" |
+
+**Why:** Vendor contact names are internal coordination details. Exposing them to business requesters leaks the supply chain and can create unwanted direct outreach.
+
+**Rule:** In emails to I-level stakeholders, refer to vendors by **company name** or **role** ("the vendor", "Red Hat", "the Temenos team") — never by individual name.
 
 ---
 
@@ -189,7 +271,7 @@ Thread: "{subject}" — last from {sender}, {date}
 
 ## Email Sync (Integrated)
 
-**Triggers:** "email sync", "sync emails", "check email", "check and update", "any new emails", "what's new", "show recent", "emails from [time]", "邮件同步", "同步邮件"
+**Triggers:** "email sync", "sync emails", "check email", "check new email", "check and update", "any new emails", "what's new", "show recent", "emails from [time]", "邮件同步", "同步邮件", "查看邮件", "查看新邮件"
 
 **Days parameter:**
 - Default: **1 day** (today only — designed for daily use)
@@ -218,6 +300,7 @@ Thread: "{subject}" — last from {sender}, {date}
    - Current State → Mark completed checkboxes `[✅]`, advance `[⏳]`
    - Asks → Strike through completed items, add new asks
    - This is NOT optional. If an email indicates progress, the file MUST be updated NOW.
+   - **Entry IDs:** Use the `ID:` lines from the sync output (step 1) or the saved file (shown at end of output as `📁 Saved: ...`). Do NOT re-run outlook skill to fetch IDs — they are already in the output.
 
    **Key Email Criteria (for entry_id tracking):**
 

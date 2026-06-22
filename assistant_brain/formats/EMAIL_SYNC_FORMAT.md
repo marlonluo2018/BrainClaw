@@ -89,12 +89,12 @@ Actions:
 
 ### ✅ Priority Actions
 
-| # | Type | Task | Action | Contact | Urgency |
-|---|------|------|--------|---------|---------|
-| 1 | 🎯 | [TID](path) Task Name | action I need to take | {name} | {deadline/overdue} |
-| 2 | ⏳ | [TID](path) Task Name | what I'm waiting for | {name} | ask: Xd ago |
-| 3 | 🎯 | (Non-Task #X) | action description | {name} | {deadline/overdue} |
-| 4 | ⏳ | (Non-Task #Y) | waiting for someone | {name} | ask: Xd ago |
+| # | Email | Type | Task | Action | Contact | Urgency |
+|---|-------|------|------|--------|---------|---------|
+| 1 | #X | 🎯 | [TID](path) Task Name | action I need to take | {name} | {deadline/overdue} |
+| 2 | #Y | ⏳ | [TID](path) Task Name | what I'm waiting for | {name} | ask: Xd ago |
+| 3 | #Z | 🎯 | (Non-Task) | action description | {name} | {deadline/overdue} |
+| 4 | — | ⏳ | [TID](path) Task Name | carryover action (no new email) | {name} | ask: Xd ago |
 
 ---
 
@@ -123,7 +123,7 @@ Total: X files modified, Y unchanged.
 8. Email numbers are sequential across the entire summary (not per-task)
 9. **Contact attribution:** The `Contact: {name}` in `🎯`/`⏳` lines MUST be the person relevant to THAT specific action — NOT the task's generic primary contact. Match the person to the verb.
 10. **Overdue vs ask age:** "overdue" refers to the task's Due date. When surfacing a specific ask, show the ask's age (e.g., "ask: 3d ago") separately from task overdue.
-11. **Priority Actions (consolidated):** A single table of ALL actions — both 🎯 and ⏳ — from task-linked AND non-task emails. Order by urgency. Non-task actions show `(Non-Task #X)` instead of TID.
+11. **Priority Actions (consolidated):** A single table of ALL actions — both 🎯 and ⏳ — from task-linked AND non-task emails. Order by urgency. Include the email number (`#X`) that triggered each action; use `—` for carryover actions not tied to a new email. Non-task actions show `(Non-Task)` instead of TID.
 12. **Section header visibility:** Use `---` horizontal rule before `### ✅ Priority Actions` and `### ❌ Non-Task Emails`. The `###` headers with emoji prefixes MUST be visually distinct.
 13. **Task creation suggestion (Non-Task):** For EACH non-task actionable email, include `💡 Create task? [Yes — {reason}]` or `[No — {reason}]`.
 14. **Sync Audit:** List EVERY task file evaluated. For modified files: `+Timeline`, `+Ask`, `✅ State`, `~~Ask struck~~`. Unmodified: "no changes". Never omit.

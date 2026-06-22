@@ -18,7 +18,8 @@
 4. Present RACI matrix to user for confirmation
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
 6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### Owed by me` and `### Owed to me` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.
-6a. **Match-Friendly Metadata** — Ensure these fields are populated for `email_sync.py` auto-matching:
+6a. **Email Entry ID (mandatory)** — When a timeline entry originates from an email, append the entry_id as an HTML comment: `<!-- email:{ENTRY_ID} -->`. Retrieve the ID from sync results or via `outlook_skill.py get-email`. Never omit this for email-sourced entries.
+6b. **Match-Friendly Metadata** — Ensure these fields are populated for `email_sync.py` auto-matching:
    - **EPD:** Fill if a plan row ID exists (e.g., `1032769`). Pure numeric IDs score 3× in matching.
    - **Tags:** Include the most discriminating identifiers — EPD numbers, course codes (`DO288`), vendor names (`Red Hat`), geo shorthand (`FNC India`), PO numbers. See [Tag Guidelines](../tasks/FORMATS.md#tag-guidelines).
    - **Contacts:** List ALL known email correspondents (not just approvers) — every email address in Contacts/RACI enables contact-signal matching (0.8 confidence).
@@ -59,7 +60,7 @@
 | Field | Action |
 |-------|--------|
 | status | Update status field in task file |
-| timeline | Append new entry |
+| timeline | Append new entry. **If sourced from email, entry_id is mandatory** — append `<!-- email:{ENTRY_ID} -->` to the line |
 | notes | Append to notes section |
 | stakeholders | Update RACI matrix |
 | due_date | Update due field in task file |

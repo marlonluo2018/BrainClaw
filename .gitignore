@@ -52,8 +52,14 @@ assistant_brain/process/
 
 # Tasks directory - all task files are personal work data, keep local only
 assistant_brain/tasks/
+
+# Sync results - runtime artifacts, keep local only
+assistant_brain/sync_results/
 Q2_Budget_HCD_Training_Certifications.xlsx
 ~$Q2_Budget_HCD_Training_Certifications.xlsx
 Copy of EPD Plan Rows Q2-March 19.xlsx
 .claude/settings.local.json
 .mcp.json
+assistant_brain/references/pes-distribution-list.txt
+.gitignore
+assistant_brain/references/pes-distribution-list.csv

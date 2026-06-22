@@ -43,6 +43,7 @@ PROCESS_MATCH_RULES = [
     {"keywords": ["voucher", "azure"], "geo": "Philippines", "file": "philippines/azure-voucher-issuance.md"},
     {"keywords": ["retake", "failed", "补考", "reimbursement", "报销", "no voucher", "out of pocket"], "geo": "Philippines", "file": "philippines/exam-reimbursement.md"},
     {"keywords": ["reimbursement", "报销"], "geo": "China", "file": "china/futurenow-quarterly-reimbursement.md"},
+    {"keywords": ["hashicorp", "terraform", "vault"], "geo": None, "file": "global/hashicorp-voucher-request.md"},
     {"keywords": ["snowflake"], "geo": None, "file": "global/snowflake-certification.md"},
     {"keywords": ["google", "gcp"], "geo": None, "file": "global/google-exam-voucher-discount.md"},
     {"keywords": ["communication", "comms", "campaign", "signature event"], "geo": None, "file": "global/communication-request.md"},

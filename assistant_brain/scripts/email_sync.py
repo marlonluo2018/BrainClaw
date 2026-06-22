@@ -14,12 +14,33 @@ import io
 import re
 import json
 import argparse
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 # followup.py wraps stdout/stderr at import time; avoid double-wrap
 from shared_config import BRAIN_DIR, scan_tasks, safe_read
 from followup import parse_task_file
+
+SYNC_RESULTS_DIR = BRAIN_DIR / "sync_results"
+
+
+def save_sync_output(output: str) -> Path:
+    """Save sync output to timestamped file for later reference."""
+    SYNC_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y-%m-%d_%H%M")
+    out_file = SYNC_RESULTS_DIR / f"{ts}.md"
+    out_file.write_text(output, encoding="utf-8")
+    return out_file
+
+
+def cleanup_old_results(days: int = 14):
+    """Remove sync result files older than N days."""
+    if not SYNC_RESULTS_DIR.exists():
+        return
+    cutoff = datetime.now() - timedelta(days=days)
+    for f in SYNC_RESULTS_DIR.iterdir():
+        if f.is_file() and f.stat().st_mtime < cutoff.timestamp():
+            f.unlink()
 
 
 # --- Noise filter patterns ---
@@ -43,7 +64,7 @@ NOISE_SENDER_CONTAINS = [
     "identity assurance", "office365reports",
     "noreply", "no-reply", "donotreply", "do-not-reply",
     "mailer-daemon", "postmaster",
-    "w3notifications", "ibmer news", "arvind communications",
+    "w3notifications", "ibmer news", "communications",
     "wellbeing@ibm", "events and classes", "your learning",
     "ibm ibv", "ibm community",
 ]
@@ -177,12 +198,37 @@ def build_task_index() -> tuple[dict, dict, dict]:
         keywords = extract_keywords(t.title)
         keywords |= extract_keywords(parsed.get("category", ""))
 
-        # Extract scope keywords if present
+        # Extract scope keywords (positive only — exclude text after "NOT")
         scope_text = ""
         scope_m = re.search(r'^\*\*Scope:\*\*\s*(.+)$', content, re.MULTILINE)
         if scope_m:
             scope_text = scope_m.group(1).strip()
-            keywords |= extract_keywords(scope_text)
+            # Split on NOT clauses — only use text before first "NOT" for positive keywords
+            scope_include = re.split(r'[.,;]\s*NOT\b', scope_text, flags=re.IGNORECASE)[0]
+            keywords |= extract_keywords(scope_include)
+
+        # Extract exclusion keywords from Exclude field or NOT clauses in Scope
+        exclusion_keywords = set()
+        exclude_m = re.search(r'^\*\*Exclude:\*\*\s*(.+)$', content, re.MULTILINE)
+        if exclude_m:
+            exclusion_keywords = extract_keywords(exclude_m.group(1).strip())
+        elif scope_text:
+            # Fallback: parse NOT clauses from Scope text
+            not_parts = re.findall(r'(?:[.,;]\s*|^)NOT\s+(.+?)(?=[.,;]|$)', scope_text, re.IGNORECASE)
+            for part in not_parts:
+                exclusion_keywords |= extract_keywords(part)
+        # Remove identity words (title+tags) from exclusion set — these are the task's
+        # own brand words and would false-flag every legitimate email for this task.
+        identity_words = extract_keywords(t.title)
+        # Tags added below, but compute them here for exclusion filtering
+        tags_m_pre = re.search(r'^## Tags\s*\n(.+)$', content, re.MULTILINE)
+        if tags_m_pre:
+            for tag in re.findall(r'`([^`]+)`', tags_m_pre.group(1)):
+                identity_words |= extract_keywords(tag)
+        exclusion_keywords -= identity_words
+
+        # Remove exclusion keywords from positive set to avoid false boosting
+        keywords -= exclusion_keywords
 
         # Extract Tags (backtick-delimited, curated high-quality discriminators)
         tags_m = re.search(r'^## Tags\s*\n(.+)$', content, re.MULTILINE)
@@ -201,10 +247,12 @@ def build_task_index() -> tuple[dict, dict, dict]:
                 epd_ids = set(re.findall(r'\d{6,}', epd_val))
                 keywords |= epd_ids
 
-        # Extract alphanumeric codes from FULL content (course codes in tables, etc.)
-        # Codes are inherently specific — safe to scan broadly unlike English/Chinese words
-        all_codes = set(re.findall(r'[A-Za-z]+\d+[\w]*', content.upper()))
-        all_codes |= set(re.findall(r'\b[Qq][1-4]\b', content.upper()))
+        # Extract alphanumeric codes from header section only (above ## Timeline)
+        # Timeline accumulates codes from all past emails — scanning it makes tasks
+        # progressively broader keyword magnets, causing false matches.
+        header_content = re.split(r'^## Timeline\b', content, maxsplit=1, flags=re.MULTILINE)[0]
+        all_codes = set(re.findall(r'[A-Za-z]+\d+[\w]*', header_content.upper()))
+        all_codes |= set(re.findall(r'\b[Qq][1-4]\b', header_content.upper()))
         # Filter out noise codes: years, generic IDs, hex strings
         all_codes = {c for c in all_codes if len(c) <= 10 and not re.match(r'^20\d\d$', c)}
         keywords |= all_codes
@@ -219,6 +267,7 @@ def build_task_index() -> tuple[dict, dict, dict]:
             "contacts": parsed.get("contacts", []),
             "entry_ids": entry_ids,
             "keywords": keywords,
+            "exclusion_keywords": exclusion_keywords,
             "epd_ids": epd_ids,
         }
 
@@ -243,6 +292,38 @@ def build_task_index() -> tuple[dict, dict, dict]:
             rname_lower = rname.lower().strip()
             if rname_lower and rname_lower != "stakeholder" and t.id not in name_to_tasks.get(rname_lower, []):
                 name_to_tasks.setdefault(rname_lower, []).append(t.id)
+
+    # Scan closed/history tasks for entry_ids only — prevents false matching
+    # when emails already recorded in a closed task fall through to contact signal
+    history_dir = tasks_dir / 'history'
+    if history_dir.exists():
+        for hist_file in history_dir.rglob('T*.md'):
+            content = safe_read(hist_file)
+            if not content:
+                continue
+            entry_ids = set(re.findall(r'<!-- email:(\S+?) -->', content))
+            if not entry_ids:
+                continue
+            tid_m = re.match(r'(T\d+)', hist_file.stem)
+            if not tid_m:
+                continue
+            tid = tid_m.group(1)
+            if tid in task_index:
+                continue
+            rel_path = str(hist_file.relative_to(BRAIN_DIR.parent)).replace('\\', '/')
+            task_index[tid] = {
+                "title": "(closed)",
+                "geo": "",
+                "priority": "",
+                "due": "",
+                "path": rel_path,
+                "scope": "",
+                "contacts": [],
+                "entry_ids": entry_ids,
+                "keywords": set(),
+                "exclusion_keywords": set(),
+                "epd_ids": set(),
+            }
 
     return task_index, email_to_tasks, name_to_tasks
 
@@ -293,8 +374,21 @@ def extract_sender_name(sender_str: str) -> str:
     return sender_str.strip()
 
 
+GEO_SUBJECT_KEYWORDS = {
+    "americas": "Americas",
+    "america": "Americas",
+    "emea": "EMEA",
+    "europe": "EMEA",
+    "apac": "APAC",
+    "asia pacific": "APAC",
+    "india": "India",
+    "china": "China",
+    "philippines": "Philippines",
+}
+
+
 def extract_geo_from_email(email: dict) -> str | None:
-    """Infer geo from sender/recipient email domains."""
+    """Infer geo from sender/recipient email domains, then subject keywords."""
     sender = email.get('sender', '')
     sender_email = extract_sender_email(sender)
     for domain, geo in GEO_DOMAIN_MAP.items():
@@ -306,6 +400,11 @@ def extract_geo_from_email(email: dict) -> str | None:
         for domain, geo in GEO_DOMAIN_MAP.items():
             if addr.endswith(domain):
                 return geo
+    # Fallback: subject keyword geo detection
+    subject_lower = email.get('subject', '').lower()
+    for kw, geo in GEO_SUBJECT_KEYWORDS.items():
+        if kw in subject_lower:
+            return geo
     return None
 
 
@@ -398,6 +497,24 @@ def match_email_to_tasks(email: dict, task_index: dict,
             })
             return matches  # Definitive match
 
+    # Signal 1.5: EPD match (confidence 0.95) — runs unconditionally
+    subject_raw_epd = email.get('subject', '')
+    preview_epd = email.get('body_preview', '')
+    epd_codes = set(re.findall(r'\b\d{6,8}\b', subject_raw_epd))
+    epd_codes |= set(re.findall(r'\b\d{6,8}\b', preview_epd))
+    if epd_codes:
+        for tid, info in task_index.items():
+            if epd_codes & info["epd_ids"]:
+                matches.append({
+                    "task_id": tid,
+                    "confidence": 0.95,
+                    "signal": "epd",
+                    "already_known": False,
+                })
+        if matches:
+            matches.sort(key=lambda x: x["confidence"], reverse=True)
+            return matches  # EPD is definitive — skip lower signals
+
     # Signal 2: Contact match (confidence 0.8)
     contact_matches = set()
     if sender_email:
@@ -417,13 +534,42 @@ def match_email_to_tasks(email: dict, task_index: dict,
             for tid in name_to_tasks.get(rname, []):
                 contact_matches.add(tid)
 
-    for tid in contact_matches:
-        matches.append({
-            "task_id": tid,
-            "confidence": 0.8,
-            "signal": "contact",
-            "already_known": False,
-        })
+    # Corroborate contact matches with keyword overlap + geo + master-task check
+    if contact_matches:
+        subject_raw = email.get('subject', '')
+        preview = email.get('body_preview', '')
+        corr_en = set(re.findall(r'[a-zA-Z]{3,}', f"{subject_raw} {preview}".lower())) - EN_STOPWORDS
+        corr_zh = set(re.findall(r'[一-鿿]{2,}', f"{subject_raw} {preview}")) - ZH_STOPWORDS
+        corr_codes = set(re.findall(r'[A-Za-z]+\d+[\w]*', f"{subject_raw} {preview}".upper()))
+        corr_words = corr_en | corr_zh | corr_codes
+        email_geo = extract_geo_from_email(email)
+
+        for tid in contact_matches:
+            info = task_index.get(tid, {})
+            conf = 0.8
+
+            # Keyword corroboration: demote if zero overlap with task keywords
+            overlap = corr_words & info.get("keywords", set())
+            if not overlap:
+                conf -= 0.3  # 0.8 → 0.5 (ambiguous level)
+
+            # Geo mismatch penalty: task has specific geo, email geo differs
+            task_geo = info.get("geo", "")
+            if email_geo and task_geo and email_geo.lower() != task_geo.lower():
+                conf -= 0.25
+
+            # Master task penalty: umbrella tasks should not capture operational emails
+            title = info.get("title", "")
+            scope = info.get("scope", "")
+            if re.search(r'\bmaster\b', f"{title} {scope}", re.IGNORECASE):
+                conf -= 0.2
+
+            matches.append({
+                "task_id": tid,
+                "confidence": round(conf, 2),
+                "signal": "contact",
+                "already_known": False,
+            })
 
     # Signal 3: Keyword + geo match (confidence 0.5)
     if not matches:
@@ -460,10 +606,17 @@ def match_email_to_tasks(email: dict, task_index: dict,
             if score >= 2.0:
                 geo_match = (email_geo and info["geo"] and
                              email_geo.lower() == info["geo"].lower())
-                conf = 0.5 + (0.15 if geo_match else 0)
+                geo_mismatch = (email_geo and info["geo"] and
+                                email_geo.lower() != info["geo"].lower())
+                conf = 0.5 + (0.15 if geo_match else 0) - (0.25 if geo_mismatch else 0)
+                # Master task penalty
+                t_title = info.get("title", "")
+                t_scope = info.get("scope", "")
+                if re.search(r'\bmaster\b', f"{t_title} {t_scope}", re.IGNORECASE):
+                    conf -= 0.2
                 scored_matches.append({
                     "task_id": tid,
-                    "confidence": conf,
+                    "confidence": round(conf, 2),
                     "signal": "keyword",
                     "already_known": False,
                     "_score": score,
@@ -478,6 +631,21 @@ def match_email_to_tasks(email: dict, task_index: dict,
                 matches = [scored_matches[0]]
             else:
                 matches = scored_matches
+
+    # Check scope exclusions — flag matches where email content hits exclusion keywords
+    subject_raw = email.get('subject', '')
+    preview = email.get('body_preview', '')
+    email_text_for_exclusion = f"{subject_raw} {preview}".upper()
+    email_excl_words = set(re.findall(r'[A-Za-z]{3,}', email_text_for_exclusion.lower())) - EN_STOPWORDS
+    email_excl_words |= set(re.findall(r'[A-Za-z]+\d+[\w]*', email_text_for_exclusion))
+
+    for m in matches:
+        tid = m["task_id"]
+        excl_kw = task_index.get(tid, {}).get("exclusion_keywords", set())
+        if excl_kw:
+            hit = email_excl_words & excl_kw
+            if len(hit) >= 2:
+                m["exclusion_flag"] = sorted(hit)
 
     # Sort by confidence descending
     matches.sort(key=lambda x: x["confidence"], reverse=True)
@@ -517,18 +685,22 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
         if scope:
             lines.append(f"  Scope: {scope}")
 
-        for em_info in matched[tid]:
+        new_emails = [e for e in matched[tid] if not e["_match"]["already_known"]]
+        known_emails = [e for e in matched[tid] if e["_match"]["already_known"]]
+
+        for em_info in new_emails:
             num = em_info["_num"]
-            direction = "→" if "sent" in em_info.get("folder", "").lower() else "←"
-            arrow = "←" if "sent" in em_info.get("folder", "").lower() else "→"
             received = em_info.get("received_time", "")[:16]
             sender_name = extract_sender_name(em_info.get("sender", ""))
             subject = em_info.get("subject", "")
             signal = em_info["_match"]["signal"]
-            known = em_info["_match"]["already_known"]
+
+            excl_flag = ""
+            if em_info["_match"].get("exclusion_flag"):
+                excl_words = ", ".join(em_info["_match"]["exclusion_flag"][:4])
+                excl_flag = f" ⚠️EXCLUDED?[{excl_words}]"
 
             if "sent" in em_info.get("folder", "").lower():
-                # Outbound
                 to_names = []
                 for r in em_info.get("to_recipients", []):
                     n = r.get("name", r.get("address", ""))
@@ -539,16 +711,17 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
             else:
                 label = f"→ #{num} [{signal}] {received} {sender_name}: \"{subject}\""
 
-            status = "✅KNOWN" if known else "⚡NEW"
-            lines.append(f"  {label} {status}")
-            # Append entry_id and preview for NEW emails
-            if not known:
-                eid = em_info.get("entry_id", "")
-                if eid:
-                    lines.append(f"    ID: {eid}")
-                preview = em_info.get("body_preview", "").replace("\r\n", " ").replace("\n", " ").strip()
-                if preview:
-                    lines.append(f"    Preview: {preview[:150]}")
+            lines.append(f"  {label} ⚡NEW{excl_flag}")
+            eid = em_info.get("entry_id", "")
+            if eid:
+                lines.append(f"    ID: {eid}")
+            preview = em_info.get("body_preview", "").replace("\r\n", " ").replace("\n", " ").strip()
+            if preview:
+                lines.append(f"    Preview: {preview[:150]}")
+
+        if known_emails:
+            latest_time = max(e.get("received_time", "")[:16] for e in known_emails)
+            lines.append(f"  ✅ {len(known_emails)} known emails (latest: {latest_time})")
 
         lines.append("")
 
@@ -587,6 +760,7 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
     if unmatched:
         lines.append(f"### Non-Task — No Match ({len(unmatched)})")
         lines.append("")
+
         for em_info in unmatched:
             num = em_info["_num"]
             received = em_info.get("received_time", "")[:16]
@@ -600,6 +774,9 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
                 known_str = f" [Known: {gc['section']}]"
 
             lines.append(f"→ #{num} {received} {sender_name}: \"{subject}\"{known_str}")
+            eid = em_info.get("entry_id", "")
+            if eid:
+                lines.append(f"  ID: {eid}")
         lines.append("")
 
     # --- Noise ---
@@ -684,9 +861,12 @@ def main():
         # Match to tasks
         matches = match_email_to_tasks(email, task_index, email_to_tasks, name_to_tasks)
 
+        # Filter out matches below minimum confidence threshold
+        matches = [m for m in matches if m["confidence"] >= 0.4]
+
         if not matches:
             unmatched.append(email)
-        elif len(matches) == 1:
+        elif len(matches) == 1 and matches[0]["confidence"] >= 0.6:
             tid = matches[0]["task_id"]
             scope = task_index.get(tid, {}).get("scope", "")
             if not matches[0]["already_known"] and check_temporal_scope(email, scope):
@@ -713,12 +893,19 @@ def main():
             email["_candidates"] = matches
             ambiguous.append(email)
 
+    # Clean up old results
+    cleanup_old_results()
+
     # Format output
     output = format_output(
         matched, ambiguous, unmatched, noise_stats,
         task_index, global_contacts, len(emails), emails_by_num
     )
     print(output)
+
+    # Save output to file for later reference
+    out_file = save_sync_output(output)
+    print(f"\n📁 Saved: {out_file.relative_to(BRAIN_DIR.parent)}")
 
 
 if __name__ == '__main__':

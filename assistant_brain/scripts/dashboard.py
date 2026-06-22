@@ -145,14 +145,17 @@ def parse_asks_from_file(content: str):
             # Only unchecked items
             m = re.match(r'^- \[ \] (.+?) 🎯 (.+?): (.+)$', line)
             if m:
-                asks_out.append(f"{_format_ask_date(m.group(1))} |🎯 |{m.group(2)} | {m.group(3)}")
+                asks_out.append(f"{_format_ask_date(m.group(1))} |🎯| {m.group(2)} | {m.group(3)}")
         elif section == 'in':
             # Skip struck-through
             if line.strip().startswith('- ~~'):
                 continue
+            # Skip checked/completed items
+            if line.strip().startswith('- [x]'):
+                continue
             m = re.match(r'^- (.+?) ⏳ (.+?): (.+)$', line)
             if m:
-                asks_in.append(f"{_format_ask_date(m.group(1))} |⏳ |{m.group(2)} | {m.group(3)}")
+                asks_in.append(f"{_format_ask_date(m.group(1))} |⏳| {m.group(2)} | {m.group(3)}")
 
     return asks_out, asks_in
 
