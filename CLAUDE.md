@@ -75,7 +75,7 @@ Before executing ANY operation from the tables below, follow this mandatory sequ
 
 | Operation | Trigger Commands | Workflow |
 |-----------|------------------|----------|
-| Email | "check email", "draft", "reply", "forward", "email sync" | `assistant_brain/workflows/EMAIL_WORKFLOW.md` |
+| Email | "check email", "check new email", "查看邮件", "查看新邮件", "draft", "reply", "forward", "email sync", "同步邮件", "邮件同步" | `assistant_brain/workflows/EMAIL_WORKFLOW.md` |
 | Task | "create task", "update task", "complete task" | `assistant_brain/workflows/TASK_WORKFLOW.md` |
 | Process | "next step", "推进", "下一步", "what process", "create process", "save as process", "固化流程" | `assistant_brain/workflows/PROCESS_WORKFLOW.md` |
 | Follow-up | "follow up", "催办", "chase", "nudge", "提醒一下" | `assistant_brain/workflows/FOLLOWUP_WORKFLOW.md` |
@@ -107,12 +107,18 @@ powershell -Command "$d=Get-Date; $days=($d.DayOfWeek.value__+2)%7; if($days -eq
 powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 ```
 
+### Identity Lookups
+
+"who is [person]" → This is a **skill command**, not a conversational question. Match against skill triggers and execute. Do NOT attempt to answer from email signatures, task files, or memory.
+
 ### Task References
 Always format as clickable links with name: `[T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md) PMP Renewal - FutureNow Center Philippines`
 
 ### Approval Policy
 
 **Requires approval:** Sending emails/messages, completing tasks, deleting files/tasks, calendar changes, destructive operations.
+
+**Draft gate (no exceptions):** Every email reply/compose/forward MUST present the draft to user before sending — even when user pre-approves the action item. "Do it" means "start the workflow," not "skip the draft."
 
 **Autonomous:** Reading emails/calendar, searching, listing, viewing details, creating drafts.
 
