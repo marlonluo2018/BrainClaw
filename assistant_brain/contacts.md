@@ -22,6 +22,7 @@
 - **B Sowmya** <bsowmy70@in.ibm.com> — Learning Deployment Manager, Delivery Shared Services, L&K | Dept: G45 | Company: IBM India Pvt Ltd | Phone: +91-9000265993 | Office: Bangalore, IN
 - **Mickeal Martinez** <mickeal.martinez@ibm.com> — Accounts Payable Analyst | Mobile: +63-9454234891 | Phone: +63-63289952073 | Office: Quezon City, PH | Context: PH L&K spend invoice (quarterly) | ⚠️ LEFT IBM (deactivated) — find replacement
 - **Citra Ganeshty** <Dhien.Ganeshty@ibm.com> — EPD tracking, China L&K operations | Dept: EG2 | Company: PT IBM Delivery Indonesia | Office: Jakarta, ID
+- **SUDIPTA BANDYOPADHYAY** <sudipta.bandyopadhyay@in.ibm.com> — Planning & Scheduling Lead, CoE, Delivery Shared Services, L&K | Dept: G47 | Company: IBM India Pvt Ltd | Mobile: +91-98316-46611 | Office: Kolkata, IN | Context: India L&K planning & scheduling | ⚠️ Do NOT use Sudipta.Bandyopadhyay@ibm.com (different person)
 
 ## PH L&K Colleagues (CC list)
 

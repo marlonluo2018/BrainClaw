@@ -38,6 +38,8 @@
 
 **Trigger:** User provides new info, email relates to existing task
 
+**Minimum scope:** When user says "update task file" without specifying fields, ALWAYS update at least: **Timeline** (new entries) + **Asks** (new/completed items, annotations). These two are mandatory; other fields (status, notes, current state) update as needed.
+
 **Steps:**
 1. Read current task file
 2. **If task file lacks `## Asks` section** (legacy file): insert empty section with both `### Owed by me` and `### Owed to me` subsections before proceeding. Going forward all updates land in a properly-structured file.

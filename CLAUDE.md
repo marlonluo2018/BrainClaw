@@ -49,6 +49,13 @@ Timezone: Asia/Shanghai (UTC+8)
 - Double-check numbers — review calculations, counts, dates, quantities
 - Logical consistency — ensure reasoning is sound, conclusions follow from evidence
 - Verify sources — confirm file contents, task details, data before referencing
+- EMAIL SYNC SUMMARIES — timeline entries must reflect ACTUAL email content. For outgoing emails (`[email-out]`), ALWAYS read the full body via `get-email` before summarizing. Never infer what was said from subject/preview alone.
+
+### Task-First Rule
+
+When user asks about any task's status, schedule, progress, or "what's happening with X" — ALWAYS read the task file FIRST. Task files are the source of truth (timeline, current state, asks). Never search email or external sources before checking the task file. Only go to email if the task file is missing the requested info or user explicitly asks to check for new emails.
+
+When user asks to find someone's email or draft a reply to someone — check relevant task file timelines FIRST. Timeline entries contain `<!-- email:{EntryID} -->` markers that identify the exact thread. Use these EntryIDs to locate the thread directly instead of broad email search. Only fall back to email search if no matching timeline entry exists.
 
 ### Professional Standards
 - Be concise and clear in summaries
@@ -81,6 +88,7 @@ Before executing ANY operation from the tables below, follow this mandatory sequ
 | Follow-up | "follow up", "催办", "chase", "nudge", "提醒一下" | `assistant_brain/workflows/FOLLOWUP_WORKFLOW.md` |
 | Recording | "record event", "archive events" | `assistant_brain/workflows/RECORDING_WORKFLOW.md` |
 | Web | "search", "搜索", "查一下", "look up", "open URL", "查看网页", "抓取" | `assistant_brain/workflows/WEB_WORKFLOW.md` |
+| TU Sync | "tu sync", "sync tu", "同步TU", "TU更新", "update tu", "tu balance", "TU余额" | `assistant_brain/workflows/TU_SYNC_WORKFLOW.md` |
 | Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard`, `digest`, `timesheet` | `assistant_brain/workflows/VIEWS_WORKFLOW.md` |
 
 ### Skills
@@ -114,11 +122,21 @@ powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 ### Task References
 Always format as clickable links with name: `[T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md) PMP Renewal - FutureNow Center Philippines`
 
+### Email Sync — EntryID & Semantic Match
+
+- **EntryID is MANDATORY on every timeline entry** written during email sync — no exceptions, no "key email" conditional. Every entry ends with `<!-- email:ENTRY_ID -->`.
+- **AI must semantically scan Calendar + Unmatched sections** for task relationships the script missed. Read subject/sender/content and cross-reference against active task scopes. Do NOT passively accept script rejection.
+- **Deduplication:** Before writing a timeline entry, READ existing timeline. If the same event/action is already recorded (same sender, same action, same thread), do NOT add a duplicate. Follow-up emails that add no new milestone/decision/ask are NOT new entries.
+
 ### Approval Policy
 
 **Requires approval:** Sending emails/messages, completing tasks, deleting files/tasks, calendar changes, destructive operations.
 
-**Draft gate (no exceptions):** Every email reply/compose/forward MUST present the draft to user before sending — even when user pre-approves the action item. "Do it" means "start the workflow," not "skip the draft."
+**Thread selection (before drafting):** When the target thread is not already clear from context (e.g., user just read an email and says "reply this"), ask user which existing thread to use or whether to compose new. Skip this step when context is unambiguous.
+
+**Draft gate (no exceptions):** Every email reply/compose/forward MUST present the draft to user before sending — even when user pre-approves the action item. "Do it" means "start the workflow," not "skip the draft." Draft display MUST show: action type (Reply All / Forward / Redirect / Compose), To/CC recipients, and body as readable plain text (no raw HTML tags).
+
+**Command selection (no exceptions):** AI auto-selects reply/forward/compose based on recipient needs. Never ask the user which email action to use.
 
 **Autonomous:** Reading emails/calendar, searching, listing, viewing details, creating drafts.
 
@@ -129,6 +147,14 @@ Always format as clickable links with name: `[T025](assistant_brain/tasks/T025-p
 - Shell: Bash (Git Bash on Windows) — use `&&` for conditional chaining
 - Download path: `./downloads/` (email attachments and skill outputs)
 - Recent Events Window: 14 days
+
+### Web Search
+
+Use Tavily MCP tools (`mcp__tavily__tavily_search`, `mcp__tavily__tavily_extract`) for web search.
+
+- **Search strategy: short unique identifier → locate page → read page for details.** Do NOT stuff descriptive phrases into keywords (e.g., search `DO188`, not `Red Hat DO188 target audience prerequisites`)
+- For English/technical searches, use English keywords
+- Do NOT use Windows MCP Scrape + Bing for search (cn index pool unreliable from China IP)
 
 ### On-Demand Reference Files
 

@@ -76,47 +76,64 @@
 
 **Triggers:** "reply", "reply all", "forward", "redirect"
 
-### Command Selection (before drafting)
+### Command Selection (AI decides — do NOT ask user)
 
-| User intent | Command |
-|-------------|---------|
-| Respond in same thread, keep recipients | `reply` (reply-all) |
-| Respond to sender only | `reply --only` |
-| Send thread context to NEW people (not on original) | `forward` |
-| Re-route email to entirely different recipients | `redirect` |
-| Fresh email, no thread context needed | `compose` |
+> **⚠️ The AI MUST pick the correct send command autonomously based on the decision tree below. Never present options or ask "reply or forward?" — just use the right one.**
 
-**Key signals → forward/redirect:**
-- User names recipients NOT on the original thread
-- "use the thread" / "include the context" + different To/CC
-- "send this to X" / "let X know" (where X is new)
-- Thread context is needed but original recipients should NOT receive it
+**Decision tree:**
 
-**Key signals → reply:**
-- "reply", "respond", "tell them", "confirm"
-- Recipients stay the same (or add via --cc)
+1. Are the desired recipients the SAME as (or a superset of) the original thread?
+   - **YES** → `reply` (reply-all). Use `--to`/`--cc` to append extras.
+   - **NO** → go to step 2.
+
+2. Does the recipient need to see the thread history / prior context?
+   - **YES** → `forward` (full recipient control + thread context preserved below).
+   - **NO** → `compose` with `Re: {subject}` to maintain subject continuity.
+
+3. Is this going to ONLY the original sender?
+   - **YES** → `reply --only`
+
+**Summary table:**
+
+| Situation | Command | Why |
+|-----------|---------|-----|
+| Same/more recipients, continuing conversation | `reply` (reply-all) | Keeps thread + all original recipients |
+| Fewer recipients, but they need thread context | `forward` | Full control over To/CC, thread visible below |
+| Fewer recipients, no thread context needed | `compose` (with `Re:` subject) | Clean email, subject threading only |
+| Sender only | `reply --only` | Narrows to From address |
+| Entirely new people, need original context | `forward` | They see what was discussed |
+| Route to different handler (preserve From) | `redirect` | Appears as if from original sender |
+
+**Common patterns:**
+- User says "email George about this" (George is on CC but not the primary) → `forward` (narrow recipients, keep context)
+- User says "reply to confirm" → `reply` (same recipients)
+- User says "let [new person] know" → `forward` (new person needs context)
+- User says "send a fresh email to X about Y" → `compose`
 
 **Steps:**
-1. **Load skill** → Load the email skill
-2. **Get context** → Read original email (or thread if multiple emails found)
-3. **Confirm target email** → Before drafting, show the user which email will be replied to/forwarded:
+1. **Task context** → If the email relates to a known task, READ the task file timeline first. Identify the most recent relevant email thread (incoming or outgoing) with the target recipient. Note EntryIDs.
+2. **Read email content** → Use `get-email <EntryID>` to read the actual content of the identified email(s). Understand what was said, what was asked, and what the current state of the conversation is.
+3. **Decide command** → Based on the thread context:
+   - Existing thread with same/more recipients → `reply` (reply-all)
+   - Existing thread but narrowing recipients → `forward` or `compose`
+   - No prior thread with this recipient → `compose`
+4. **Confirm target email** → Before drafting, show the user which email will be replied to/forwarded:
+   - **Action:** Reply All / Forward / Compose
    - **From:** {sender name}
    - **Date:** {received date}
    - **Subject:** {email subject}
    - **To/CC:** {key recipients}
-   - **Preview:** {first line of body}
+   - **Thread context:** {1-line summary of what this email said/asked}
 
    This is critical in multi-email threads — the wrong email means wrong recipients. Wait for user confirmation before proceeding.
-4. **Reply mode:**
-   - **`reply`** — default is reply-all (keeps all original To+CC), `--to`/`--cc` append extras
-   - **`reply --only`** — reply to From (sender) only. Use only when user explicitly asks to narrow
-5. **Verify recipients** → For any NEW recipients added via `--to`/`--cc` (not already on the original email), run `lookup-contact` to confirm the address. Never guess email addresses.
-6. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
-7. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
-8. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
-9. **Recipient review** → Show To/CC list and suggest changes (see [Recipient Review](#recipient-review) below).
-10. **Present for approval** → NEVER send without user confirmation
-11. **Send via --body-stdin** → Pipe HTML body via stdin: `echo "body" | py -3 ... --body-stdin`. NEVER pass body content as inline argument (shell expansion corrupts `$` signs). Non-ASCII characters (em dashes, curly quotes, etc.) are safe — the script handles UTF-8 stdin.
+5. **Load skill** → Load the email skill
+6. **Verify recipients** → For any NEW recipients added via `--to`/`--cc` (not already on the original email), run `lookup-contact` to confirm the address. Never guess email addresses.
+7. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
+8. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
+9. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
+10. **Recipient review** → Show To/CC list and suggest changes (see [Recipient Review](#recipient-review) below).
+11. **Present for approval** → NEVER send without user confirmation
+12. **Send via --body-stdin** → Pipe HTML body via stdin: `echo "body" | py -3 ... --body-stdin`. NEVER pass body content as inline argument (shell expansion corrupts `$` signs). Non-ASCII characters (em dashes, curly quotes, etc.) are safe — the script handles UTF-8 stdin.
 
 **Tone Guidelines:**
 
@@ -286,36 +303,65 @@ Thread: "{subject}" — last from {sender}, {date}
    ```
    This outputs a compact pre-matched summary with emails already matched to tasks, noise filtered, and geo inferred. The output contains `⚡NEW` (needs processing) and `✅KNOWN` (already recorded) markers.
 
+   **⛔ RUN-ONCE RULE:** The sync script runs ONCE per user command. The output is saved to `assistant_brain/sync_results/{timestamp}.md`. For ALL subsequent processing in this session (semantic judgment, writing to task files, presenting summary, answering questions about the sync results), READ the saved file — do NOT re-run the pipeline. Each run produces different results (new emails arrive, timestamps shift); re-running causes confusion and duplicate processing. Only run again if the user explicitly commands another sync.
+
 2. **⚠️ MANDATORY: Read format file** → `Read assistant_brain/formats/EMAIL_SYNC_FORMAT.md` — do this NOW, before processing.
 
-3. **Semantic Judgment** → For each `⚡NEW` task-matched email:
+3. **Semantic Judgment** → Two-pass analysis:
+
+   **Pass A — Validate task-matched emails:** For each `⚡NEW` task-matched email:
    - **Scope validation:** The pre-match output shows each task's Scope. Verify the email matches it. If not → move to Non-Task.
+   - **Operation-type check:** Master/procurement tasks (budget, POs, vendor payments) must NOT capture individual-level operational emails (learner voucher requests, exam registrations, assignment approvals). If a "master" task captures an email about a specific person's request/approval → reassign to the person-specific task or move to Unmatched for new task creation.
    - **⚠️SCOPE? handling:** Emails flagged `⚠️SCOPE?` by the script have a detected temporal conflict. Do NOT record these to the matched task. Re-evaluate: assign to correct task, or move to Non-Task.
-   - **Key Email check:** Does it meet Key Email Criteria (below)? If yes → will record entry_id.
+   - **⚠️EXCLUDED? handling:** Emails flagged `⚠️EXCLUDED?` have hit exclusion keywords from the matched task's Exclude field. This signals a likely false match — verify carefully before accepting. Default action: move to Unmatched or reassign.
+   - **⚠️GENERIC handling:** Emails flagged `⚠️GENERIC` are from system/automated senders whose templates contain no identifying information. You MUST `get-email #N` to read the full body. After reading, the body must contain at least ONE explicit identifier (person name, exam code, PO number) linking to the matched task. If no explicit link → move to Non-Task or Unmatched. NEVER infer identity/details from task context.
    - **Extract signals:** Asks, decisions, deadlines from subject context.
-   - For **Ambiguous** emails: read full email body if subject is insufficient (`get-email #N`), then assign to correct task or mark non-task.
+   - For **Ambiguous** emails (confidence < 0.8): you MUST read the full email body (`get-email #N`). After reading, the body must contain at least ONE explicit identifier (person name, ID/code, PO number) linking to the matched task. If the body is generic with no identifying information → Non-Task or hold for user verification. NEVER accept an ambiguous match based on "the task is expecting this" reasoning alone.
+
+   **Pass B — Scan Calendar & Unmatched for missed task links (MANDATORY):**
+   - **Task context:** The sync output includes a "📋 Active Tasks Not Matched" section listing all active tasks (with scope, contacts, geo) that the script did NOT match to any email. Use this as your reference for cross-matching. Combined with the matched-task section above it, you have the FULL active task list.
+   - Review EVERY item in the 📅 Calendar section AND the Non-Task/Unmatched section.
+   - For each item: read the subject line, sender name, and any visible content. Cross-reference against ALL active task scopes, keywords, contacts, and project names from both sections.
+   - If wording/content relates to an active task (e.g., subject mentions a training name, project code, person from a task's contacts, or date matching a task milestone) → reassign to that task as `⚡NEW`.
+   - Do NOT passively accept the script's reject decision. The script uses keyword/contact matching only — it cannot understand semantic relationships, abbreviations, or indirect references. The AI MUST apply judgment here.
+   - When in doubt, read the full email body (`get-email #N`) to confirm or rule out the match.
 
 4. **⚠️ WRITE to task files** → For EACH confirmed task-matched `⚡NEW` email:
-   - Timeline → Add dated entry with tag. For **key emails**, append `<!-- email:ENTRY_ID -->`.
+   - Timeline → Add dated entry with tag. **ALWAYS append `<!-- email:ENTRY_ID -->`** — no exceptions.
    - Current State → Mark completed checkboxes `[✅]`, advance `[⏳]`
    - Asks → Strike through completed items, add new asks
    - This is NOT optional. If an email indicates progress, the file MUST be updated NOW.
    - **Entry IDs:** Use the `ID:` lines from the sync output (step 1) or the saved file (shown at end of output as `📁 Saved: ...`). Do NOT re-run outlook skill to fetch IDs — they are already in the output.
 
-   **Key Email Criteria (for entry_id tracking):**
+   **⛔ Body-Read Rule for Timeline Summaries:**
 
-   Append `<!-- email:ENTRY_ID -->` if ANY of:
-   - Contains an explicit **action / ask / approval / decision**
-   - Delivers or requests a **deliverable** (quotation, PO, document, list)
-   - Is a **milestone** in the task lifecycle (kickoff, escalation, completion notice)
-   - Is **likely to be replied to or forwarded** later
+   Before writing a timeline summary for any `[email-out]` entry, you MUST read the full email body via `get-email "<ID>"`. Outgoing email previews (150 chars) typically show only the greeting — they do NOT convey what was communicated. Never infer or guess outgoing email content from subject/preview alone.
 
-   Do NOT record if ALL of:
-   - Pure FYI / acknowledgement ("thanks", "noted", "got it")
-   - No action required by anyone
-   - No information that would need to be retrieved later
+   For `[email-in]` entries: if the subject + preview clearly convey the key action/decision/ask, you may write the summary without reading the full body. If ambiguous, read first.
 
-   **Outbound emails:** Same criteria. The `compose`/`reply`/`forward` commands output `EntryID: {ID}` after sending — capture and append `<!-- email:ID -->`.
+   **⛔ Content-Only Rule:**
+
+   Timeline summaries MUST describe ONLY what is explicitly stated in the email. Never fill in details (person names, exam codes, amounts) from task context when the email doesn't contain them. If an email says "please approve my request" without naming the person → write "LRT: Approval request #LIC39572 — identity unconfirmed." Do NOT mark asks as completed or update Current State unless the email explicitly names the deliverable.
+
+   **⛔ Deduplication Rule (before writing ANY timeline entry):**
+
+   READ the task file's existing timeline FIRST. Do NOT add an entry if:
+   - An existing entry already describes the **same action/event** (same sender doing the same thing)
+   - The new email is a follow-up/detail/reply in the same thread that adds no new milestone, decision, or ask
+   - The semantic meaning is already captured (e.g., "delegated invite to Xiang Yi" already recorded → a second email with invite details is NOT a new event)
+
+   **One event = one timeline entry.** Multiple emails about the same action collapse into the single entry that first captured it. Only add a new entry when the email represents a genuinely NEW event: a new decision, new deliverable, new ask, status change, or new milestone.
+
+   **⛔ EntryID Rule (ZERO EXCEPTIONS):**
+
+   Every timeline entry written during email sync MUST end with `<!-- email:ENTRY_ID -->`. This applies to:
+   - All task-matched emails (key or not)
+   - All calendar items recorded to tasks
+   - All outbound emails (compose/reply/forward output `EntryID: {ID}` after sending)
+
+   **Self-check before finishing step 4:** Count timeline entries you wrote. Count `<!-- email:` markers you wrote. If counts don't match → STOP and fix before proceeding.
+
+   There is NO "non-key email" exemption. The entryID enables O(1) lookup for future replies and thread tracking. Missing it means broken thread continuity.
 
 5. **Process intelligence** → Load [`PROCESS_WORKFLOW.md`](PROCESS_WORKFLOW.md) and run:
    - **Auto-Suggest**: For each updated task, match to process template → determine next step + responsible contact
@@ -323,6 +369,7 @@ Thread: "{subject}" — last from {sender}, {date}
    - **Process Learning**: Compare new timeline entries against matched process files → note undocumented steps
 
 6. **Present combined summary** → Follow the format from the file loaded in step 2. The action/wait line per task is informed by step 5's process matching.
+   - **⛔ Before generating Actions/Priority Actions:** For each task, verify proposed 🎯/⏳ items against the task file's Asks and Current State. If the action is already marked completed (`[x]`, `[✅]`, `~~`, `✅` suffix), do NOT surface it as an action. New emails about already-completed work are informational, not actionable.
 
 **Token optimization:** When user requests full email content by number (e.g. "get email #40"), use the email ID from the pre-match output. Do NOT run a new search — go directly to `get-email "<id>"`.
 

@@ -118,12 +118,13 @@ Total: X files modified, Y unchanged.
 3. Task File Updates must show what was written to each task file
 4. If a matched task required no updates, state "Updated: no changes — already up to date." — **ALWAYS still list their Emails section**
 5. Each task has two sub-sections: **Emails** (→ in / ← out) then **Actions** (🎯 my action / ⏳ waiting). Use one or both action types as appropriate
+   - **⛔ Completion-Check Gate (before generating ANY 🎯/⏳ action):** READ the task file's `## Asks` section AND `### Action Items` / `## Current State`. If the proposed action corresponds to an ask or item already marked `[x]`, `[✅]`, struck through (`~~`), or appended with `✅`, do NOT include it in Actions or Priority Actions. Only surface genuinely OPEN items. An email arriving about a completed action is informational — it does NOT reopen the action.
 6. Separate tasks with `&nbsp;` (blank spacer line) for visual clarity — no `---` horizontal rules between tasks
 7. Non-Task "Action needed" items show the email with `→`/`←` prefix, then indented `🎯 Suggested:` line, then `💡 Create task?` recommendation
 8. Email numbers are sequential across the entire summary (not per-task)
 9. **Contact attribution:** The `Contact: {name}` in `🎯`/`⏳` lines MUST be the person relevant to THAT specific action — NOT the task's generic primary contact. Match the person to the verb.
 10. **Overdue vs ask age:** "overdue" refers to the task's Due date. When surfacing a specific ask, show the ask's age (e.g., "ask: 3d ago") separately from task overdue.
-11. **Priority Actions (consolidated):** A single table of ALL actions — both 🎯 and ⏳ — from task-linked AND non-task emails. Order by urgency. Include the email number (`#X`) that triggered each action; use `—` for carryover actions not tied to a new email. Non-task actions show `(Non-Task)` instead of TID.
+11. **Priority Actions (consolidated):** A single table of ALL **verified-open** actions — both 🎯 and ⏳ — from task-linked AND non-task emails. Order by urgency. Include the email number (`#X`) that triggered each action; use `—` for carryover actions not tied to a new email. Non-task actions show `(Non-Task)` instead of TID. **Never include an action that is already completed in the task file** (see rule 5 Completion-Check Gate). A new email about a completed action is NOT a new action — it is confirmation/follow-up only.
 12. **Section header visibility:** Use `---` horizontal rule before `### ✅ Priority Actions` and `### ❌ Non-Task Emails`. The `###` headers with emoji prefixes MUST be visually distinct.
 13. **Task creation suggestion (Non-Task):** For EACH non-task actionable email, include `💡 Create task? [Yes — {reason}]` or `[No — {reason}]`.
 14. **Sync Audit:** List EVERY task file evaluated. For modified files: `+Timeline`, `+Ask`, `✅ State`, `~~Ask struck~~`. Unmodified: "no changes". Never omit.

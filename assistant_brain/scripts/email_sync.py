@@ -69,7 +69,16 @@ NOISE_SENDER_CONTAINS = [
     "ibm ibv", "ibm community",
 ]
 
-NOISE_MEETING_STATUSES = {"meeting_request", "meeting_canceled", "meeting"}
+SYSTEM_SENDERS = [
+    "learning request tool", "training request",
+    "red hat training request", "red hat learning",
+    "servicenow", "service-now", "jira", "confluence",
+    "sharepoint", "microsoft flow", "power automate",
+    "successfactors", "workday",
+]
+
+NOISE_MEETING_STATUSES = {"meeting_canceled"}
+CALENDAR_MEETING_STATUSES = {"meeting_request", "meeting"}
 
 GEO_DOMAIN_MAP = {
     "cn.ibm.com": "China",
@@ -115,6 +124,66 @@ EN_STOPWORDS = {
 }
 
 
+def is_calendar_item(email: dict) -> bool:
+    """Return True if this email is a meeting invite/calendar item (not noise, shown separately)."""
+    meeting = email.get('meeting_status', '')
+    if meeting in CALENDAR_MEETING_STATUSES:
+        return True
+    msg_class = email.get('message_class', '')
+    if msg_class.startswith('IPM.Schedule.Meeting'):
+        return True
+    return False
+
+
+def _meeting_type_label(email: dict) -> str:
+    """Derive a short English label for the calendar item type from MessageClass."""
+    msg_class = email.get('message_class', '')
+    if 'Canceled' in msg_class:
+        return "Canceled"
+    if 'Resp.Pos' in msg_class:
+        return "Accepted"
+    if 'Resp.Neg' in msg_class:
+        return "Declined"
+    if 'Resp.Tent' in msg_class:
+        return "Tentative"
+    if 'Request' in msg_class:
+        return "New Invite"
+    if msg_class.startswith('IPM.Schedule.Meeting'):
+        return "Update"
+    meeting = email.get('meeting_status', '')
+    if meeting == 'meeting_request':
+        return "New Invite"
+    if meeting == 'meeting_canceled':
+        return "Canceled"
+    return "Meeting"
+
+
+def _parse_dt(raw: str):
+    """Parse a datetime string from the pipeline."""
+    from datetime import datetime as _dt
+    if not raw:
+        return None
+    try:
+        return _dt.fromisoformat(raw.replace(" ", "T")) if "T" not in raw else _dt.fromisoformat(raw)
+    except Exception:
+        try:
+            return _dt.strptime(raw[:16], "%Y-%m-%d %H:%M")
+        except Exception:
+            return None
+
+
+def _format_start_time(email: dict) -> str:
+    """Format start/end time like '2026-06-26 13:30-15:00'."""
+    start_dt = _parse_dt(email.get('start_time', ''))
+    if not start_dt:
+        return ""
+    end_dt = _parse_dt(email.get('end_time', ''))
+    base = f"{start_dt.strftime('%Y-%m-%d')} {start_dt.strftime('%H:%M')}"
+    if end_dt:
+        return f"{base}-{end_dt.strftime('%H:%M')}"
+    return base
+
+
 def is_noise(email: dict) -> str | None:
     """Return noise category if email is noise, None if relevant."""
     subject = email.get('subject', '')
@@ -151,6 +220,14 @@ def is_noise(email: dict) -> str | None:
             return "auto-reply"
 
     return None
+
+
+def is_system_sender(email: dict) -> bool:
+    sender = email.get('sender', '').lower()
+    for kw in SYSTEM_SENDERS:
+        if kw in sender:
+            return True
+    return False
 
 
 def build_task_index() -> tuple[dict, dict, dict]:
@@ -646,6 +723,10 @@ def match_email_to_tasks(email: dict, task_index: dict,
             hit = email_excl_words & excl_kw
             if len(hit) >= 2:
                 m["exclusion_flag"] = sorted(hit)
+                m["confidence"] = round(m["confidence"] - 0.3, 2)
+            elif len(hit) == 1:
+                m["exclusion_flag"] = sorted(hit)
+                m["confidence"] = round(m["confidence"] - 0.15, 2)
 
     # Sort by confidence descending
     matches.sort(key=lambda x: x["confidence"], reverse=True)
@@ -654,25 +735,46 @@ def match_email_to_tasks(email: dict, task_index: dict,
 
 def format_output(matched: dict, ambiguous: list, unmatched: list,
                   noise_stats: dict, task_index: dict, global_contacts: dict,
-                  total_count: int, emails_by_num: dict) -> str:
+                  total_count: int, emails_by_num: dict,
+                  calendar_items: list | None = None) -> str:
     """Format compact pre-matched summary for Claude."""
     today = date.today().strftime('%Y-%m-%d')
+    calendar_items = calendar_items or []
     noise_total = sum(len(v) for v in noise_stats.values())
-    relevant_count = total_count - noise_total
+    relevant_count = total_count - noise_total - len(calendar_items)
 
     lines = []
+    cal_note = f", {len(calendar_items)} calendar" if calendar_items else ""
     lines.append(f"## Email Sync Pre-Match | {today} | "
                  f"{relevant_count} relevant / {total_count} total "
-                 f"({noise_total} noise filtered)")
+                 f"({noise_total} noise filtered{cal_note})")
     lines.append("")
 
     # --- Task-Matched ---
-    matched_email_count = sum(len(emails) for emails in matched.values())
-    lines.append(f"### Task-Matched ({matched_email_count} emails → {len(matched)} tasks)")
+    # Count only tasks with new (unrecorded) emails
+    tasks_with_new = sum(
+        1 for emails in matched.values()
+        if any(not e["_match"]["already_known"] for e in emails)
+    )
+    new_email_count = sum(
+        sum(1 for e in emails if not e["_match"]["already_known"])
+        for emails in matched.values()
+    )
+    known_only_count = len(matched) - tasks_with_new
+    known_note = f", {known_only_count} known-only hidden" if known_only_count else ""
+    lines.append(f"### Task-Matched ({new_email_count} new emails → {tasks_with_new} tasks{known_note})")
     lines.append("")
 
     for tid in sorted(matched.keys(), key=lambda t: task_index.get(t, {}).get("priority", "P9")):
         info = task_index.get(tid, {})
+
+        new_emails = [e for e in matched[tid] if not e["_match"]["already_known"]]
+        known_emails = [e for e in matched[tid] if e["_match"]["already_known"]]
+
+        # Skip tasks with only known emails — nothing new to act on
+        if not new_emails:
+            continue
+
         geo = info.get("geo", "")
         flag = GEO_FLAGS.get(geo, "")
         priority = info.get("priority", "")
@@ -685,9 +787,6 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
         if scope:
             lines.append(f"  Scope: {scope}")
 
-        new_emails = [e for e in matched[tid] if not e["_match"]["already_known"]]
-        known_emails = [e for e in matched[tid] if e["_match"]["already_known"]]
-
         for em_info in new_emails:
             num = em_info["_num"]
             received = em_info.get("received_time", "")[:16]
@@ -699,8 +798,10 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
             if em_info["_match"].get("exclusion_flag"):
                 excl_words = ", ".join(em_info["_match"]["exclusion_flag"][:4])
                 excl_flag = f" ⚠️EXCLUDED?[{excl_words}]"
+            generic_flag = " ⚠️GENERIC" if em_info.get("_system_sender") else ""
 
-            if "sent" in em_info.get("folder", "").lower():
+            is_sent = "sent" in em_info.get("folder", "").lower()
+            if is_sent:
                 to_names = []
                 for r in em_info.get("to_recipients", []):
                     n = r.get("name", r.get("address", ""))
@@ -711,12 +812,16 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
             else:
                 label = f"→ #{num} [{signal}] {received} {sender_name}: \"{subject}\""
 
-            lines.append(f"  {label} ⚡NEW{excl_flag}")
+            lines.append(f"  {label} ⚡NEW{excl_flag}{generic_flag}")
             eid = em_info.get("entry_id", "")
             if eid:
                 lines.append(f"    ID: {eid}")
             preview = em_info.get("body_preview", "").replace("\r\n", " ").replace("\n", " ").strip()
-            if preview:
+            if is_sent:
+                if preview:
+                    lines.append(f"    Preview: {preview[:300]}")
+                lines.append("    ⚠️READ_BODY: Must get-email before summarizing outbound")
+            elif preview:
                 lines.append(f"    Preview: {preview[:150]}")
 
         if known_emails:
@@ -743,6 +848,8 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
             preview = em_info.get("body_preview", "").replace("\r\n", " ").replace("\n", " ").strip()
             if preview:
                 lines.append(f"  Preview: {preview[:150]}")
+            if em_info.get("_system_sender"):
+                lines.append(f"  ⚠️GENERIC: System sender — must read body before attribution")
             for c in candidates[:3]:
                 tid = c["task_id"]
                 info = task_index.get(tid, {})
@@ -779,6 +886,35 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
                 lines.append(f"  ID: {eid}")
         lines.append("")
 
+    # --- Calendar ---
+    if calendar_items:
+        lines.append(f"### 📅 Calendar ({len(calendar_items)})")
+        for em in calendar_items:
+            num = em.get("_num", "?")
+            sender_name = em.get("sender_name") or em.get("sender", "").split("@")[0]
+            subj = em.get("subject", "")
+            short_subj = (subj[:50] + "…") if len(subj) > 52 else subj
+            label = _meeting_type_label(em)
+            time_str = _format_start_time(em)
+            meta_parts = []
+            if label:
+                meta_parts.append(label)
+            if time_str:
+                meta_parts.append(time_str)
+            meta = " ".join(meta_parts)
+            match_info = em.get("_match")
+            if match_info:
+                tid = match_info["task_id"]
+                t_title = task_index.get(tid, {}).get("title", "")
+                short_title = (t_title[:30] + "…") if len(t_title) > 32 else t_title
+                lines.append(f"  #{num} [{meta}] {sender_name}: \"{short_subj}\" → {tid} ({short_title})")
+            else:
+                lines.append(f"  #{num} [{meta}] {sender_name}: \"{short_subj}\"")
+            entry_id = em.get("entry_id", "")
+            if entry_id:
+                lines.append(f"    ID: {entry_id}")
+        lines.append("")
+
     # --- Noise ---
     if noise_stats:
         total_noise = sum(len(v) for v in noise_stats.values())
@@ -797,12 +933,38 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
             lines.append(f"{cat} ({count}): {detail}")
         lines.append("")
 
+    # --- Active Task Reference (for AI semantic matching in Pass B) ---
+    unmatched_tasks = {tid: info for tid, info in task_index.items()
+                       if tid not in matched and info.get("title") != "(closed)"}
+    if unmatched_tasks:
+        lines.append("### 📋 Active Tasks Not Matched (reference for AI Pass B)")
+        lines.append("")
+        for tid in sorted(unmatched_tasks.keys()):
+            info = unmatched_tasks[tid]
+            title = info.get("title", "")
+            scope = info.get("scope", "")
+            contacts = info.get("contacts", [])
+            geo = info.get("geo", "")
+            flag = GEO_FLAGS.get(geo, "")
+            contact_str = ", ".join(
+                c.get("name", c.get("email", "")) if isinstance(c, dict) else str(c)
+                for c in contacts[:5]
+            ) if contacts else ""
+            line = f"- **{tid}** {title} {flag}"
+            if scope:
+                line += f" | Scope: {scope[:80]}"
+            if contact_str:
+                line += f" | Contacts: {contact_str}"
+            lines.append(line)
+        lines.append("")
+
     # --- Stats ---
     lines.append(f"### Index Stats")
     lines.append(f"Tasks indexed: {len(task_index)} | "
-                 f"Matched: {matched_email_count} | "
+                 f"Matched: {new_email_count} new + {sum(len(v) for v in matched.values()) - new_email_count} known | "
                  f"Ambiguous: {len(ambiguous)} | "
                  f"Non-task: {len(unmatched)} | "
+                 f"Calendar: {len(calendar_items)} | "
                  f"Noise: {sum(len(v) for v in noise_stats.values())}")
 
     return "\n".join(lines)
@@ -843,6 +1005,7 @@ def main():
 
     # Process emails: filter noise, then match
     noise_stats = {}    # category -> [email dicts]
+    calendar_items = []  # meeting invites (shown separately, not noise)
     matched = {}        # task_id -> [email dicts with match info]
     ambiguous = []      # emails with multiple weak candidates
     unmatched = []      # no match at all
@@ -850,7 +1013,23 @@ def main():
 
     for idx, email in enumerate(emails, 1):
         email["_num"] = idx
+        email["_system_sender"] = is_system_sender(email)
         emails_by_num[idx] = email
+
+        # Calendar items — task-linked ones go into matched section; unlinked ones shown separately
+        if is_calendar_item(email):
+            cal_matches = match_email_to_tasks(email, task_index, email_to_tasks, name_to_tasks)
+            cal_matches = [m for m in cal_matches if m["confidence"] >= 0.5]
+            if cal_matches:
+                # Task-linked calendar item → treat as regular task-matched email
+                email["_match"] = cal_matches[0]
+                email["_is_calendar"] = True
+                tid = cal_matches[0]["task_id"]
+                matched.setdefault(tid, []).append(email)
+            else:
+                # Unlinked calendar item → separate section for AI semantic review
+                calendar_items.append(email)
+            continue
 
         # Noise filter
         noise_cat = is_noise(email)
@@ -899,7 +1078,8 @@ def main():
     # Format output
     output = format_output(
         matched, ambiguous, unmatched, noise_stats,
-        task_index, global_contacts, len(emails), emails_by_num
+        task_index, global_contacts, len(emails), emails_by_num,
+        calendar_items=calendar_items
     )
     print(output)
 
