@@ -55,6 +55,9 @@ assistant_brain/tasks/
 
 # Sync results - runtime artifacts, keep local only
 assistant_brain/sync_results/
+
+# One-time local scripts
+scripts/
 Q2_Budget_HCD_Training_Certifications.xlsx
 ~$Q2_Budget_HCD_Training_Certifications.xlsx
 Copy of EPD Plan Rows Q2-March 19.xlsx
