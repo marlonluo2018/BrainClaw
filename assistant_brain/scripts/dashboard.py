@@ -278,27 +278,31 @@ def compute_overdue_days(due_str: str, today: date):
 # --- Output Formatting ---
 
 
+def is_task_stale(t, today_date):
+    threshold = STALE_THRESHOLDS.get(t.priority or "P3", 10)
+    task_path = PROJECT_ROOT / t.path
+    content = safe_read(task_path)
+    if not content:
+        return False
+    last_date_str = get_last_activity_date(content)
+    if not last_date_str:
+        return False
+    try:
+        last_date = date.fromisoformat(last_date_str)
+    except ValueError:
+        return False
+    return (today_date - last_date).days > threshold
+
+
 def count_stale_tasks(tasks, today_date):
     count = 0
     for t in tasks:
-        threshold = STALE_THRESHOLDS.get(t.priority or "P3", 10)
-        task_path = PROJECT_ROOT / t.path
-        content = safe_read(task_path)
-        if not content:
-            continue
-        last_date_str = get_last_activity_date(content)
-        if not last_date_str:
-            continue
-        try:
-            last_date = date.fromisoformat(last_date_str)
-        except ValueError:
-            continue
-        if (today_date - last_date).days > threshold:
+        if is_task_stale(t, today_date):
             count += 1
     return count
 
 
-def format_brief(tasks, skills, processes, contacts, today, recurring_due, events=None):
+def format_brief(tasks, skills, processes, contacts, today, recurring_due, events=None, compact=False):
     date_str = today.strftime('%A %b %d, %Y %H:%M')
     lines = []
 
@@ -347,9 +351,10 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
 
     # Recent events
     if events:
-        lines.append(f"### Recent Events ({len(events)})")
+        display_events = events[:5] if compact else events
+        lines.append(f"### Recent Events ({len(display_events)} of {len(events)})" if compact else f"### Recent Events ({len(events)})")
         lines.append("")
-        for ev in events:
+        for ev in display_events:
             fixed_line = re.sub(
                 r'\]\(\./(.+?)\)',
                 r'](assistant_brain/tasks/\1)',
@@ -374,12 +379,35 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
     for geo in sorted_geos:
         flag = FLAG_MAP.get(geo, "🌐")
         geo_tasks = geo_groups[geo]
-        lines.append(f"### {flag} {geo} ({len(geo_tasks)})")
+
+        # Pre-filter tasks for compact mode
+        filtered_geo_tasks = []
+        for t in geo_tasks:
+            is_overdue = bool(compute_overdue_days(t.due, today.date()))
+            is_stale = is_task_stale(t, today.date())
+            is_p1 = (t.priority == "P1")
+
+            # Check subtasks
+            has_urgent_subtask = False
+            for sub in t.subtasks:
+                sub_overdue = bool(compute_overdue_days(sub.due, today.date()))
+                sub_stale = is_task_stale(sub, today.date())
+                sub_p1 = (sub.priority == "P1")
+                if sub_overdue or sub_stale or sub_p1:
+                    has_urgent_subtask = True
+
+            if not compact or is_overdue or is_stale or is_p1 or has_urgent_subtask:
+                filtered_geo_tasks.append(t)
+
+        if not filtered_geo_tasks:
+            continue
+
+        lines.append(f"### {flag} {geo} ({len(filtered_geo_tasks)})")
         lines.append("")
 
         # Group by priority
         prio_groups = {}
-        for t in geo_tasks:
+        for t in filtered_geo_tasks:
             p = t.priority or "P3"
             prio_groups.setdefault(p, []).append(t)
 
@@ -402,6 +430,13 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
 
                 # Subtasks
                 for sub in t.subtasks:
+                    sub_overdue = bool(compute_overdue_days(sub.due, today.date()))
+                    sub_stale = is_task_stale(sub, today.date())
+                    sub_p1 = (sub.priority == "P1")
+
+                    if compact and not (sub_overdue or sub_p1):
+                        continue
+
                     sub_line = format_task_line(sub, today.date(), indent="  ")
                     lines.append(sub_line)
                     for ask in sub.asks_out:
@@ -1169,7 +1204,7 @@ def run_startup(args, today):
     processes = parse_processes(safe_read(BRAIN_DIR / 'process' / 'README.md'))
 
     # Output brief
-    brief = format_brief(tasks, skills, processes, contacts, today, recurring_due, events)
+    brief = format_brief(tasks, skills, processes, contacts, today, recurring_due, events, compact=False)
     print(brief)
 
 

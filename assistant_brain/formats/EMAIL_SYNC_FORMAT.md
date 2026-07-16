@@ -64,11 +64,23 @@ Actions:
 → #X — Wkd Mon DD HH:MM — Sender: brief description
   🎯/⏳ Suggested: [suggested response/action or what to wait for]
   💡 Create task? [Yes — reason] / [No — reason]
+
+&nbsp;
+
 → #Y — Wkd Mon DD HH:MM — Sender: brief description
   🎯/⏳ Suggested: [suggested response/action or what to wait for]
   💡 Create task? [Yes — reason] / [No — reason]
 
 **Informational** (no action / no task needed): #A, #B, #C, ...
+
+---
+
+### 🚫 Ignored / Filtered Emails
+
+- **#X** — Wkd Mon DD HH:MM — Sender: subject / brief description (Reason: unmatched)
+- **#Y** — Wkd Mon DD HH:MM — Sender: subject / brief description (Reason: unmatched)
+
+*(Note: All auto-replies, OTP passcodes, and other pure system noise are silently filtered in the background and are not displayed here.)*
 
 ---
 
@@ -120,7 +132,7 @@ Total: X files modified, Y unchanged.
 5. Each task has two sub-sections: **Emails** (→ in / ← out) then **Actions** (🎯 my action / ⏳ waiting). Use one or both action types as appropriate
    - **⛔ Completion-Check Gate (before generating ANY 🎯/⏳ action):** READ the task file's `## Asks` section AND `### Action Items` / `## Current State`. If the proposed action corresponds to an ask or item already marked `[x]`, `[✅]`, struck through (`~~`), or appended with `✅`, do NOT include it in Actions or Priority Actions. Only surface genuinely OPEN items. An email arriving about a completed action is informational — it does NOT reopen the action.
 6. Separate tasks with `&nbsp;` (blank spacer line) for visual clarity — no `---` horizontal rules between tasks
-7. Non-Task "Action needed" items show the email with `→`/`←` prefix, then indented `🎯 Suggested:` line, then `💡 Create task?` recommendation
+7. Non-Task "Action needed" items show the email with `→`/`←` prefix, then indented `🎯 Suggested:` line, then `💡 Create task?` recommendation. Separate each "Action needed" email entry with `&nbsp;` (blank spacer line) for visual clarity.
 8. Email numbers are sequential across the entire summary (not per-task)
 9. **Contact attribution:** The `Contact: {name}` in `🎯`/`⏳` lines MUST be the person relevant to THAT specific action — NOT the task's generic primary contact. Match the person to the verb.
 10. **Overdue vs ask age:** "overdue" refers to the task's Due date. When surfacing a specific ask, show the ask's age (e.g., "ask: 3d ago") separately from task overdue.
@@ -130,3 +142,5 @@ Total: X files modified, Y unchanged.
 14. **Sync Audit:** List EVERY task file evaluated. For modified files: `+Timeline`, `+Ask`, `✅ State`, `~~Ask struck~~`. Unmodified: "no changes". Never omit.
 15. **No rejected emails under tasks:** Only list emails that PASS semantic judgment under a task. Emails rejected during scope validation (wrong task, scope mismatch, irrelevant content) must NOT appear under the matched task — move them to Non-Task "Informational" or omit entirely. Never show "❌ Scope mismatch" lines under a task.
 16. **Skip empty tasks:** If a task has zero valid emails after semantic judgment (all were rejected or already known with no updates), do NOT show that task in the summary at all.
+17. **Ignore metadata awareness:** If the pre-match stats show `Ignored by library: X`, treat those emails as already suppressed by `assistant_brain/sync_results/ignore_candidates.json` and do not ask the user about them again unless the user says they may be task-related and wants them restored for review.
+18. **Incremental ignore candidate pool:** `assistant_brain/sync_results/ignore_candidates.json` is an incremental pool for unmatched (Non-Task) emails, not a one-run snapshot. Unmatched emails written there are skipped by subsequent `email sync` runs by default and displayed under "Ignored / Filtered Emails" for user review. Pure system noise (auto-reply, OTP, etc.) is directly filtered and skipped by the script, and is NOT stored in `ignore_candidates.json` or displayed in the summary.

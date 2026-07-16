@@ -40,6 +40,13 @@
 - JOYSON BARRAGO <Joyson.Barrago@ibm.com> — IBM & Red Hat Practice Leader / Offshore Enterprise Architect / Innovations Leader | Dept: FM2 | Mobile: +63-9158707007 | Office: Quezon City, PH
 - Cyrus Cempron <cy.cempron@ibm.com> — Microsoft Practice Leader / Senior Manager Healthcare Engagement | Dept: FS5 | Office: Quezon City, PH
 
+## watsonx Training (India)
+
+- **K.V. Rajesh** <karajesh@in.ibm.com> — Service Area Leader, IBM Tech Data Services | Dept: JHB | Context: Requirement owner for watsonx bootcamps; provides nominees (nomination-based enrollment)
+- **Pravin Kedia** <prakedia@in.ibm.com> — CTO Data & AI, watsonx & Cloud Pak for Data COE, Expert Labs | Dept: B5J | Context: Instructor for watsonx bootcamps; led March WXD (49 pax, Mumbai); proposing new lab environment
+- **Shivakumar** <nshivakumar@in.ibm.com> — Manager, Corporate Training, IBM Technology Expert Labs | Dept: DPS | Context: Pricing/logistics for watsonx bootcamps (USD 11,650/batch for 20 pax)
+- **Alvin Sim** <Alvin.Sim@ibm.com> — Learning Consultant, L&K | Dept: 540 | Context: Previous LC for WXD bootcamp; handed over to Marlon Jul 2026
+
 ## External (not in GAL)
 
 - **LearnQuest MLS APAC** <mls-apac@learnquest.com> — PH training vendor (ITIL, certs) | Contacts: Madhushree K, Manjula Kumarswamy

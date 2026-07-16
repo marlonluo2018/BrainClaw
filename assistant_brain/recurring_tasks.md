@@ -26,25 +26,5 @@ recurring_tasks:
     last_completed: "2026-03"  # When task was executed (March 2026)
     last_period: "2026-Q1"  # Which quarter's invoice was sent (Q1 2026)
 
-  - id: "R002"
-    name: "Send L&K Learning Report to I&D Sector Focals"
-    schedule: "beginning of every month"
-    priority: Medium
-    category: Reporting
-    contacts:
-      - "Yi Tian Li <liyitian@cn.ibm.com> (Cross Sector Focal)"
-      - "Cong Wang <Cong.WangDL@ibm.com> (Client Engagement Lab sector focal)"
-      - "Hu Yun Li <lilhylhy@cn.ibm.com> (Distribution sector focal)"
-      - "BING YAN <ybingdl@cn.ibm.com> (Industrial sector focal)"
-      - "XU DONG XUAN <xuanxud@cn.ibm.com> (Finance Service sector focal)"
-      - "HUI QING CHEN <huiqingc@cn.ibm.com> (Public & Communication sector focal)"
-    cc: "Fei Ye <feiye@cn.ibm.com>"
-    source_folder: "https://ibm.ent.box.com/folder/364440541230"
-    upload_folder: "https://ibm.ent.box.com/folder/368947686653"
-    note: "1) Download raw report files from source_folder to a local month folder (e.g. C:/Users/MengNingLuo/Downloads/June); 2) Run split script to generate per-focal Excel files; 3) Upload output to upload_folder (I&D sector Box); 4) Send email notification to contacts"
-    script: "py -3 assistant_brain/scripts/split_lk_report_by_focal.py \"<source_folder>\""
-    last_completed: "2026-06"  # When task was executed (June 2026)
-    last_period: "2026-05"  # Which month's report was sent (May 2026)
-
 ```
 

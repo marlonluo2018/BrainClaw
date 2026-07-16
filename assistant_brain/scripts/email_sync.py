@@ -5,8 +5,9 @@ builds a task index, matches emails to tasks, filters noise, and outputs a compa
 pre-matched summary for Claude to process with minimal context usage.
 
 Usage:
-    py -3 .../outlook_skill.py find-recent --days 1 --json | py -3 .../email_sync.py
-    py -3 .../email_sync.py --input-file downloads/emails.json
+    py -3 assistant_brain/scripts/run_email_sync.py --days 1
+    py -3 .../email_sync.py --input-file assistant_brain/sync_results/latest-input.json
+    py -3 .../email_sync.py --input-file assistant_brain/sync_results/latest-input.json --output-file assistant_brain/sync_results/custom-sync.md
 """
 
 import sys
@@ -22,13 +23,22 @@ from shared_config import BRAIN_DIR, scan_tasks, safe_read
 from followup import parse_task_file
 
 SYNC_RESULTS_DIR = BRAIN_DIR / "sync_results"
+IGNORE_CANDIDATES_FILE = SYNC_RESULTS_DIR / "ignore_candidates.json"
+IGNORE_CANDIDATE_TTL_DAYS = 14
+IGNORE_CANDIDATE_MAX_ITEMS = 500
 
 
-def save_sync_output(output: str) -> Path:
-    """Save sync output to timestamped file for later reference."""
-    SYNC_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y-%m-%d_%H%M")
-    out_file = SYNC_RESULTS_DIR / f"{ts}.md"
+def save_sync_output(output: str, output_file: str | None = None) -> Path:
+    """Save sync output to a specified file or a timestamped default path."""
+    if output_file:
+        out_file = Path(output_file)
+        if not out_file.is_absolute():
+            out_file = (BRAIN_DIR.parent / out_file).resolve()
+    else:
+        ts = datetime.now().strftime("%Y-%m-%d_%H%M")
+        out_file = SYNC_RESULTS_DIR / f"{ts}.md"
+
+    out_file.parent.mkdir(parents=True, exist_ok=True)
     out_file.write_text(output, encoding="utf-8")
     return out_file
 
@@ -37,10 +47,116 @@ def cleanup_old_results(days: int = 14):
     """Remove sync result files older than N days."""
     if not SYNC_RESULTS_DIR.exists():
         return
+    protected_names = {
+        IGNORE_CANDIDATES_FILE.name,
+        "latest.md",
+        "latest-input.json",
+    }
     cutoff = datetime.now() - timedelta(days=days)
     for f in SYNC_RESULTS_DIR.iterdir():
+        if f.name in protected_names:
+            continue
         if f.is_file() and f.stat().st_mtime < cutoff.timestamp():
             f.unlink()
+
+
+def load_ignore_candidates() -> dict:
+    """Load the incremental ignore-candidate pool."""
+    if not IGNORE_CANDIDATES_FILE.exists():
+        return {"updated_at": None, "candidates": {}}
+    try:
+        data = json.loads(IGNORE_CANDIDATES_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"updated_at": None, "candidates": {}}
+    if not isinstance(data, dict):
+        return {"updated_at": None, "candidates": {}}
+    candidates = data.get("candidates", {})
+    if not isinstance(candidates, dict):
+        candidates = {}
+    return {
+        "updated_at": data.get("updated_at"),
+        "candidates": candidates,
+    }
+
+
+def save_ignore_candidates(candidates: dict):
+    """Persist the incremental ignore-candidate pool."""
+    payload = {
+        "updated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "candidates": candidates,
+    }
+    IGNORE_CANDIDATES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    IGNORE_CANDIDATES_FILE.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def parse_iso_datetime(value: str | None):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+def cleanup_ignore_candidates(candidates: dict, active_seen_ids: set[str]) -> dict:
+    """Prune old/confirmed/stale candidate entries and cap total size."""
+    now = datetime.now().astimezone()
+    cleaned = {}
+    for entry_id, item in candidates.items():
+        if not entry_id or not isinstance(item, dict):
+            continue
+        if active_seen_ids and entry_id not in active_seen_ids:
+            last_seen = parse_iso_datetime(item.get("last_seen_at"))
+            if last_seen and now - last_seen > timedelta(days=IGNORE_CANDIDATE_TTL_DAYS):
+                continue
+        cleaned[entry_id] = item
+
+    if len(cleaned) > IGNORE_CANDIDATE_MAX_ITEMS:
+        ordered = sorted(
+            cleaned.items(),
+            key=lambda kv: parse_iso_datetime(kv[1].get("last_seen_at")) or datetime.min,
+            reverse=True,
+        )[:IGNORE_CANDIDATE_MAX_ITEMS]
+        cleaned = dict(ordered)
+
+    return cleaned
+
+
+def build_ignore_candidate(email: dict, reason: str, source_section: str, suggested_action: str,
+                           task_candidates: list[dict] | None = None,
+                           existing: dict | None = None) -> dict:
+    """Build or refresh a recoverable ignore-candidate record without unstable email numbers."""
+    now_iso = datetime.now().astimezone().isoformat(timespec="seconds")
+    candidates = []
+    for item in task_candidates or []:
+        candidates.append({
+            "task_id": item.get("task_id", ""),
+            "confidence": item.get("confidence"),
+            "signal": item.get("signal", ""),
+        })
+    seen_count = 1
+    first_seen_at = now_iso
+    if isinstance(existing, dict):
+        seen_count = int(existing.get("seen_count", 0) or 0) + 1
+        first_seen_at = existing.get("first_seen_at", now_iso)
+    return {
+        "entry_id": email.get("entry_id", ""),
+        "subject": email.get("subject", ""),
+        "sender": email.get("sender", ""),
+        "received_time": email.get("received_time", ""),
+        "folder": email.get("folder", ""),
+        "body_preview": (email.get("body_preview", "") or "").replace("\r\n", " ").replace("\n", " ").strip(),
+        "reason": reason,
+        "source_section": source_section,
+        "suggested_action": suggested_action,
+        "task_candidates": candidates,
+        "first_seen_at": first_seen_at,
+        "last_seen_at": now_iso,
+        "seen_count": seen_count,
+    }
 
 
 # --- Noise filter patterns ---
@@ -736,7 +852,9 @@ def match_email_to_tasks(email: dict, task_index: dict,
 def format_output(matched: dict, ambiguous: list, unmatched: list,
                   noise_stats: dict, task_index: dict, global_contacts: dict,
                   total_count: int, emails_by_num: dict,
-                  calendar_items: list | None = None) -> str:
+                  calendar_items: list | None = None,
+                  ignored_count: int = 0,
+                  ignored_emails: list | None = None) -> str:
     """Format compact pre-matched summary for Claude."""
     today = date.today().strftime('%Y-%m-%d')
     calendar_items = calendar_items or []
@@ -919,18 +1037,33 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
     if noise_stats:
         total_noise = sum(len(v) for v in noise_stats.values())
         lines.append(f"### Noise Filtered ({total_noise})")
-        for cat, cat_emails in sorted(noise_stats.items(), key=lambda x: -len(x[1])):
-            count = len(cat_emails)
-            examples = []
-            for em in cat_emails[:2]:
-                sender_name = em.get("sender_name") or em.get("sender", "").split("@")[0]
-                subj = em.get("subject", "")
-                short_subj = (subj[:28] + "…") if len(subj) > 30 else subj
-                examples.append(f'{sender_name} "{short_subj}"')
-            detail = " | ".join(examples)
-            if count > 2:
-                detail += f" +{count - 2} more"
-            lines.append(f"{cat} ({count}): {detail}")
+        lines.append("")
+        for cat in sorted(noise_stats.keys()):
+            for em in noise_stats[cat]:
+                num = em.get("_num", "?")
+                received = em.get("received_time", "")[:16]
+                sender_name = extract_sender_name(em.get("sender", ""))
+                subject = em.get("subject", "")
+                lines.append(f"  → #{num} {received} {sender_name}: \"{subject}\" (Reason: noise:{cat})")
+                eid = em.get("entry_id", "")
+                if eid:
+                    lines.append(f"    ID: {eid}")
+        lines.append("")
+
+    # --- Ignored by Library ---
+    if ignored_emails:
+        lines.append(f"### Ignored by Library ({len(ignored_emails)})")
+        lines.append("")
+        for em in ignored_emails:
+            num = em.get("_num", "?")
+            received = em.get("received_time", "")[:16]
+            sender_name = extract_sender_name(em.get("sender", ""))
+            subject = em.get("subject", "")
+            reason = em.get("_ignore_reason", "ignored")
+            lines.append(f"  → #{num} {received} {sender_name}: \"{subject}\" (Reason: {reason})")
+            eid = em.get("entry_id", "")
+            if eid:
+                lines.append(f"    ID: {eid}")
         lines.append("")
 
     # --- Active Task Reference (for AI semantic matching in Pass B) ---
@@ -965,7 +1098,8 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
                  f"Ambiguous: {len(ambiguous)} | "
                  f"Non-task: {len(unmatched)} | "
                  f"Calendar: {len(calendar_items)} | "
-                 f"Noise: {sum(len(v) for v in noise_stats.values())}")
+                 f"Noise: {sum(len(v) for v in noise_stats.values())} | "
+                 f"Ignored by library: {ignored_count}")
 
     return "\n".join(lines)
 
@@ -973,17 +1107,30 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
 def main():
     parser = argparse.ArgumentParser(description='BrainClaw email sync pre-processor')
     parser.add_argument('--input-file', type=str, help='Read JSON from file instead of stdin')
+    parser.add_argument('--output-file', type=str, help='Save sync result to a specific markdown file path')
     args = parser.parse_args()
+
+    def emit_and_save(output: str):
+        print(output)
+        out_file = save_sync_output(output, args.output_file)
+        try:
+            shown_path = out_file.relative_to(BRAIN_DIR.parent)
+        except ValueError:
+            shown_path = out_file
+        print(f"\n📁 Saved: {shown_path}")
 
     # Read input
     if args.input_file:
-        raw = safe_read(Path(args.input_file))
+        raw = Path(args.input_file).read_text(encoding='utf-8-sig')
     else:
-        raw = sys.stdin.buffer.read().decode('utf-8')
+        raw_bytes = sys.stdin.buffer.read()
+        raw = raw_bytes.decode('utf-8-sig')
+        if raw and raw[0] == '\ufeff':
+            raw = raw.lstrip('\ufeff')
 
     if not raw.strip():
-        print(f"## Email Sync Pre-Match | {date.today()} | 0 emails found")
-        print("\nNo email data received. Check outlook_skill.py output.")
+        output = f"## Email Sync Pre-Match | {date.today()} | 0 emails found\n\nNo email data received. Check outlook_skill.py output."
+        emit_and_save(output)
         return
 
     # Parse JSON
@@ -994,8 +1141,14 @@ def main():
         sys.exit(1)
 
     if not emails:
-        print(f"## Email Sync Pre-Match | {date.today()} | 0 emails")
+        output = f"## Email Sync Pre-Match | {date.today()} | 0 emails"
+        emit_and_save(output)
         return
+
+    ignore_candidates_payload = load_ignore_candidates()
+    ignore_candidates_map = ignore_candidates_payload.get("candidates", {})
+    ignored_entry_ids = set(ignore_candidates_map.keys())
+    active_seen_ids = set()
 
     # Build task index
     task_index, email_to_tasks, name_to_tasks = build_task_index()
@@ -1010,11 +1163,21 @@ def main():
     ambiguous = []      # emails with multiple weak candidates
     unmatched = []      # no match at all
     emails_by_num = {}  # email_num -> email dict
+    ignored_emails_list = []
+    ignored_count = 0
 
     for idx, email in enumerate(emails, 1):
         email["_num"] = idx
         email["_system_sender"] = is_system_sender(email)
         emails_by_num[idx] = email
+
+        entry_id = email.get("entry_id", "")
+        if entry_id:
+            active_seen_ids.add(entry_id)
+        if entry_id and entry_id in ignored_entry_ids:
+            ignored_count += 1
+            # Skip already ignored emails silently — do not add to ignored_emails_list so they won't be shown to the user
+            continue
 
         # Calendar items — task-linked ones go into matched section; unlinked ones shown separately
         if is_calendar_item(email):
@@ -1034,7 +1197,7 @@ def main():
         # Noise filter
         noise_cat = is_noise(email)
         if noise_cat:
-            noise_stats.setdefault(noise_cat, []).append(email)
+            # Directly filter and skip noise, no storing or printing
             continue
 
         # Match to tasks
@@ -1072,6 +1235,17 @@ def main():
             email["_candidates"] = matches
             ambiguous.append(email)
 
+    # Save unmatched emails to ignore candidates map for subsequent runs
+    for email in unmatched:
+        if email.get("entry_id"):
+            ignore_candidates_map[email["entry_id"]] = build_ignore_candidate(
+                email,
+                reason="unmatched",
+                source_section="unmatched",
+                suggested_action="consider_permanent_ignore",
+                existing=ignore_candidates_map.get(email["entry_id"]),
+            )
+
     # Clean up old results
     cleanup_old_results()
 
@@ -1079,14 +1253,25 @@ def main():
     output = format_output(
         matched, ambiguous, unmatched, noise_stats,
         task_index, global_contacts, len(emails), emails_by_num,
-        calendar_items=calendar_items
+        calendar_items=calendar_items,
+        ignored_count=ignored_count,
+        ignored_emails=ignored_emails_list,
     )
     print(output)
 
     # Save output to file for later reference
-    out_file = save_sync_output(output)
-    print(f"\n📁 Saved: {out_file.relative_to(BRAIN_DIR.parent)}")
+    out_file = save_sync_output(output, args.output_file)
+
+    ignore_candidates_map = cleanup_ignore_candidates(ignore_candidates_map, active_seen_ids)
+    save_ignore_candidates(ignore_candidates_map)
+    try:
+        shown_path = out_file.relative_to(BRAIN_DIR.parent)
+    except ValueError:
+        shown_path = out_file
+    print(f"\n📁 Saved: {shown_path}")
 
 
 if __name__ == '__main__':
     main()
+
+

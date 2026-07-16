@@ -74,7 +74,7 @@ For each selected task:
    - External vendor → polite, reference contract/quotation/order number
    - Peer/Executor → friendly, helpful
 3. **Compose email** using outlook-com-skill:
-   ```
+   ```powershell
    py -3 "assistant_brain/skills/outlook-com-skill/scripts/outlook_skill.py" compose --to "{email}" --subject "Re: {task title}" --body "{draft}"
    ```
 

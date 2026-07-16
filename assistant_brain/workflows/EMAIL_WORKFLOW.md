@@ -49,9 +49,10 @@
 
 ## Compose New Email
 
-> ⚠️ **MANDATORY DRAFT REVIEW:** Steps 6–8 (review → recipients → approval) are NEVER skippable.
-> User saying "do it" or "yes" for the action item does NOT constitute send approval.
-> Send approval = user explicitly confirms AFTER seeing the rendered draft.
+> ⚠️ **MANDATORY DRAFT REVIEW (RIGOROUS ENFORCEMENT):** Steps 6–8 (review → recipients → approval) are NEVER skippable.
+> User saying "do it" or "yes" or asking to perform another task (like "update task file") first does NOT constitute send approval.
+> Send approval MUST be explicit and specific to the draft presented in the current turn (e.g., "同意发送" / "approve and send").
+> If the user asks to perform another task first, the AI MUST complete that task, re-present the draft, and wait for a fresh, explicit approval before sending. Never conflate other instructions with send approval.
 
 **Triggers:** "draft email", "compose", "write email", "new email", "send to [person]"
 
@@ -64,15 +65,25 @@
 6. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
 7. **Recipient review** → Show To/CC list and suggest changes (see [Recipient Review](#recipient-review) below).
 8. **Present for approval** → NEVER send without user confirmation
-9. **Send via --body-stdin** → Pipe HTML body via stdin: `echo "body" | py -3 ... --body-stdin`. NEVER pass body content as inline argument (shell expansion corrupts `$` signs). Non-ASCII characters (em dashes, curly quotes, etc.) are safe — the script handles UTF-8 stdin.
+9. **Send safely** → Pass body content directly via the `--body` argument.
+   - On Windows/PowerShell, direct CLI arguments are passed via the native UTF-16 wide-character APIs, completely bypassing Windows codepage issues.
+   - **⚠️ Windows/PowerShell Newline Rule (MANDATORY):** To prevent PowerShell from collapsing real newlines into spaces when passing direct CLI arguments on Windows, the AI MUST explicitly convert all newlines in the draft to HTML `<br>` tags when constructing the `--body` argument (e.g., `Line 1<br>Line 2<br><br>Line 3`).
+   - This provides **100% inspectability** for the user during execution. The actual text, emojis, and symbols are clearly readable in the logs.
+   - **Command pattern:**
+     ```powershell
+     py -3 "assistant_brain/skills/outlook-com-skill/scripts/outlook_skill.py" compose --to "{recipient}" --subject "{subject}" --body "{body_with_br_tags}"
+     ```
+   - No piping, no base64 encoding, no temporary files.
+   - Avoid emojis and decorative Unicode in business emails unless explicitly required by the user.
 
 ---
 
 ## Reply / Forward / Redirect
 
-> ⚠️ **MANDATORY DRAFT REVIEW:** Steps 7–10 (draft → review → recipients → approval) are NEVER skippable.
-> User saying "do it" or "yes" for the action item does NOT constitute send approval.
-> Send approval = user explicitly confirms AFTER seeing the rendered draft.
+> ⚠️ **MANDATORY DRAFT REVIEW (RIGOROUS ENFORCEMENT):** Steps 7–10 (draft → review → recipients → approval) are NEVER skippable.
+> User saying "do it" or "yes" or asking to perform another task (like "update task file") first does NOT constitute send approval.
+> Send approval MUST be explicit and specific to the draft presented in the current turn (e.g., "同意发送" / "approve and send").
+> If the user asks to perform another task first, the AI MUST complete that task, re-present the draft, and wait for a fresh, explicit approval before sending. Never conflate other instructions with send approval.
 
 **Triggers:** "reply", "reply all", "forward", "redirect"
 
@@ -111,29 +122,31 @@
 - User says "send a fresh email to X about Y" → `compose`
 
 **Steps:**
-1. **Task context** → If the email relates to a known task, READ the task file timeline first. Identify the most recent relevant email thread (incoming or outgoing) with the target recipient. Note EntryIDs.
-2. **Read email content** → Use `get-email <EntryID>` to read the actual content of the identified email(s). Understand what was said, what was asked, and what the current state of the conversation is.
-3. **Decide command** → Based on the thread context:
-   - Existing thread with same/more recipients → `reply` (reply-all)
-   - Existing thread but narrowing recipients → `forward` or `compose`
-   - No prior thread with this recipient → `compose`
-4. **Confirm target email** → Before drafting, show the user which email will be replied to/forwarded:
-   - **Action:** Reply All / Forward / Compose
-   - **From:** {sender name}
-   - **Date:** {received date}
-   - **Subject:** {email subject}
-   - **To/CC:** {key recipients}
-   - **Thread context:** {1-line summary of what this email said/asked}
 
-   This is critical in multi-email threads — the wrong email means wrong recipients. Wait for user confirmation before proceeding.
-5. **Load skill** → Load the email skill
-6. **Verify recipients** → For any NEW recipients added via `--to`/`--cc` (not already on the original email), run `lookup-contact` to confirm the address. Never guess email addresses.
-7. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
-8. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
-9. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
-10. **Recipient review** → Show To/CC list and suggest changes (see [Recipient Review](#recipient-review) below).
-11. **Present for approval** → NEVER send without user confirmation
-12. **Send via --body-stdin** → Pipe HTML body via stdin: `echo "body" | py -3 ... --body-stdin`. NEVER pass body content as inline argument (shell expansion corrupts `$` signs). Non-ASCII characters (em dashes, curly quotes, etc.) are safe — the script handles UTF-8 stdin.
+### Step 1: Get email thread / Context
+1. **Task context** → If the email relates to a known task, READ the task file timeline first. Identify the most recent relevant email thread (incoming or outgoing) with the target recipient. Note EntryIDs. If no prior thread exists, prepare to compose a new email.
+2. **Confirm target email** → Before proceeding, show the user which email will be replied to/forwarded (Action, From, Date, Subject, To/CC, Thread context) and wait for user confirmation.
+
+### Step 2: Read email thread
+3. **Read email content** → Always use `get-email <EntryID>` to read the actual content of the identified email(s) completely. Understand what was said, what was asked, and what the current state of the conversation is. (Zero assumptions, NO guessing).
+
+### Step 3: Draft the email
+4. **Decide command** → Autonomously select the correct command (`reply`, `forward`, `compose`, or `redirect`) based on recipient and thread context.
+5. **Load skill & verify recipients** → Load the email skill. For any NEW recipients added via `--to`/`--cc`, run `lookup-contact` to confirm the address. Check stakeholder type in [`contacts.md`](../contacts.md).
+6. **Compose draft** → Apply appropriate tone. Do NOT include signature.
+   - **⛔ No Redundancy Rule (MANDATORY):** Analyze the thread's historical text thoroughly first. **The new body MUST NOT repeat, reiterate, or re-list any facts, numbers, dates, course names, budgets, plan rows, or other parameters that are already visible in the thread history.** Focus the draft ONLY on the new ask, new question, or new follow-up.
+7. **Draft review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
+8. **Recipient review** → Show full To/CC list and any suggested changes (see [Recipient Review](#recipient-review) below).
+
+### Step 4: Send safely after explicit approval
+9. **Present for approval** → Display the Draft Type, Recipients (To/CC), Subject Line, and Body (as readable plain text). NEVER send without explicit, turn-specific user confirmation.
+10. **Send safely** → After receiving approval, execute the send command. Pass body content directly via the `--body`/`body` argument, converting all newlines to HTML `<br>` tags to prevent PowerShell from collapsing them on Windows.
+    - **Command pattern:**
+      ```powershell
+      py -3 "assistant_brain/skills/outlook-com-skill/scripts/outlook_skill.py" {compose|reply|forward|redirect} [args] --body "{body_with_br_tags}"
+      ```
+    - No piping, no base64 encoding, no temporary files.
+    - Avoid emojis and decorative Unicode in business emails unless explicitly required by the user.
 
 **Tone Guidelines:**
 
@@ -180,6 +193,7 @@
 | **Tone match** | Does it match the stakeholder type from the table above? |
 | **Action clarity** | Is there a clear call-to-action or next step? Who does what by when? |
 | **Recipient awareness** | Are we addressing the right person for this ask? |
+| **No Redundancy** | Does the draft repeat any dates, numbers, budgets, or details already mentioned in previous emails in this thread? If so, remove them. |
 
 **Output format (shown with draft):**
 
@@ -210,7 +224,7 @@ Thread: "{subject}" — last from {sender}, {date}
 
 - Show 0-2 suggestions max. If draft is already solid, skip the suggestions section entirely.
 - Never block on suggestions — always present the draft for approval regardless.
-- **Draft body must be rendered as readable plain text** — never show raw HTML tags (`<p>`, `<br>`, `<strong>`, etc.) to the user. Use markdown formatting (bold, lists, line breaks) for readability. HTML is only for the `--body-stdin` pipe at send time.
+- **Draft body must be rendered as readable plain text** — never show raw HTML tags (`<p>`, `<br>`, `<strong>`, etc.) to the user. Use markdown formatting (bold, lists, line breaks) for readability. HTML is only for the `--body` argument (or `--body-stdin` pipe) at send time.
 
 ---
 
@@ -297,13 +311,45 @@ Thread: "{subject}" — last from {sender}, {date}
 
 **Steps:**
 
-1. **Fetch & Pre-Match** → Run the pipeline (single command):
+1. **Fetch & Pre-Match** → Run the stable wrapper command:
    ```
-   py -3 assistant_brain/skills/outlook-com-skill/scripts/outlook_skill.py find-recent --days {N} --json | py -3 assistant_brain/scripts/email_sync.py
+   py -3 assistant_brain/scripts/run_email_sync.py --days {N}
    ```
-   This outputs a compact pre-matched summary with emails already matched to tasks, noise filtered, and geo inferred. The output contains `⚡NEW` (needs processing) and `✅KNOWN` (already recorded) markers.
+   **Recommended Codex-safe command:**
+   ```powershell
+   py -3 assistant_brain\scripts\run_email_sync.py --days {N} --fetch-timeout 10 --process-timeout 30
+   ```
+   In Codex, Outlook COM can hang or fail because the agent process may not share the same interactive Outlook desktop session. The wrapper must fail fast instead of blocking indefinitely, and failed fetches must not overwrite `latest.md` or `latest-input.json`.
 
-   **⛔ RUN-ONCE RULE:** The sync script runs ONCE per user command. The output is saved to `assistant_brain/sync_results/{timestamp}.md`. For ALL subsequent processing in this session (semantic judgment, writing to task files, presenting summary, answering questions about the sync results), READ the saved file — do NOT re-run the pipeline. Each run produces different results (new emails arrive, timestamps shift); re-running causes confusion and duplicate processing. Only run again if the user explicitly commands another sync.
+   **Codex timeout recovery (do not ask user to run terminal):** If the command above times out while fetching Outlook mail, rerun the same wrapper from Codex with sandbox/escalated execution so Outlook COM can access the interactive desktop session:
+   ```powershell
+   py -3 assistant_brain\scripts\run_email_sync.py --days {N} --fetch-timeout 20 --process-timeout 60
+   ```
+   If this succeeds, continue from `assistant_brain/sync_results/latest.md` as the source of truth. This is the preferred recovery path.
+
+   **Snapshot-only fallback:** If Outlook fetch still fails but `latest-input.json` was refreshed by a successful previous run, process that existing snapshot only:
+   ```powershell
+   py -3 assistant_brain\scripts\run_email_sync.py --skip-fetch --input-file assistant_brain\sync_results\latest-input.json --process-timeout 30
+   ```
+   This wrapper handles the BOM-safe JSON snapshot, runs `email_sync.py`, outputs a compact pre-matched summary with emails already matched to tasks, noise filtered, and geo inferred, and saves the latest raw sync result to the sync archive area. The output contains `⚡NEW` (needs processing) and `✅KNOWN` (already recorded) markers.
+
+   **Output locations:**
+   - Stable latest file: `assistant_brain/sync_results/latest.md`
+   - Input snapshot used for this run: `assistant_brain/sync_results/latest-input.json`
+   - Incremental default-ignore pool: `assistant_brain/sync_results/ignore_candidates.json`
+   - Historical timestamped snapshots remain available when `--output-file` is omitted: `assistant_brain/sync_results/{timestamp}.md`
+
+   **Default ignore behavior:** only emails that remain clearly `noise` or clearly `non-task` *after summary-stage human/AI review* should be written into `assistant_brain/sync_results/ignore_candidates.json`. Items with plausible task relevance, ambiguity, or candidate tasks must stay in the main email-sync review flow until resolved. Once an email is written into the ignore pool, later `email sync` runs skip it automatically unless the user asks to restore/review it.
+
+**User entry points / Management commands:**
+- Show current ignore pool: `py -3 assistant_brain/scripts/manage_ignore_candidates.py show`
+- Add one candidate to ignore pool: `py -3 assistant_brain/scripts/manage_ignore_candidates.py add <entry_id> [--reason "reason"]`
+- Restore one candidate by entry ID: `py -3 assistant_brain/scripts/manage_ignore_candidates.py restore <entry_id>`
+- Restore by subject keyword: `py -3 assistant_brain/scripts/manage_ignore_candidates.py restore --subject "keyword"`
+
+*Rule:* If the user requests to manually ignore/filter an email or if an email is confirmed to be unrelated to any active task, always use the `add` command of `manage_ignore_candidates.py` to register it in the ignore candidates file.
+
+   **⛔ RUN-ONCE RULE:** The sync script runs ONCE per user command. After the run, treat `assistant_brain/sync_results/latest.md` as the source of truth for this sync. For ALL subsequent processing in this session (semantic judgment, writing to task files, presenting summary, answering questions about the sync results), READ the saved file — do NOT re-run the pipeline. Each run produces different results (new emails arrive, timestamps shift); re-running causes confusion and duplicate processing. Only run again if the user explicitly commands another sync.
 
 2. **⚠️ MANDATORY: Read format file** → `Read assistant_brain/formats/EMAIL_SYNC_FORMAT.md` — do this NOW, before processing.
 

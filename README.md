@@ -75,7 +75,7 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 |---------|-------------|
 | **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, RACI stakeholders, Parent-Child relationships, structured `Asks` (owed by me / owed to me) |
 | **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `review`, `digest`, `timesheet` — surface what's overdue, owed, and 述职-worthy across all tasks |
-| **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. Three-tier matching: ConversationID thread → task contacts → keyword+geo. Auto-extracts asks/decisions/deadlines into task slots. All send commands auto-output EntryID for timeline tracking |
+| **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. Three-tier matching: ConversationID thread → task contacts → keyword+geo. Auto-extracts asks/decisions/deadlines into task slots. Email sync now uses a stable wrapper command (`py -3 assistant_brain/scripts/run_email_sync.py`) that manages `assistant_brain/sync_results/latest-input.json`, `assistant_brain/sync_results/latest.md`, and an incremental default-ignore pool at `assistant_brain/sync_results/ignore_candidates.json`. All send commands auto-output EntryID for timeline tracking |
 | **Email Thread Tracking** | ConversationID-based thread matching — once an email is linked to a task, all future emails in the same thread auto-match |
 | **Related Email Discovery** | Multi-strategy search (thread + sender + keyword) for cross-thread discovery |
 | **Memory System** | Preferences, cognitive blind-spot patterns, contacts, achievements (述职 fact base) |
