@@ -14,6 +14,7 @@
 
 **Taskboard refresh:** `py -3 assistant_brain/scripts/dashboard.py taskboard`
 **Pending views:** `py -3 assistant_brain/scripts/dashboard.py pending` | `pending-out` | `pending-in`
+**Processes view:** `py -3 assistant_brain/scripts/dashboard.py processes` | "processes" (shows active processes grouped by geography)
 **Weekly digest:** `py -3 assistant_brain/scripts/dashboard.py digest` | "周报"
 **Timesheet:** `py -3 assistant_brain/scripts/dashboard.py timesheet` | "timesheet" | "工时"
 
@@ -66,7 +67,7 @@ When user asks to find someone's email or draft a reply to someone — check rel
 
 ## On-Demand Loading
 
-> **⚠️ CRITICAL: ALWAYS load the appropriate workflow file BEFORE executing any operation. NEVER perform actions from memory. Specifically, for ALL email-related work (including search, sync, reply, forward, redirect, compose, batch forward, or updating task progress from emails), you MUST load the email workflow file `assistant_brain/workflows/EMAIL_WORKFLOW.md` first. Only after loading and reading `EMAIL_WORKFLOW.md` should you use its rules to decide which specific email operation and command to execute.**
+> **⚠️ CRITICAL: ALWAYS load the appropriate workflow file BEFORE executing any operation. NEVER perform actions from memory. Specifically, for ALL email-related work (including search, sync, reply, forward, redirect, compose, batch forward, or updating task progress from emails), you MUST load the email workflow file `../assistant_brain/workflows/EMAIL_WORKFLOW.md` first. Only after loading and reading `EMAIL_WORKFLOW.md` should you use its rules to decide which specific email operation and command to execute.**
 
 ### Enforcement Gate
 
@@ -82,14 +83,14 @@ Before executing ANY operation from the tables below, follow this mandatory sequ
 
 | Operation | Trigger Commands | Workflow |
 |-----------|------------------|----------|
-| Email | "check email", "check new email", "查看邮件", "查看新邮件", "draft", "reply", "forward", "email sync", "同步邮件", "邮件同步" | `assistant_brain/workflows/EMAIL_WORKFLOW.md` |
-| Task | "create task", "update task", "complete task" | `assistant_brain/workflows/TASK_WORKFLOW.md` |
-| Process | "next step", "推进", "下一步", "what process", "create process", "save as process", "固化流程" | `assistant_brain/workflows/PROCESS_WORKFLOW.md` |
-| Follow-up | "follow up", "催办", "chase", "nudge", "提醒一下" | `assistant_brain/workflows/FOLLOWUP_WORKFLOW.md` |
-| Recording | "record event", "archive events" | `assistant_brain/workflows/RECORDING_WORKFLOW.md` |
-| Web | "search", "搜索", "查一下", "look up", "open URL", "查看网页", "抓取" | `assistant_brain/workflows/WEB_WORKFLOW.md` |
-| TU Sync | "tu sync", "sync tu", "同步TU", "TU更新", "update tu", "tu balance", "TU余额" | `assistant_brain/workflows/TU_SYNC_WORKFLOW.md` |
-| Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard`, `digest`, `timesheet` | `assistant_brain/workflows/VIEWS_WORKFLOW.md` |
+| Email | "check email", "check new email", "查看邮件", "查看新邮件", "draft", "reply", "forward", "email sync", "同步邮件", "邮件同步" | `../assistant_brain/workflows/EMAIL_WORKFLOW.md` |
+| Task | "create task", "update task", "complete task" | `../assistant_brain/workflows/TASK_WORKFLOW.md` |
+| Process | "next step", "推进", "下一步", "what process", "create process", "save as process", "固化流程" | `../assistant_brain/workflows/PROCESS_WORKFLOW.md` |
+| Follow-up | "follow up", "催办", "chase", "nudge", "提醒一下" | `../assistant_brain/workflows/FOLLOWUP_WORKFLOW.md` |
+| Recording | "record event", "archive events" | `../assistant_brain/workflows/RECORDING_WORKFLOW.md` |
+| Web | "search", "搜索", "查一下", "look up", "open URL", "查看网页", "抓取" | `../assistant_brain/workflows/WEB_WORKFLOW.md` |
+| TU Sync | "tu sync", "sync tu", "同步TU", "TU更新", "update tu", "tu balance", "TU余额" | `../assistant_brain/workflows/TU_SYNC_WORKFLOW.md` |
+| Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard`, `digest`, `timesheet` | `../assistant_brain/workflows/VIEWS_WORKFLOW.md` |
 
 ### Skills
 
@@ -120,7 +121,7 @@ powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 "who is [person]" → This is a **skill command**, not a conversational question. Match against skill triggers and execute. Do NOT attempt to answer from email signatures, task files, or memory.
 
 ### Task References
-Always format as clickable links with name: `[T025](assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md) PMP Renewal - FutureNow Center Philippines`
+Always format as clickable links with name: `[T025](../assistant_brain/tasks/T025-pmp-renewal-futurenow-q2.md) PMP Renewal - FutureNow Center Philippines`
 
 ### Email Sync — EntryID & Semantic Match
 
@@ -168,6 +169,9 @@ The user's approval must be explicit and specific to the draft presented in the 
 - OS: Windows 11
 - Python command: `py -3 full/path/script.py` (no `cd`, no `&&`)
 - Shell: Bash (Git Bash on Windows) — use `&&` for conditional chaining
+- **Shell Escaping Rules (CRITICAL):**
+  - When passing code block arguments or strings containing `$` symbols (like `$0.00` or pricing lists) inside Bash command arguments, **always wrap the outer shell argument in single quotes (`'`) instead of double quotes (`"`)**. 
+  - If double quotes must be used for the outer shell argument, **always escape the `$` symbol as `\$`** to prevent the shell (Bash or PowerShell) from performing silent variable expansion (which corrupts `$0.00` into `.00`).
 - Download path: `./downloads/` (email attachments and skill outputs)
 - Recent Events Window: 14 days
 
@@ -183,7 +187,7 @@ Use Tavily MCP tools (`mcp__tavily__tavily_search`, `mcp__tavily__tavily_extract
 
 | File | Load when |
 | ---- | --------- |
-| `assistant_brain/tasks/FORMATS.md` | Creating or updating tasks |
-| `assistant_brain/views_config.md` | Running any view command (status, pending, before, review) |
-| `assistant_brain/contacts.md` | Drafting emails, follow-ups, or "before {person}" |
-| `assistant_brain/recurring_tasks.md` | Startup detects recurring task due |
+| `../assistant_brain/tasks/FORMATS.md` | Creating or updating tasks |
+| `../assistant_brain/views_config.md` | Running any view command (status, pending, before, review) |
+| `../assistant_brain/contacts.md` | Drafting emails, follow-ups, or "before {person}" |
+| `../assistant_brain/recurring_tasks.md` | Startup detects recurring task due |
