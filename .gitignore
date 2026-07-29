@@ -67,3 +67,9 @@ assistant_brain/references/pes-distribution-list.txt
 .gitignore
 assistant_brain/references/pes-distribution-list.csv
 assistant_brain/contacts.md
+
+# Temporary logs and testing scripts
+confirm_submission.py
+dashboard_output.txt
+dashboard.out.txt
+.codex/
