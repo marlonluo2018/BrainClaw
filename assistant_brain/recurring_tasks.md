@@ -15,16 +15,6 @@ On startup, calculate next due date from schedule and last_completed. Create a n
 ## Active Tasks
 
 ```yaml
-recurring_tasks:
-  - id: "R001"
-    name: "Send Philippines L&K Spend Invoice to Mickeal Martinez"
-    schedule: "last week of every quarter"
-    priority: Medium
-    category: Admin
-    contact: "Mickeal Martinez <Mickeal.Martinez@ibm.com>"
-    note: "Submit quarterly invoice for Philippines L&K spend"
-    last_completed: "2026-03"  # When task was executed (March 2026)
-    last_period: "2026-Q1"  # Which quarter's invoice was sent (Q1 2026)
-
+recurring_tasks: []
 ```
 

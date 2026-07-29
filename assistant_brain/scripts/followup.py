@@ -47,10 +47,10 @@ def parse_task_file(content: str) -> dict:
         if line.strip() == '## Timeline':
             section = 'timeline'
             continue
-        elif line.strip() == '### Owed to me':
+        elif line.strip() in ('### Owed to me', '### Waiting on Others'):
             section = 'asks_in'
             continue
-        elif line.strip() == '### Owed by me':
+        elif line.strip() in ('### Owed by me', '### My Actions'):
             section = 'asks_out'
             continue
         elif line.strip() == '## Current State':
@@ -116,11 +116,11 @@ def parse_task_file(content: str) -> dict:
         elif section == 'asks_out':
             if line.strip().startswith('- ~~') or line.strip().startswith('- [x]'):
                 continue
-            am = re.match(r'^- \[.\]\s*(.+?) 🎯 (.+?): (.+)$', line)
+            am = re.match(r'^- \[.\]\s*(.+?) 🎯 (?:(?:to )?(.+?): )?(.+)$', line)
             if am:
                 result["asks_out"].append({
                     "date": am.group(1).strip(),
-                    "person": am.group(2).strip(),
+                    "person": am.group(2).strip() if am.group(2) else "Marlon",
                     "what": am.group(3).strip(),
                 })
 

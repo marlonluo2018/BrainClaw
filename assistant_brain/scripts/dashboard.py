@@ -130,10 +130,10 @@ def parse_asks_from_file(content: str):
     section = None
 
     for line in lines:
-        if line.strip() == '### Owed by me':
+        if line.strip() in ('### Owed by me', '### My Actions'):
             section = 'out'
             continue
-        elif line.strip() == '### Owed to me':
+        elif line.strip() in ('### Owed to me', '### Waiting on Others'):
             section = 'in'
             continue
         elif line.startswith('## ') or line.startswith('---'):
@@ -143,9 +143,10 @@ def parse_asks_from_file(content: str):
 
         if section == 'out':
             # Only unchecked items
-            m = re.match(r'^- \[ \] (.+?) 🎯 (.+?): (.+)$', line)
+            m = re.match(r'^- \[ \] (.+?) 🎯 (?:(?:to )?(.+?): )?(.+)$', line)
             if m:
-                asks_out.append(f"{_format_ask_date(m.group(1))} |🎯| {m.group(2)} | {m.group(3)}")
+                target = f"{m.group(2)} | " if m.group(2) else ""
+                asks_out.append(f"{_format_ask_date(m.group(1))} |🎯| {target}{m.group(3)}")
         elif section == 'in':
             # Skip struck-through
             if line.strip().startswith('- ~~'):
@@ -153,9 +154,10 @@ def parse_asks_from_file(content: str):
             # Skip checked/completed items
             if line.strip().startswith('- [x]'):
                 continue
-            m = re.match(r'^- (.+?) ⏳ (.+?): (.+)$', line)
+            m = re.match(r'^- (.+?) ⏳ (?:(.+?): )?(.+)$', line)
             if m:
-                asks_in.append(f"{_format_ask_date(m.group(1))} |⏳| {m.group(2)} | {m.group(3)}")
+                source = f"{m.group(2)} | " if m.group(2) else ""
+                asks_in.append(f"{_format_ask_date(m.group(1))} |⏳| {source}{m.group(3)}")
 
     return asks_out, asks_in
 
@@ -302,7 +304,7 @@ def count_stale_tasks(tasks, today_date):
     return count
 
 
-def format_brief(tasks, skills, processes, contacts, today, recurring_due, events=None, compact=False):
+def format_brief(tasks, skills, processes_grouped, contacts, today, recurring_due, events=None, compact=False):
     date_str = today.strftime('%A %b %d, %Y %H:%M')
     lines = []
 
@@ -313,8 +315,16 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
     skills_str = ' · '.join(f'`{s}`' for s in skills) if skills else '(none)'
     lines.append(f"Skills: {skills_str}")
 
-    proc_str = ' · '.join(f'`{p}`' for p in processes) if processes else '(none)'
-    lines.append(f"Processes: {proc_str}")
+    if isinstance(processes_grouped, dict):
+        lines.append("Processes:")
+        for geo in sorted(processes_grouped.keys()):
+            flag = FLAG_MAP.get(geo, "🌐")
+            proc_list = ' · '.join(f'`{p}`' for p in sorted(processes_grouped[geo]))
+            lines.append(f"  - {flag} {geo}: {proc_list}")
+    else:
+        # Fallback if processes is passed as flat list
+        proc_str = ' · '.join(f'`{p}`' for p in processes_grouped) if processes_grouped else '(none)'
+        lines.append(f"Processes: {proc_str}")
 
     contact_str = ' · '.join(f'`{c}`' for c in contacts)
     lines.append(f"Contacts: {contact_str}")
@@ -426,7 +436,7 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
                     lines.append(f"  - {ask}")
                 # Warn if open task has no pending items and no subtasks with pending
                 if not t.asks_in and not t.asks_out and not t.subtasks:
-                    lines.append(f"  - ⚠️ **no pending** — add an active item to `Owed to me`")
+                    lines.append(f"  - ⚠️ **no pending** — add an active item to `Waiting on Others`")
 
                 # Subtasks
                 for sub in t.subtasks:
@@ -444,7 +454,7 @@ def format_brief(tasks, skills, processes, contacts, today, recurring_due, event
                     for ask in sub.asks_in:
                         lines.append(f"    - {ask}")
                     if not sub.asks_in and not sub.asks_out:
-                        lines.append(f"    - ⚠️ **no pending** — add an active item to `Owed to me`")
+                        lines.append(f"    - ⚠️ **no pending** — add an active item to `Waiting on Others`")
 
             lines.append("")
 
@@ -537,11 +547,11 @@ def format_pending_all(tasks, today):
     count_out = sum(len(asks) for _, asks in grouped_out)
     count_in = sum(len(asks) for _, asks in grouped_in)
 
-    lines.append(f"### 🎯 Owed by me ({count_out})")
+    lines.append(f"### 🎯 My Actions ({count_out})")
     lines.append("")
     _render_ask_section(lines, grouped_out, "🎯", count_out)
 
-    lines.append(f"### ⏳ Owed to me ({count_in})")
+    lines.append(f"### ⏳ Waiting on Others ({count_in})")
     lines.append("")
     _render_ask_section(lines, grouped_in, "⏳", count_in)
 
@@ -559,7 +569,7 @@ def format_pending_out(tasks, today):
     grouped = _collect_asks_by_task(tasks, 'out')
     count = sum(len(asks) for _, asks in grouped)
 
-    lines.append(f"## 🎯 Owed by me ({count}) | {date_str}")
+    lines.append(f"## 🎯 My Actions ({count}) | {date_str}")
     lines.append("")
     _render_ask_section(lines, grouped, "🎯", count)
 
@@ -572,7 +582,7 @@ def format_pending_in(tasks, today):
     grouped = _collect_asks_by_task(tasks, 'in')
     count = sum(len(asks) for _, asks in grouped)
 
-    lines.append(f"## ⏳ Owed to me ({count}) | {date_str}")
+    lines.append(f"## ⏳ Waiting on Others ({count}) | {date_str}")
     lines.append("")
     _render_ask_section(lines, grouped, "⏳", count)
 
@@ -1136,10 +1146,42 @@ def run_timesheet(args, today):
 
 # --- Main ---
 
+def run_processes(today):
+    readme_path = BRAIN_DIR / 'process' / 'README.md'
+    content = safe_read(readme_path)
+    if not content:
+        print("⚠️ No process index found.", file=sys.stderr)
+        return
+
+    geo_groups = {}
+    current_geo = "Global"
+    for line in content.split('\n'):
+        hdr_m = re.match(r'^##\s+(.+)$', line)
+        if hdr_m:
+            current_geo = hdr_m.group(1).strip()
+            continue
+        row_m = re.match(r'^\|\s*([^|]+?)\s*\|\s*\[', line)
+        if row_m:
+            name = row_m.group(1).strip()
+            if name and name != 'Process':
+                geo_groups.setdefault(current_geo, []).append(name)
+
+    date_str = today.strftime('%a %b %d, %Y')
+    print(f"## 🔄 Processes by Geography | {date_str}")
+    print("")
+    
+    for geo in sorted(geo_groups.keys()):
+        flag = FLAG_MAP.get(geo, "🌐")
+        print(f"{flag} **{geo}** ({len(geo_groups[geo])}):")
+        for proc in sorted(geo_groups[geo]):
+            print(f"- {proc}")
+        print("")
+
+
 def main():
     parser = argparse.ArgumentParser(description='BrainClaw task dashboard')
     parser.add_argument('command', nargs='?', default='startup',
-                        choices=['startup', 'pending', 'pending-out', 'pending-in', 'taskboard', 'events', 'digest', 'timesheet'],
+                        choices=['startup', 'pending', 'pending-out', 'pending-in', 'taskboard', 'events', 'digest', 'timesheet', 'processes'],
                         help='Command to run (default: startup)')
     parser.add_argument('filter', nargs='?', default='all',
                         help='Filter for events command: all, created, closed, blocked')
@@ -1163,6 +1205,8 @@ def main():
         run_digest(args, today)
     elif args.command == 'timesheet':
         run_timesheet(args, today)
+    elif args.command == 'processes':
+        run_processes(today)
 
 
 def run_pending(mode, today):
@@ -1200,11 +1244,23 @@ def run_startup(args, today):
     # Parse contacts
     contacts = parse_contacts(safe_read(BRAIN_DIR / 'contacts.md'))
 
-    # Parse processes
-    processes = parse_processes(safe_read(BRAIN_DIR / 'process' / 'README.md'))
+    # Parse processes grouped by geography
+    readme_content = safe_read(BRAIN_DIR / 'process' / 'README.md')
+    processes_grouped = {}
+    current_geo = "Global"
+    for line in readme_content.split('\n'):
+        hdr_m = re.match(r'^##\s+(.+)$', line)
+        if hdr_m:
+            current_geo = hdr_m.group(1).strip()
+            continue
+        row_m = re.match(r'^\|\s*([^|]+?)\s*\|\s*\[', line)
+        if row_m:
+            name = row_m.group(1).strip()
+            if name and name != 'Process':
+                processes_grouped.setdefault(current_geo, []).append(name)
 
     # Output brief
-    brief = format_brief(tasks, skills, processes, contacts, today, recurring_due, events, compact=False)
+    brief = format_brief(tasks, skills, processes_grouped, contacts, today, recurring_due, events, compact=False)
     print(brief)
 
 

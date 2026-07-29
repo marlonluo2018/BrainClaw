@@ -17,15 +17,16 @@
 3a. **Define Scope** → Write a one-line boundary statement (what belongs in this task and what doesn't). Check active task files for same vendor/geo/topic overlap — if overlap found, sharpen BOTH Scopes to disambiguate. Scope is mandatory; never leave it empty.
 4. Present RACI matrix to user for confirmation
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
-6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### Owed by me` and `### Owed to me` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.
+6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### My Actions` and `### Waiting on Others` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.
 6a. **Email Entry ID (mandatory)** — When a timeline entry originates from an email, append the entry_id as an HTML comment: `<!-- email:{ENTRY_ID} -->`. Retrieve the ID from sync results or via `outlook_skill.py get-email`. Never omit this for email-sourced entries.
+    - ⚠️ **CRITICAL:** `<!-- email:ENTRY_ID -->` comments belong STRICTLY in the `## Timeline` section. **NEVER** append them to any items in the `## Asks` section (`My Actions` / `Waiting on Others`), as they clutter the active taskboard view.
 6b. **Match-Friendly Metadata** — Ensure these fields are populated for `email_sync.py` auto-matching:
    - **EPD:** Fill if a plan row ID exists (e.g., `1032769`). Pure numeric IDs score 3× in matching.
    - **Tags:** Include the most discriminating identifiers — EPD numbers, course codes (`DO288`), vendor names (`Red Hat`), geo shorthand (`FNC India`), PO numbers. See [Tag Guidelines](../tasks/FORMATS.md#tag-guidelines).
    - **Contacts:** List ALL known email correspondents (not just approvers) — every email address in Contacts/RACI enables contact-signal matching (0.8 confidence).
 7. **Initialize Asks** → From the trigger content (user request or email body), detect any explicit promises:
-    - "I'll send X to {person}" / "我会发给 {人}" → append to `### Owed by me` as `- [ ] {Due: Wkd Mon DD, YYYY} 🎯 {person}: {what}` (where the date shown at the start is the actual due date, or `TBD` if none specified)
-    - "{person} will send X" / "等 {人} 回" → append to `### Owed to me` as `- {Due: Wkd Mon DD, YYYY} ⏳ {person}: {what}` (where the date shown at the start is the expected response/due date, or `TBD` if none specified)
+     - "I'll send X to {person}" / "我会发给 {人}" → append to `### My Actions` as `- [ ] {Due: Wkd Mon DD, YYYY} 🎯 to {person}: {what}`. If it is an internal L&K task / self-action with no external recipient, append as `- [ ] {Due: Wkd Mon DD, YYYY} 🎯 {what}` (omit the name/colon prefix).
+     - "{person} will send X" / "等 {人} 回" → append to `### Waiting on Others` as `- {Due: Wkd Mon DD, YYYY} ⏳ {person}: {what}` (where the date shown at the start is the expected response/due date, or `TBD` if none specified)
     - Keep dates natural and concise (e.g. `Due: Fri Jul 17, 2026`). If no due date is specified, use `TBD`.
     - If no explicit asks: leave both subsections empty (just the headings). Do **not** keep the placeholder example lines from the template.
 8. Confirm with user — show the populated Asks (if any) so the user can correct or add more before saving.
@@ -42,19 +43,23 @@
 
 **Steps:**
 1. Read current task file
-2. **If task file lacks `## Asks` section** (legacy file): insert empty section with both `### Owed by me` and `### Owed to me` subsections before proceeding. Going forward all updates land in a properly-structured file.
+2. **If task file lacks `## Asks` section** (legacy file): insert empty section with both `### My Actions` and `### Waiting on Others` subsections before proceeding. Going forward all updates land in a properly-structured file.
 3. Check if incoming information already exists (duplicate check)
+3a. **Verification & Completeness Gate (MANDATORY):** Before proposing any additions to `My Actions` or `Waiting on Others`, verify that the responsible parties (doer/recipient) are explicitly named and confirmed in the source information.
+    - If the source email or text is passive or ambiguous (e.g., "a local contact will be assigned" or "EPD needs to be created"), **do NOT infer, assume, or guess** who is responsible (e.g., do not guess that Mridul Paul will assign it).
+    - **STOP immediately and present a short clarification question to the user** (e.g., "Who should be assigned to create the EPD row?" or "Who is responsible for assigning the local contact?").
+    - Only update the task file after receiving explicit human-in-the-loop verification. Never write guessed, unconfirmed, or speculative actions to task files.
 4. If duplicate → Notify user and skip
 5. If new → Show changes and get approval
 6. **Detect Asks signals** in the user input or referenced email content:
-    - **New owed-by-me** ("I'll do X" / "I'll send X" / "我会发" / "我会处理") → append `- [ ] {Due: Wkd Mon DD, YYYY} 🎯 {person}: {what}` to `### Owed by me` (using the actual due date at the start, or `TBD` if none specified)
-    - **New owed-to-me** ("{person} will send X" / "等 {人} 回" / "等回复") → append `- {Due: Wkd Mon DD, YYYY} ⏳ {person}: {what}` to `### Owed to me` (using the expected response/due date at the start, or `TBD` if none specified)
+    - **New owed-by-me** ("I'll do X" / "I'll send X" / "我会发" / "我会处理") → append `- [ ] {Due: Wkd Mon DD, YYYY} 🎯 to {person}: {what}` to `### My Actions`. For internal tasks / self-actions with no external recipient, append simply as `- [ ] {Due: Wkd Mon DD, YYYY} 🎯 {what}` (omit name/colon prefix).
+    - **New owed-to-me** ("{person} will send X" / "等 {人} 回" / "等回复") → append `- {Due: Wkd Mon DD, YYYY} ⏳ {person}: {what}` to `### Waiting on Others` (using the expected response/due date at the start, or `TBD` if none specified)
    - **Owed-by-me fulfilled** (user says "done" / "已发" / "处理完了" referencing a specific item) → flip the matching `[ ]` to `[x]` (do NOT delete — kept for history)
-   - **Owed-to-me received** (user says "got reply from X" / "X 回了") → remove the matching line from `### Owed to me`
+   - **Owed-to-me received** (user says "got reply from X" / "X 回了") → remove the matching line from `### Waiting on Others`
    - When ambiguous which existing item is being closed, ask before flipping/removing.
-6a. **Reclassify Current State items that are actually Asks.** Scan `## Current State` for items that have an external recipient (an action like "send X to {person}" / "notify {team}" / "deliver to {role}"). For each such item, propose to upgrade it to `Asks > Owed by me` and remove from Current State (or leave if it's also a meaningful internal step). This keeps cross-task views (`owed`/`waiting`) accurate. Apply the [Asks vs Current State](../tasks/FORMATS.md#asks) rules from FORMATS.md. Ask user before moving — don't auto-rewrite long-standing items silently.
+6a. **Reclassify Current State items that are actually Asks.** Scan `## Current State` for items that have an external recipient (an action like "send X to {person}" / "notify {team}" / "deliver to {role}"). For each such item, propose to upgrade it to `Asks > My Actions` and remove from Current State (or leave if it's also a meaningful internal step). This keeps cross-task views (`owed`/`waiting`) accurate. Apply the [Asks vs Current State](../tasks/FORMATS.md#asks) rules from FORMATS.md. Ask user before moving — don't auto-rewrite long-standing items silently.
 7. After approval, update task file (status, fields, Asks, timeline entry)
-8. **Pending-item gate (mandatory):** After every update, verify the task has at least one active (non-struck-through) item in `### Owed to me`. If all items are struck through or the section is empty, the task MUST have a new pending item added before the update is considered complete. Principle: *"if it is not closed, there should be something waiting."* If you cannot determine the next waiting item, ask the user.
+8. **Pending-item gate (mandatory):** After every update, verify the task has at least one active (non-struck-through) item in `### Waiting on Others`. If all items are struck through or the section is empty, the task MUST have a new pending item added before the update is considered complete. Principle: *"if it is not closed, there should be something waiting."* If you cannot determine the next waiting item, ask the user.
 9. Notify user of changes
 
 **Update Types:**
@@ -67,8 +72,8 @@
 | stakeholders | Update RACI matrix |
 | due_date | Update due field in task file |
 | priority | Update priority in task file |
-| asks (owed by me) | Append `- [ ] {Due: Wkd Mon DD, YYYY} 🎯 {person}: {what}` to `### Owed by me`; flip `[x]` when fulfilled |
-| asks (owed to me) | Append `- {Due: Wkd Mon DD, YYYY} ⏳ {person}: {what}` to `### Owed to me`; remove line when received |
+| asks (owed by me) | Append `- [ ] {Due: Wkd Mon DD, YYYY} 🎯 {person}: {what}` to `### My Actions`; flip `[x]` when fulfilled |
+| asks (owed to me) | Append `- {Due: Wkd Mon DD, YYYY} ⏳ {person}: {what}` to `### Waiting on Others`; remove line when received |
 | scope | Update Scope field (e.g., after sync mismatch or discovering overlap with another task) |
 
 ---

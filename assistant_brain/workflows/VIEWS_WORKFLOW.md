@@ -12,8 +12,9 @@
 | "pending/待办/owed/waiting" | Run `py -3 assistant_brain/scripts/dashboard.py` with appropriate arg |
 | "before {person}" / "见X之前" / "和X开会前" | `before {person}` |
 | "review Q2" / "述职" / "总结这半年" | `review {period}` |
+| "processes" / "流程" / "查看所有流程" | Run `py -3 assistant_brain/scripts/dashboard.py processes` |
 
-**Rules:** Match by intent, not keyword. Bare `T###` → `status T###`. Person + "前/before" → `before {person}`. Period + action word → `review`. Vague input → show command hints.
+**Rules:** Match by intent, not keyword. Bare `T###` → `status T###`. Person + "前/before" → `before {person}`. Period + action word → `review`. Processes/流程 → `processes`. Vague input → show command hints.
 
 ---
 
@@ -22,8 +23,8 @@
 1. Read task file completely.
 2. Compute:
    - **Now:** Current blocker or status
-   - **Owed by me:** Unchecked `[ ]` items under `Asks > Owed by me`
-   - **Owed to me:** Items under `Asks > Owed to me` + days waiting
+   - **My Actions:** Unchecked `[ ]` items under `Asks > My Actions`
+   - **Waiting on Others:** Items under `Asks > Waiting on Others` + days waiting
    - **Stale flag:** No activity beyond threshold for priority
    - **Recent activity:** Last 5 Timeline entries
 
@@ -32,9 +33,9 @@ Output:
 T### {Title} | {emoji} {priority} | Created {Nd} ago
 
 📍 Now: {text}
-📤 Owed by me ({count}):
+📤 My Actions ({count}):
    • 🎯 {date} → {person}: {what} {[overdue/due]}
-📥 Owed to me ({count}):
+📥 Waiting on Others ({count}):
    • ⏳ {date} ← {person}: {what} (waiting {Nd})
 🤐 Stale: no activity in {Nd}
 📜 Recent activity:
@@ -58,8 +59,8 @@ Empty sections omitted.
 🤝 Pre-meeting brief: {person}
 
 ▸ {task_link} {title} — {status} | role: {RACI}
-   📤 Owed by me: {what} ({age})
-   📥 Waiting on them: {what} ({age})
+    📤 My Actions: {what} ({age})
+    📥 Waiting on them: {what} ({age})
    🔄 Process step {N}/{total}: "{step description}"
 
 Suggested agenda:
@@ -98,6 +99,16 @@ Options:
 - `--days N` — look back N days instead of 7
 - `--since YYYY-MM-DD` — start from a specific date
 - `--hours H` — total hours to allocate (default: 40)
+
+---
+
+## processes
+
+**Triggers:** "processes", "流程", "show processes", "view processes"
+
+Run: `py -3 assistant_brain/scripts/dashboard.py processes`
+
+This displays all active operational processes beautifully grouped and formatted by their respective geography (Global, China, Philippines).
 
 ---
 

@@ -60,27 +60,27 @@ Actions:
 
 ### ❌ Non-Task Emails
 
-**Action needed:**
+**Action needed (requires user action; some are small one-offs, some are big tasks):**
 → #X — Wkd Mon DD HH:MM — Sender: brief description
   🎯/⏳ Suggested: [suggested response/action or what to wait for]
-  💡 Create task? [Yes — reason] / [No — reason]
+  💡 Create task? [Yes — big action needing full task tracking / No — small one-off action, handle directly without task file]
 
 &nbsp;
 
 → #Y — Wkd Mon DD HH:MM — Sender: brief description
   🎯/⏳ Suggested: [suggested response/action or what to wait for]
-  💡 Create task? [Yes — reason] / [No — reason]
-
-**Informational** (no action / no task needed): #A, #B, #C, ...
+  💡 Create task? [Yes — big action needing full task tracking / No — small one-off action, handle directly without task file]
 
 ---
 
 ### 🚫 Ignored / Filtered Emails
 
-- **#X** — Wkd Mon DD HH:MM — Sender: subject / brief description (Reason: unmatched)
-- **#Y** — Wkd Mon DD HH:MM — Sender: subject / brief description (Reason: unmatched)
+**Ignored Emails (Informational — read by AI, judged as no action/task needed; auto-registered in ignore json, listed for user verification):**
+- **#A** — Wkd Mon DD HH:MM — Sender: subject / brief description (Reason: informational / no action or task needed)
+- **#B** — Wkd Mon DD HH:MM — Sender: subject / brief description (Reason: informational / no action or task needed)
 
-*(Note: All auto-replies, OTP passcodes, and other pure system noise are silently filtered in the background and are not displayed here.)*
+**Filtered Emails (Silently filtered system noise — auto-replies, OTP passcodes, calendar reminders, generic system noise):**
+- Total: {N} emails filtered by script.
 
 ---
 
@@ -114,7 +114,7 @@ Actions:
 
 | File | Changes |
 |------|---------|
-| `tasks/T033-...md` | +Timeline 2026-06-08, +Ask owed by me, ✅ State checkbox #3 |
+| `tasks/T033-...md` | +Timeline 2026-06-08, +Ask My Actions, ✅ State checkbox #3 |
 | `tasks/T044-...md` | +Timeline 2026-06-08 (with email ID) |
 | `tasks/T008-...md` | no changes |
 

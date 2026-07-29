@@ -45,6 +45,8 @@ PROCESS_MATCH_RULES = [
     {"keywords": ["reimbursement", "报销"], "geo": "China", "file": "china/futurenow-quarterly-reimbursement.md"},
     {"keywords": ["hashicorp", "terraform", "vault"], "geo": None, "file": "global/hashicorp-voucher-request.md"},
     {"keywords": ["snowflake"], "geo": None, "file": "global/snowflake-certification.md"},
+    {"keywords": ["claude", "anthropic"], "geo": "Philippines", "file": "philippines/claude-certification.md"},
+    {"keywords": ["claude", "anthropic"], "geo": None, "file": "global/claude-certification.md"},
     {"keywords": ["google", "gcp", "cloud digital leader", "genai leader"], "geo": "Philippines", "file": "philippines/google-foundation-cert-reimbursement.md"},
     {"keywords": ["google", "gcp"], "geo": None, "file": "global/google-exam-voucher-discount.md"},
     {"keywords": ["communication", "comms", "campaign", "signature event"], "geo": None, "file": "global/communication-request.md"},

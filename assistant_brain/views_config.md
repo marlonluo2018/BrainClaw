@@ -39,8 +39,8 @@ When the user runs `status T###`, show:
 
 - **Header line:** ID, Title, Status, Priority, Created Nd ago
 - **Now:** Current blocking item (oldest open `[blocker]` or `[waiting]`)
-- **Owed by me:** Open items from `Asks > Owed by me`, sorted by overdue first
-- **Owed to me:** Open items from `Asks > Owed to me`, sorted by waiting duration
+- **My Actions:** Open items from `Asks > My Actions`, sorted by overdue first
+- **Waiting on Others:** Open items from `Asks > Waiting on Others`, sorted by waiting duration
 - **Stale flag:** if no activity past staleness threshold
 - **Recent decisions:** Last 3 Timeline entries tagged `[decision]`, `[milestone]`, or `[delivery]`
 - **Recent activity:** Last 5 Timeline entries (any tag), most recent first
@@ -51,7 +51,7 @@ If a section has no content, omit it (don't print "(none)").
 
 ## Pending Series — Grep Patterns
 
-> **Implementation:** All three `pending` commands use Grep, not full-file reads. `Owed by me` items are unchecked checkboxes (`^- \[ \] .*🎯`); `Owed to me` items use `^- \d{4}-\d{2}-\d{2} ⏳`. Grep extracts these directly across all `tasks/T*.md`.
+> **Implementation:** All three `pending` commands use Grep, not full-file reads. `My Actions` items are unchecked checkboxes (`^- \[ \] .*🎯`); `Waiting on Others` items use `^- \d{4}-\d{2}-\d{2} ⏳`. Grep extracts these directly across all `tasks/T*.md`.
 
 `pending:out` (alias: `owed` / `待我处理`):
 
