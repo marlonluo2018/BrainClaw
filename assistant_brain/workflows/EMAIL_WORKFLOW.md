@@ -21,10 +21,17 @@ Local file reads/writes, `rg`, `git diff`, task markdown updates, and non-Outloo
 
 **Triggers:** "find emails about [topic]", "find all emails from [person]", "search for [keyword]"
 
+> **Task-First Mandate:** Apply `AGENTS.md` Task-First Rule — read task markdown files (`T*.md`) before searching emails for task queries. Use `<!-- email:{EntryID} -->` timeline markers for direct thread lookup (`get-email`).
+
+**Email Address Search Rule (MANDATORY):**
+- If the user provides or query contains an email address (contains `@`), ALWAYS use email address search (`--from "<email>"` or `--to "<email>"`) FIRST.
+- Do NOT substitute keywords or display names when an exact email address is provided.
+- When an email address is searched and the default recent window (7-14 days) yields no results, automatically expand `--days` (e.g. `--days 60` or `--days 90`) to search historical emails.
+
 **Steps:**
 1. **Load skill** → Load the email skill
-2. **Start narrow** → Search with a small recent window first (usually 7-14 days) using the most specific available keywords, names, IDs, geo, or exact subject fragments
-3. **Widen only if needed** → If the first search does not find the email, expand the date range gradually and make the query more specific before broadening further
+2. **Start narrow** → Search with a small recent window first (usually 7-14 days) using the most specific available keywords, names, IDs, geo, or exact subject fragments (if email address present, execute email address search `--from`/`--to` first)
+3. **Widen only if needed** → If the first search does not find the email, expand the date range gradually (up to `--days 90` when email address is provided) and make the query more specific before broadening further
 4. **Escalate search method** → If direct search is still noisy or incomplete, use find-thread or find-related from a confirmed result
 5. **Present** → Show results with entry_id for further operations
 
@@ -67,8 +74,8 @@ Local file reads/writes, `rg`, `git diff`, task markdown updates, and non-Outloo
 **Steps:**
 1. **Load skill** → Load the email skill
 2. **Verify recipients** → For EVERY recipient email address, run `lookup-contact` to confirm correctness. Never assume or guess an email address — even if it appears in a task file or memory.
-3. **Check stakeholder** → Look up recipient in [`contacts.md`](../contacts.md)
-4. **Draft** → Apply tone based on stakeholder type (see table below). No signature or name in closing — Outlook auto-appends it.
+3. **Check stakeholder & Role** → Look up every recipient (TO and CC) in [`contacts.md`](../contacts.md) to identify their specific role and stakeholder type (Decision Maker, Process/Executor, Colleague/Collaborator, etc.).
+4. **Draft body** → Tailor the email's tone, structure, and brevity strictly to the recipients' roles according to the [Role-Based Tone Guidelines](#role-based-tone-guidelines). No signature or name in closing — Outlook auto-appends it.
 5. **Subject line** → Apply [Subject Line Rules](#subject-line-rules) — include at least one high-weight identifier from the related task.
 6. **Review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
 7. **Recipient review** → Show To/CC list and suggest changes (see [Recipient Review](#recipient-review) below).
@@ -96,40 +103,50 @@ Local file reads/writes, `rg`, `git diff`, task markdown updates, and non-Outloo
 
 **Triggers:** "reply", "reply all", "forward", "redirect"
 
-### Command Selection (AI decides — do NOT ask user)
+### Recipient & Command Selection (AI decides — do NOT ask user)
 
-> **⚠️ The AI MUST pick the correct send command autonomously based on the decision tree below. Never present options or ask "reply or forward?" — just use the right one.**
+> **⚠️ The AI MUST pick the correct send command autonomously by analyzing the TO and CC of the original thread and the intended audience. Never present options or ask "reply or forward?" — just use the right one.**
 
-**Decision tree:**
+**Decision Steps & Recipient Analysis:**
 
-1. Are the desired recipients the SAME as (or a superset of) the original thread?
-   - **YES** → `reply` (reply-all). Use `--to`/`--cc` to append extras.
-   - **NO** → go to step 2.
+1. **Examine the original TO/CC list:**
+   - Who is on the original TO and CC? (Decision Makers, Process Contacts, Colleagues, external vendors?)
+   - Are there any senior leaders (e.g., Beng Paulino, Janice Jiang) who approved a step and should be pruned to keep their inbox clean?
+   - Are there large Distribution Lists (DLs) or stale recipients who are no longer relevant to this stage?
 
-2. Does the recipient need to see the thread history / prior context?
-   - **YES** → `forward` (full recipient control + thread context preserved below).
-   - **NO** → `compose` with `Re: {subject}` to maintain subject continuity.
-
-3. Is this going to ONLY the original sender?
-   - **YES** → `reply --only`
+2. **Determine the response mode (Reply vs. Forward vs. Redirect):**
+   - **`reply` (Reply-All):** Use when continuing the group conversation. Everyone on the original TO/CC list still needs to hear the update. (Note: Use `--to` / `--cc` to append new people).
+   - **`reply --only` (Reply Sender Only):** Use when the reply is only relevant or appropriate for the original sender.
+     * *Indicators for `reply --only`:*
+       - The response contains private or individual-specific data (e.g., specific scores, vouchers, approvals, or sensitive details) not suitable for the entire group.
+       - The original CC list is broad/large, and the response is a simple acknowledgment or a narrow question/answer.
+   - **`redirect` (Complex Recipient Overwrite):** Use when you need to reply/forward to the thread, but want to make **complex modifications** to the TO/CC list (e.g., removing multiple people, completely replacing the CC list, or transitioning the thread to an entirely different set of owners/handlers) while preserving the thread history below.
+     * *Why?* `reply` inherits and locks the original recipients, whereas `redirect` completely wipes out the inherited recipient list, giving you total control to specify a clean, custom `--to` and `--cc` while preserving thread history below.
+     * *Indicators for `redirect`:*
+       - Pruning senior leaders (Decision Makers) or specific individuals from CC to avoid cluttering their inbox once their approval is done.
+       - Pruning stale CC recipients who are no longer relevant to the next phase of the workflow.
+       - Handing over the thread context to a completely different team (e.g., a Process Contact or vendor).
+   - **`forward` (Forward thread context):** Use when sharing the thread context/history with entirely new people who were not part of the original thread, but who need the full background.
+     * *Forward Recipient Analysis:* Check who needs to be in TO vs CC. If forwarding to a different handler and you want future replies to go back to the original sender directly, use `redirect` instead of `forward`. Carry over only necessary attachments (use `--no-attachments` if attachments are heavy/irrelevant).
 
 **Summary table:**
 
 | Situation | Command | Why |
 |-----------|---------|-----|
-| Same/more recipients, continuing conversation | `reply` (reply-all) | Keeps thread + all original recipients |
-| Fewer recipients, but they need thread context | `forward` | Full control over To/CC, thread visible below |
+| Same/more recipients, continuing group discussion | `reply` (reply-all) | Keeps thread + all original recipients |
+| Sender only, private/narrow/simple response | `reply --only` | Narrows to From address to avoid spamming CCs |
+| Complex recipient changes (removing senior leaders/stale CCs, or rewriting lists) | `redirect` | Full control to overwrite recipients completely, keeps thread |
+| Fewer/new recipients, but they need thread context | `forward` | Selectively shares context with new audience |
 | Fewer recipients, no thread context needed | `compose` (with `Re:` subject) | Clean email, subject threading only |
-| Sender only | `reply --only` | Narrows to From address |
-| Entirely new people, need original context | `forward` | They see what was discussed |
 | Route to different handler (preserve From) | `redirect` | Appears as if from original sender |
 
 **Common patterns:**
+- User says "reply to confirm" (everyone needs to know) → `reply` (same recipients)
+- User says "reply only to sender" or response contains sensitive data → `reply --only`
 - User says "email George about this" (George is on CC but not the primary) → `forward` (narrow recipients, keep context)
-- User says "reply to confirm" → `reply` (same recipients)
 - User says "let [new person] know" → `forward` (new person needs context)
 - User says "send a fresh email to X about Y" → `compose`
-- **Complex recipient changes on replies (Redirect Philosophy)**: When the user wants to reply to a thread but needs complex modifications to the TO and CC list (such as removing recipients or completely overwriting who is on the thread), do NOT struggle with `reply` (which inherits and locks recipients). Instead, **use `redirect`**! It is a clean forward-based action that completely wipes out all existing recipients, allowing us to specify a fresh, custom TO/CC list while preserving the entire email body thread below.
+- **Complex recipient changes (Redirect Philosophy)**: When you want to reply to a thread but need complex modifications to the TO and CC list (such as removing recipients, pruning senior managers, or completely overwriting who is on the thread), do NOT struggle with `reply` (which inherits and locks recipients). Instead, **use `redirect`**! It is a clean forward-based action that completely wipes out all existing recipients, allowing us to specify a fresh, custom TO/CC list while preserving the entire email body thread below.
 
 **Steps:**
 
@@ -141,9 +158,9 @@ Local file reads/writes, `rg`, `git diff`, task markdown updates, and non-Outloo
 3. **Read email content** → Always use `get-email <EntryID>` to read the actual content of the identified email(s) completely. Understand what was said, what was asked, and what the current state of the conversation is. (Zero assumptions, NO guessing).
 
 ### Step 3: Draft the email
-4. **Decide command** → Autonomously select the correct command (`reply`, `forward`, `compose`, or `redirect`) based on recipient and thread context.
-5. **Load skill & verify recipients** → Load the email skill. For any NEW recipients added via `--to`/`--cc`, run `lookup-contact` to confirm the address. Check stakeholder type in [`contacts.md`](../contacts.md).
-6. **Compose draft** → Apply appropriate tone. Do NOT include signature.
+4. **Decide command & Analyze Recipients** → Autonomously select the correct command (`reply`, `reply --only`, `forward`, or `redirect`) by carefully analyzing the original TO/CC recipients and intended audience based on the [Recipient & Command Selection rules](#recipient--command-selection-ai-decides--do-not-ask-user).
+5. **Load skill & verify recipients** → Load the email skill. For any NEW recipients added via `--to`/`--cc`, run `lookup-contact` to confirm the address. Look up all recipients in [`contacts.md`](../contacts.md) to determine their roles.
+6. **Compose draft** → Draft the body. Tailor the tone, structure, and length strictly based on the recipient's role (refer to [Role-Based Tone Guidelines](#role-based-tone-guidelines)). Do NOT include signature.
    - **⛔ No Redundancy Rule (MANDATORY):** Analyze the thread's historical text thoroughly first. **The new body MUST NOT repeat, reiterate, or re-list any facts, numbers, dates, course names, budgets, plan rows, or other parameters that are already visible in the thread history.** Focus the draft ONLY on the new ask, new question, or new follow-up.
 7. **Draft review & suggest** → Self-review the draft (see [Review Checklist](#draft-review-checklist) below). If any improvements found, show 1-2 brief suggestions inline with the draft.
 8. **Recipient review** → Show full To/CC list and any suggested changes (see [Recipient Review](#recipient-review) below).
@@ -175,14 +192,16 @@ Local file reads/writes, `rg`, `git diff`, task markdown updates, and non-Outloo
       ```
     - Avoid emojis and decorative Unicode in business emails unless explicitly required by the user.
 
-**Tone Guidelines:**
+### Role-Based Tone Guidelines
 
-| Stakeholder Type | Tone | Format |
-|------------------|------|--------|
-| Decision Maker (High Power) | Formal, executive | Brief (3-4 paragraphs), ROI focus |
-| Influencer (Medium Power) | Professional, collaborative | Balanced detail |
-| Executor (Low Power) | Clear, supportive | Detailed instructions |
-| Unknown | Professional, neutral | Standard format |
+Before drafting, look up every recipient in [`contacts.md`](../contacts.md) to determine their role and stakeholder type. Tailor the tone, structure, and brevity of your email specifically to their profile:
+
+| Stakeholder Role / Type | Key Contacts (from contacts.md) | Tone | Structural & Writing Rules |
+|--------------------------|----------------------------------|------|---------------------------|
+| **Decision Makers** <br>*(High Power)* | Beng PAULINO, Janice JIANG, Alphonsa Mathai, George Varghese | **Formal, executive, ROI-focused** | - **Be extremely concise:** Keep it to 2-3 brief paragraphs maximum.<br>- **Bottom-line upfront:** State the requested decision or impact in the first sentence.<br>- **Data formatting:** Use clean markdown tables or bullet points for numbers/costs; do not write long paragraphs of data.<br>- **No operational fluff:** Do not explain minor technical details unless explicitly asked. |
+| **Process Contacts / Vendors / Executors** <br>*(Action-Oriented)* | Mandy ZHAO, Sneha Mathew, Sowmya B, Kirk Abbott, Poh Yee, Citra Ganeshty | **Clear, supportive, highly actionable** | - **Action-first:** Highlight specific next steps, who is responsible, and explicit deadlines (e.g., "by Friday May 13").<br>- **Numbered instructions:** Use numbered lists for step-by-step procedures to make tracking easy.<br>- **Detail-oriented:** Include necessary reference codes (e.g. PO numbers, EPD rows, course codes) so they can process the request immediately. |
+| **Colleagues / Practice Leaders** <br>*(Collaborators & Influencers)* | Ian, Erda, Lani, Darlene, Karen, RJ, Rick, Jacq, Joyson, Cyrus | **Professional, collaborative, balanced** | - **Relationship-focused:** Use friendly, collaborative greetings and collaborative phrasing (e.g., "Let's align on...", "Thanks for your partnership").<br>- **Balanced detail:** Provide the core context alongside clear requests for input, without being overly rigid or demanding.<br>- **RACI alignment:** Keep them informed (CC) of milestones relevant to their practices. |
+| **Unknown / External** | Anyone not listed in contacts.md | **Professional, neutral, polite** | - Use standard business English/Chinese.<br>- Maintain a respectful, neutral, and clear style. |
 
 ---
 
@@ -217,7 +236,7 @@ Local file reads/writes, `rg`, `git diff`, task markdown updates, and non-Outloo
 | ----- | ---------------- |
 | **Clarity** | Is the ask / next step obvious within the first 2 sentences? |
 | **Brevity** | Any sentence that can be cut without losing meaning? |
-| **Tone match** | Does it match the stakeholder type from the table above? |
+| **Tone match** | Does it match the recipient's role based on the Role-Based Tone Guidelines? |
 | **Action clarity** | Is there a clear call-to-action or next step? Who does what by when? |
 | **Recipient awareness** | Are we addressing the right person for this ask? |
 | **No Redundancy** | Does the draft repeat any dates, numbers, budgets, or details already mentioned in previous emails in this thread? If so, remove them. |
@@ -444,7 +463,7 @@ Thread: "{subject}" — last from {sender}, {date}
 6. **Present combined summary** → Follow the format from the file loaded in step 2. The action/wait line per task is informed by step 5's process matching.
    - **⛔ Before generating Actions/Priority Actions:** For each task, verify proposed 🎯/⏳ items against the task file's Asks and Current State. If the action is already marked completed (`[x]`, `[✅]`, `~~`, `✅` suffix), do NOT surface it as an action. New emails about already-completed work are informational, not actionable.
 
-**Token optimization:** When user requests full email content by number (e.g. "get email #40"), use the email ID from the pre-match output. Do NOT run a new search — go directly to `get-email "<id>"`.
+**Token optimization:** When user requests full email content by number (e.g. "get email #40"), use the email ID from the pre-match output. Do NOT run a new search — go directly to `get-email "<id>"`. For long email threads, append `--latest-only` (or `-l`) to show only the newest message body and strip historical thread history.
 
 ---
 

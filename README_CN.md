@@ -53,14 +53,18 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  ├── workflows/            (编排 + 业务逻辑)           │  │
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
-│  │  │   ├── PROCESS_WORKFLOW.md                            │  │
+│  │  │   ├── PROCESS_WORKFLOW.md                           │  │
 │  │  │   ├── FOLLOWUP_WORKFLOW.md                          │  │
 │  │  │   ├── RECORDING_WORKFLOW.md                         │  │
 │  │  │   ├── WEB_WORKFLOW.md                               │  │
-│  │  │   └── VIEWS_WORKFLOW.md                             │  │
+│  │  │   ├── VIEWS_WORKFLOW.md                             │  │
+│  │  │   ├── TU_SYNC_WORKFLOW.md                           │  │
+│  │  │   └── REDHAT_AUDIENCE_WORKFLOW.md                   │  │
 │  │  ├── skills/               (I/O — 外部系统)            │  │
-│  │  │   ├── outlook-com-skill/    (Outlook COM 后端)          │  │
+│  │  │   ├── outlook-com-skill/    (Outlook COM 后端)      │  │
 │  │  │   ├── minimax-xlsx/     (Excel 读写)                │  │
+│  │  │   ├── bluepage-skill/   (W3 统一 Profile)           │  │
+│  │  │   ├── enrollment-downloader/ (报名名册下载)          │  │
 │  │  │   └── skill-creator/    (新技能脚手架)              │  │
 │  │  ├── tasks/                (任务队列)                  │  │
 │  │  ├── memory/               (偏好记忆)                  │  │
@@ -74,10 +78,15 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | 功能 | 描述 |
 |------|------|
 | **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、RACI 利益相关方、父子关系、结构化 `Asks`（我欠的 / 别人欠我的）|
-| **视图引擎** | `status T###`(或直接 `T###`) / `待我处理` / `等待` / `before {人}` / `review` / `digest` / `timesheet` —— 跨任务揭示逾期、欠回复、述职素材 |
-| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。三级匹配：ConversationID 线程 → 任务联系人 → 关键词+地区。自动抽取 ask/decision/deadline 写入任务。所有发送命令自动输出 EntryID 供 Timeline 追踪 |
+| **任务优先规则** | 当被询问任何任务的状态、排期或进度时，系统**总是**首先检查任务文件（单一可信源），然后再检索邮件或外部资源。 |
+| **视图引擎** | `status T###`（或直接 `T###`）/ `待我处理` / `等待` / `before {人}` / `review` / `digest` / `timesheet` —— 跨任务揭示逾期、欠回复、述职素材、周报和工时 |
+| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。三级匹配：ConversationID 线程 → 任务联系人 → 关键词+地区。自动抽取 ask/decision/deadline 写入任务。邮件同步使用稳定的包装脚本（`py -3 assistant_brain/scripts/run_email_sync.py`），支持保存 `latest-input.json`、`latest.md` 以及维护增量忽略候选池 `ignore_candidates.json`。所有发送命令自动输出 EntryID 供 Timeline 追踪 |
+| **精简四步邮件流** | 邮件发送/回复的强制流：1. 获取线程/上下文 → 2. 通过 `get-email` 完整读取历史邮件（零猜测、无假定）→ 3. 撰写草稿（To/CC、Subject、纯文本正文；“无冗余原则”防止重复已有参数事实）→ 4. **仅**在当前轮次获得显式授权批复后执行发送。 |
 | **邮件线程追踪** | 基于 ConversationID 的线程匹配——邮件一旦关联到任务，同线程后续邮件自动命中 |
 | **关联邮件发现** | 多策略搜索（线程 + 发件人 + 关键词）实现跨线程发现 |
+| **报名名册与短名单** | 基于 Playwright 自动下载 YourLearning 课程报名名册。评估注册情况、自动交叉比对人员 headcount 数据库、排除历史重复/非正式/非特定 geo 员工、按照职级和岗位打分，并向 Excel 导出高亮显色、清晰明了的学员入选（绿色）与备份名单（黄色），方便与 LDM 分享。 |
+| **TU 同步与余额台账** | 按需追踪红帽 Training Units (TU)。自动扫描来自 `no-reply@training.redhat.com` 的订单确认邮件，将其中的订单行、TU 数量、所属 TUA 账号解析进参考台账 `redhat-tu-tracking.md`。交叉比对来自 `automation@app.smartsheet.com` 的 Smartsheet 余额快照，更新余额并对额度告急触发预警。 |
+| **Blue Pages 员工查询** | 通过 IBM W3 Unified Profile/Blue Pages API 快速查询 CNUM、员工类型、上下级汇报关系（经理和下属）、Slack 账号和 HR 在职状态。 |
 | **记忆系统** | 用户偏好、认知盲点模式、外部联系人、成就（述职事实库）|
 | **成就自动捕获** | 任务完成时 AI 从 `[decision]` / `[milestone]` / `[delivery]` 标签的 Timeline 抽取述职素材 |
 | **流程智能** | 自动匹配任务到流程模板，建议下一步行动+联系人。Email sync 时检测未记录的流程步骤，重复模式自动固化为流程文件 |
@@ -97,6 +106,8 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 |------|------|----------|
 | **outlook-com-skill** | 查找、线程、关联、撰写、回复、全部回复、转发、重定向、批量转发 | Microsoft Outlook (COM) |
 | **minimax-xlsx** | 创建、读取、编辑、分析 Excel/电子表格文件 | `.xlsx`、`.xlsm`、`.csv` |
+| **bluepage-skill** | 查询 IBM 员工 Profile、Slack ID、汇报关系、在职状态 | IBM Blue Pages (W3 Unified Profile API) |
+| **enrollment-downloader** | 基于 Playwright 自动下载和评估 YourLearning 班级报名名册 | IBM YourLearning / E&C Manager |
 | **skill-creator** | 新技能脚手架 | (元) |
 
 ## 邮件命令
@@ -122,6 +133,8 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 2. **联系人匹配** — 发件人出现在某任务的 `## Contacts` 段 → 高置信度
 3. **关键词+地区** — 兜底：关键词重叠 + 邮件域名地区检测
 
+**关键词评分权重**：EPD 计划行 ID（3.0×），课程/PO代码（1.5×），英文单词（1.0×），中文3个或以上字符（1.0×）。数据源自：`## Tags`、`**EPD:**`字段、RACI联系人、内容中的字母数字编码。发出的邮件会在主题中携带最高权重的标识符，使回复能自动关联回来。详见 [ARCHITECTURE.md §4.5](ARCHITECTURE.md)。
+
 ## 项目结构
 
 标记 ⭐ 的文件在**启动时加载**。其他文件**按需加载**。
@@ -135,6 +148,11 @@ BrainClaw/
 └── assistant_brain/
     ├── views_config.md       ⭐ # 视图命令的阈值与默认值
     ├── recurring_tasks.md    ⭐ # 定期任务定义
+    ├── formats/
+    │   └── EMAIL_SYNC_FORMAT.md        # 邮件同步排版规范
+    ├── references/
+    │   ├── redhat-tu-tracking.md       # TU 消费追踪台账与规范
+    │   └── redhat_audience_filtering_rules.md # 大型宣贯推广的受众筛选与评分规则
     ├── process/
     │   └── README.md         ⭐ # 流程索引（按地区分组）
     ├── workflows/               # 编排 + 业务逻辑（按需加载）
@@ -144,23 +162,33 @@ BrainClaw/
     │   ├── FOLLOWUP_WORKFLOW.md       # 催办 / 追踪 / 提醒
     │   ├── RECORDING_WORKFLOW.md
     │   ├── WEB_WORKFLOW.md            # 网页搜索与页面提取 (Tavily)
-    │   └── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review/digest/timesheet
+    │   ├── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review/digest/timesheet
+│   ├── TU_SYNC_WORKFLOW.md        # 按需 TU 解析和余额同步工作流
+│   └── REDHAT_AUDIENCE_WORKFLOW.md # Red Hat 受众提取与报名审核工作流
     ├── contacts.md          ⭐ # 联系人唯一数据源（语气、邮箱、角色、流程角色）
     ├── scripts/                 # Python 自动化脚本
     │   ├── dashboard.py            # 启动面板、taskboard、pending、digest、timesheet
-    │   └── followup.py             # 超期任务检测（供催办工作流使用）
+    │   ├── email_sync.py           # 邮件预处理器：3 信号匹配，噪音过滤，上下文缩减 (~78%)
+    │   ├── run_email_sync.py       # 稳定运行邮件同步管道并保存输出的包装脚本
+    │   ├── manage_ignore_candidates.py # 管理和恢复被默认忽略的同步邮件
+    │   ├── followup.py             # 超期任务检测（供催办工作流使用）
+    │   └── shared_config.py        # 集中管理脚本与文件路径配置
     ├── memory/                  # 用户衍生数据（系统从用户身上学到的）
     │   ├── preferences.md       ⭐ # 用户偏好（语气、时间格式等）
     │   ├── things_to_avoid.md   ⭐ # 认知盲点模式 + 战术 Don'ts
     │   ├── achievements.md         # 述职事实库（任务完成时自动喂养）
     │   └── vendor-accounts.md      # 供应商门户账号与凭证
     ├── skills/                  # 与外部系统交互的 I/O
-    │   ├── outlook-com-skill/        # Outlook COM — Python 后端 + CLI
-    │   │   ├── SKILL.md          #   命令参考
-    │   │   ├── scripts/          #   CLI 入口点
-    │   │   └── backend/          #   搜索、撰写、会话管理
-    │   ├── minimax-xlsx/         # Excel 文件读写分析
-    │   └── skill-creator/        # 新技能脚手架
+    │   ├── outlook-com-skill/      # Outlook COM — Python 后端 + CLI
+    │   │   ├── SKILL.md            #   命令参考
+    │   │   ├── scripts/            #   CLI 入口点
+    │   │   └── backend/            #   搜索、撰写、会话管理
+    │   ├── minimax-xlsx/           # Excel 文件读写分析
+    │   ├── bluepage-skill/         # IBM Blue Pages 查询客户端
+    │   │   └── SKILL.md            #   触发词和 CLI 入口参考
+    │   ├── enrollment-downloader/  # YourLearning/E&C Manager 报名名册下载技能
+    │   │   └── SKILL.md            #   命令规范
+    │   └── skill-creator/          # 新技能脚手架
     └── tasks/                   # 任务队列与历史
         ├── queue.md          ⭐ # 活跃任务 + 近期事件
         ├── FORMATS.md            # 任务格式规范
@@ -196,7 +224,10 @@ BrainClaw/
 | **某个任务啥状态** | "T033"、"T033 状态"、"查 T033"、"T033 怎么样了"、"看下 T033"、"status T033" | 一屏:当前卡点、欠的、近期决策 |
 | **我欠谁啥** | "待我处理"、"我欠谁啥"、"我答应过啥"、"我有啥没回的"、"owed" | 跨任务汇总我的承诺,按对方分组,逾期优先 |
 | **谁卡着我 / 谁没回** | "等待"、"我在等谁"、"啥事卡着"、"谁还没回我"、"waiting" | 跨任务汇总,按对方分组,按等待时长排序 |
-| **会前预备** | "见 Beng 之前"、"明天和 Mridul 开会前"、"下午要见 X"、"before Beng" | 拉所有该人相关任务 + 议程草稿 |
+| **会前预备** | "见 Beng 之前"、"明天 and Mridul 开会前"、"下午要见 X"、"before Beng" | 拉所有该人相关任务 + 议程草稿 |
+| **员工/部门查询** | "who is Beng"、"bluepages HONG YANG"、"reports to X" | 通过 Blue Pages 查询 Profile 详情、Slack、汇报关系和组织结构 |
+| **班级名册/评估** | "download roster T134"、"check enrollment 10580795"、"evaluate roster" | 连接浏览器自动下载名册、交叉比对人员信息并输出带高亮显色的短名单 Excel |
+| **TU 同步/余额** | "tu sync"、"sync tu"、"tu balance"、"TU余额" | 解析红帽订单确认邮件、比对 Smartsheet 额度、自动更新台账并发送余额状态与告警 |
 | **述职 / 总结** | "述职"、"半年述职"、"Q2 做了啥"、"总结这半年"、"年度总结"、"review Q2 2026" | bullet 概要 + narrative 草稿,从 achievements.md 整理 |
 | **看完整任务清单** | "全部任务"、"完整队列"、"show all" | 重新渲染启动同款分组任务列表 |
 | **任务操作** | "新建任务"、"完成 T033"、"block T040"、"create/update/complete/block task" | 任务生命周期 |
@@ -214,7 +245,7 @@ BrainClaw 提供企业级任务追踪：
 - **丰富任务卡片**：状态、优先级、分类、地理位置（地理追踪）、截止时间、联系人、关键字、历史、备注
 - **智能检测**：自动从上下文判断截止时间和优先级
 - **智能关键字**：2-3个唯一标识符（请求ID、完整姓名、特定代码）便于追溯来源
-- **历史追踪**：累加记录所有任务更新，包含时间戳和来源
+- **历史追踪**：累加记录所有任务更新，包含时间戳 and 来源
 - **父子任务**：主任务可以有子任务，用于复杂项目管理
 - **地理追踪**：按区域追踪任务（Philippines, India, China, Singapore, APAC, Global）
 - **定期任务**：自动创建定期任务（月度报告、季度流程）
@@ -259,14 +290,17 @@ CLAUDE.md (单一可信源 — 启动规则 + 核心策略)
 │  - PROCESS_WORKFLOW                      │     流程学习与固化、成就抽取、
 │  - FOLLOWUP_WORKFLOW                     │     催办自动化、网页搜索、
 │  - RECORDING_WORKFLOW                    │     周报与工时生成、
-│  - WEB_WORKFLOW                          │     视图(status/owed/waiting/
-│  - VIEWS_WORKFLOW                        │     before/digest/timesheet/...)
+│  - WEB_WORKFLOW                          │     按需 TU 台账与余额同步、
+│  - REDHAT_AUDIENCE_WORKFLOW              │     Red Hat 受众提取与报名审核
+│  - VIEWS_WORKFLOW                        │     视图(status/owed/waiting/...)
 └──────────────┬───────────────────────────┘
                ↓ （仅在需要 I/O 时调用）
 ┌──────────────────────────────────────────┐
 │  Skills（I/O — 外部系统）                │
-│  - outlook-com-skill/  Outlook COM           │
+│  - outlook-com-skill/  Outlook COM       │
 │  - minimax-xlsx/   Excel 文件            │
+│  - bluepage-skill/  W3 Profile API       │
+│  - enrollment-downloader/  YourLearning  │
 │  - skill-creator/  元技能                │
 └──────────────────────────────────────────┘
 ```

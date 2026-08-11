@@ -89,6 +89,7 @@ Before executing ANY operation from the tables below, follow this mandatory sequ
 | Recording | "record event", "archive events" | `assistant_brain/workflows/RECORDING_WORKFLOW.md` |
 | Web | "search", "搜索", "查一下", "look up", "open URL", "查看网页", "抓取" | `assistant_brain/workflows/WEB_WORKFLOW.md` |
 | TU Sync | "tu sync", "sync tu", "同步TU", "TU更新", "update tu", "tu balance", "TU余额" | `assistant_brain/workflows/TU_SYNC_WORKFLOW.md` |
+| Enrollment & Audience | "target audience", "audience targeting", "shortlist", "check enrollment", "roster" | `assistant_brain/workflows/REDHAT_AUDIENCE_WORKFLOW.md` |
 | Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard`, `digest`, `timesheet` | `assistant_brain/workflows/VIEWS_WORKFLOW.md` |
 
 ### Skills
@@ -140,7 +141,7 @@ Always format as clickable links with name: `[T025](assistant_brain/tasks/T025-p
 The AI MUST strictly execute email operations in this exact order. Never skip or combine any steps:
 1. **Get email thread / Context:** Identify and fetch the target email thread or EntryID using task context or narrow search.
 2. **Read email thread:** Always read the full email thread completely via `get-email` to verify facts, context, and recipients (Zero assumptions, NO guessing).
-3. **Draft the email:** Draft the To/CC recipients, subject line, and body. Check for redundancy against thread history and format for the stakeholder. Present the full draft to the user.
+3. **Draft the email:** Draft the To/CC recipients, subject line, and body. Check for redundancy against thread history, **analyze the recipients' roles in `contacts.md` to adopt the appropriate role-based tone (e.g., formal/executive for Decision Makers, clear/actionable for Executors, collaborative for Colleagues)**, and format for the stakeholder. Present the full draft to the user.
 4. **Send after explicit approval:** Present the recipients, subject, and body, then wait for explicit, turn-specific permission (e.g., "approve and send" / "同意发送") before executing the send or batch-forward.
 
 **Draft gate (no exceptions — MANDATORY ENFORCEMENT):** 
@@ -159,7 +160,7 @@ The user's approval must be explicit and specific to the draft presented in the 
 
 *AI Self-Check:* Before calling any send/send-draft tool, verify: "Have I displayed the full draft and recipient list in my immediately preceding turn, and did the user explicitly reply with permission after seeing it?" If NO, STOP immediately. Running the send tool without this previous turn is a FATAL breach.
 
-**Command selection (no exceptions):** AI auto-selects reply/forward/compose based on recipient needs. Never ask the user which email action to use.
+**Command selection (no exceptions):** AI auto-selects the correct email action (`reply` for reply-all, `reply --only` for sender-only, `redirect` for complex recipient updates, `forward` for sharing thread history, `compose` for new emails) based on a thorough analysis of the original TO/CC recipients and draft requirements. Never ask the user which email action to use.
 
 **Autonomous:** Reading emails/calendar, searching, listing, viewing details, creating drafts.
 

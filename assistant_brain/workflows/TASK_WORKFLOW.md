@@ -2,7 +2,9 @@
 
 > Task operations workflow
 >
-> **Format Reference:** See [`../tasks/FORMATS.md`](../tasks/FORMATS.md) for task templates, status symbols, priority levels, and other format specifications (load on-demand when creating/updating tasks)
+> **Format Reference:** See [`../tasks/FORMATS.md`](../tasks/FORMATS.md) for task templates, status symbols, priority levels, and other format specifications (load on-demand when creating/updating tasks).
+>
+> **Task-First Mandate:** Follow the mandatory Pre-Tool-Call Gate in `AGENTS.md` — task files (`T*.md`) are the Single Source of Truth for task history and progress. Read task files before invoking external search tools.
 
 ---
 

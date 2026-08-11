@@ -1,6 +1,8 @@
 # Process Workflow
 
 > 流程推进引擎。关联 task → process template → next action。支持自动推进、流程学习、固化。
+>
+> **Task-First Mandate:** Apply `AGENTS.md` Task-First Rule — read task markdown files (`T*.md`) before evaluating process steps or searching emails.
 
 ---
 

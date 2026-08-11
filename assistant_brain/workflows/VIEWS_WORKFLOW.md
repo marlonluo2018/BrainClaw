@@ -8,13 +8,13 @@
 
 | User intent | Operation |
 |-------------|-----------|
-| `T###` or "T### status/怎么样/啥情况" | `status T###` |
+| `T###` or "T### status/怎么样/啥情况" or topic/course query | `status T###` (Apply `AGENTS.md` Task-First Rule) |
 | "pending/待办/owed/waiting" | Run `py -3 assistant_brain/scripts/dashboard.py` with appropriate arg |
 | "before {person}" / "见X之前" / "和X开会前" | `before {person}` |
 | "review Q2" / "述职" / "总结这半年" | `review {period}` |
 | "processes" / "流程" / "查看所有流程" | Run `py -3 assistant_brain/scripts/dashboard.py processes` |
 
-**Rules:** Match by intent, not keyword. Bare `T###` → `status T###`. Person + "前/before" → `before {person}`. Period + action word → `review`. Processes/流程 → `processes`. Vague input → show command hints.
+**Rules:** Match by intent, not keyword. Bare `T###` or topic status query → `status T###` (Read task file FIRST). Person + "前/before" → `before {person}`. Period + action word → `review`. Processes/流程 → `processes`. Vague input → show command hints.
 
 ---
 
