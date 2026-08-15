@@ -75,9 +75,13 @@ Actions:
 
 ### 🚫 Ignored / Filtered Emails
 
-**Ignored Emails (Informational — read by AI, judged as no action/task needed; auto-registered in ignore json, listed for user verification):**
-- **#A** — Wkd Mon DD HH:MM — Sender: subject / brief description (Reason: informational / no action or task needed)
-- **#B** — Wkd Mon DD HH:MM — Sender: subject / brief description (Reason: informational / no action or task needed)
+**Ignored Emails (Informational — read by AI, judged as no action/task needed; MUST be registered in `ignore_candidates.json` via `manage_ignore_candidates.py add` FIRST before outputting summary, then listed with Entry ID for user verification and restoration):**
+| # | Sender | Subject | Reason | Entry ID |
+|---|--------|---------|--------|----------|
+| **#A** | Sender Name | `Subject line` | Reason | `EntryID` |
+| **#B** | Sender Name | `Subject line` | Reason | `EntryID` |
+
+*How to restore ("take it back"):* `py -3 assistant_brain/scripts/manage_ignore_candidates.py restore <entry_id>` or tell the assistant "restore email #X".
 
 **Filtered Emails (Silently filtered system noise — auto-replies, OTP passcodes, calendar reminders, generic system noise):**
 - Total: {N} emails filtered by script.
@@ -130,6 +134,7 @@ Total: X files modified, Y unchanged.
 3. Task File Updates must show what was written to each task file
 4. If a matched task required no updates, state "Updated: no changes — already up to date." — **ALWAYS still list their Emails section**
 5. Each task has two sub-sections: **Emails** (→ in / ← out) then **Actions** (🎯 my action / ⏳ waiting). Use one or both action types as appropriate
+   - **⚠️ Actions are MANDATORY for every task section, including `Updated: no changes — already up to date.`** The `Actions:` block reflects the task's currently open asks from its `## Asks` section, not only emails received this run. See template lines 38–45.
    - **⛔ Completion-Check Gate (before generating ANY 🎯/⏳ action):** READ the task file's `## Asks` section AND `### Action Items` / `## Current State`. If the proposed action corresponds to an ask or item already marked `[x]`, `[✅]`, struck through (`~~`), or appended with `✅`, do NOT include it in Actions or Priority Actions. Only surface genuinely OPEN items. An email arriving about a completed action is informational — it does NOT reopen the action.
 6. Separate tasks with `&nbsp;` (blank spacer line) for visual clarity — no `---` horizontal rules between tasks
 7. Non-Task "Action needed" items show the email with `→`/`←` prefix, then indented `🎯 Suggested:` line, then `💡 Create task?` recommendation. Separate each "Action needed" email entry with `&nbsp;` (blank spacer line) for visual clarity.
@@ -143,4 +148,4 @@ Total: X files modified, Y unchanged.
 15. **No rejected emails under tasks:** Only list emails that PASS semantic judgment under a task. Emails rejected during scope validation (wrong task, scope mismatch, irrelevant content) must NOT appear under the matched task — move them to Non-Task "Informational" or omit entirely. Never show "❌ Scope mismatch" lines under a task.
 16. **Skip empty tasks:** If a task has zero valid emails after semantic judgment (all were rejected or already known with no updates), do NOT show that task in the summary at all.
 17. **Ignore metadata awareness:** If the pre-match stats show `Ignored by library: X`, treat those emails as already suppressed by `assistant_brain/sync_results/ignore_candidates.json` and do not ask the user about them again unless the user says they may be task-related and wants them restored for review.
-18. **Incremental ignore candidate pool:** `assistant_brain/sync_results/ignore_candidates.json` is an incremental pool for unmatched (Non-Task) emails, not a one-run snapshot. Unmatched emails written there are skipped by subsequent `email sync` runs by default and displayed under "Ignored / Filtered Emails" for user review. Pure system noise (auto-reply, OTP, etc.) is directly filtered and skipped by the script, and is NOT stored in `ignore_candidates.json` or displayed in the summary.
+18. **Incremental ignore candidate pool (ADD FIRST MANDATE):** `assistant_brain/sync_results/ignore_candidates.json` is an incremental pool for unmatched/informational (Non-Task) emails. During email sync, all unmatched informational emails MUST be registered FIRST using `py -3 assistant_brain/scripts/manage_ignore_candidates.py add "<entry_id>" --reason "<reason>"` before presenting the final summary output. They are listed under "Ignored / Filtered Emails" with their full Entry IDs so the user can review or restore ("take it back") any email easily. Subsequent sync runs will skip them automatically.

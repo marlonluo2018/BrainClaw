@@ -159,7 +159,7 @@ def build_ignore_candidate(email: dict, reason: str, source_section: str, sugges
     }
 
 
-# --- Noise filter patterns ---
+# --- Generic System Noise filter patterns ---
 
 NOISE_SUBJECT_PREFIXES = [
     "Automatic reply:", "automatic reply:",
@@ -170,24 +170,15 @@ NOISE_SUBJECT_PREFIXES = [
 ]
 
 NOISE_SUBJECT_CONTAINS = [
-    "IBM IBV", "IBM Community", "IBM Consulting Advantage",
-    "employee purchase", "IBM.Consulting.GCG",
     "Recall: ", "recall:",
-    "员工内购",
 ]
 
 NOISE_SENDER_CONTAINS = [
-    "identity assurance", "office365reports",
     "noreply", "no-reply", "donotreply", "do-not-reply",
     "mailer-daemon", "postmaster",
-    "w3notifications", "ibmer news", "communications",
-    "wellbeing@ibm", "events and classes", "your learning",
-    "ibm ibv", "ibm community",
 ]
 
 SYSTEM_SENDERS = [
-    "learning request tool", "training request",
-    "red hat training request", "red hat learning",
     "servicenow", "service-now", "jira", "confluence",
     "sharepoint", "microsoft flow", "power automate",
     "successfactors", "workday",
@@ -196,11 +187,7 @@ SYSTEM_SENDERS = [
 NOISE_MEETING_STATUSES = {"meeting_canceled"}
 CALENDAR_MEETING_STATUSES = {"meeting_request", "meeting"}
 
-GEO_DOMAIN_MAP = {
-    "cn.ibm.com": "China",
-    "ph.ibm.com": "Philippines",
-    "in.ibm.com": "India",
-}
+GEO_DOMAIN_MAP = {}
 
 GEO_FLAGS = {
     "China": "\U0001f1e8\U0001f1f3",
@@ -210,7 +197,7 @@ GEO_FLAGS = {
     "ASEAN": "\U0001f30f",
 }
 
-# Chinese stopwords — high-frequency words with no discriminating power
+# Chinese stopwords — high-frequency generic words
 ZH_STOPWORDS = {
     "答复", "转发", "回复", "请", "您好", "你好", "谢谢", "感谢",
     "关于", "通知", "提醒", "确认", "更新", "信息", "邮件", "附件",
@@ -229,11 +216,7 @@ EN_STOPWORDS = {
     "for", "and", "not", "but", "all", "any", "our", "your", "their",
     "please", "thanks", "thank", "regards", "dear", "hello",
     "fwd", "ext", "msg", "subject", "sent", "date",
-    "ibm", "ibmer",
-    # Learning domain — appear in nearly every task, no discriminating power
-    "course", "training", "exam", "learning", "skills", "certification",
-    "voucher", "session", "workshop", "enroll", "enrollment",
-    # Months — no discriminating power (many tasks share due dates)
+    # Months
     "january", "february", "march", "april", "may", "june",
     "july", "august", "september", "october", "november", "december",
     "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
@@ -667,15 +650,15 @@ def check_temporal_scope(email: dict, task_scope: str) -> str | None:
 
 def match_email_to_tasks(email: dict, task_index: dict,
                          email_to_tasks: dict, name_to_tasks: dict) -> list[dict]:
-    """Match an email to tasks using 3-signal priority matching.
+    """Match an email to tasks using 3 generic candidate signals.
 
-    Returns list of {task_id, confidence, signal, already_known} sorted by confidence desc.
+    Returns candidate list of {task_id, confidence, signal, already_known} sorted by confidence desc.
+    All business/domain judgments are delegated to the email-classifier sub-agent.
     """
     entry_id = email.get('entry_id', '')
     sender = email.get('sender', '')
     sender_email = extract_sender_email(sender)
     sender_name = extract_sender_name(sender).lower()
-    subject = email.get('subject', '').lower()
 
     matches = []
 
@@ -688,25 +671,7 @@ def match_email_to_tasks(email: dict, task_index: dict,
                 "signal": "entry_id",
                 "already_known": True,
             })
-            return matches  # Definitive match
-
-    # Signal 1.5: EPD match (confidence 0.95) — runs unconditionally
-    subject_raw_epd = email.get('subject', '')
-    preview_epd = email.get('body_preview', '')
-    epd_codes = set(re.findall(r'\b\d{6,8}\b', subject_raw_epd))
-    epd_codes |= set(re.findall(r'\b\d{6,8}\b', preview_epd))
-    if epd_codes:
-        for tid, info in task_index.items():
-            if epd_codes & info["epd_ids"]:
-                matches.append({
-                    "task_id": tid,
-                    "confidence": 0.95,
-                    "signal": "epd",
-                    "already_known": False,
-                })
-        if matches:
-            matches.sort(key=lambda x: x["confidence"], reverse=True)
-            return matches  # EPD is definitive — skip lower signals
+            return matches  # Definitive thread match
 
     # Signal 2: Contact match (confidence 0.8)
     contact_matches = set()
@@ -716,7 +681,6 @@ def match_email_to_tasks(email: dict, task_index: dict,
     if sender_name:
         for tid in name_to_tasks.get(sender_name, []):
             contact_matches.add(tid)
-    # Also check recipients for sent emails
     for recip in email.get('to_recipients', []):
         addr = (recip.get('address', '') or '').lower()
         if addr:
@@ -727,103 +691,38 @@ def match_email_to_tasks(email: dict, task_index: dict,
             for tid in name_to_tasks.get(rname, []):
                 contact_matches.add(tid)
 
-    # Corroborate contact matches with keyword overlap + geo + master-task check
     if contact_matches:
-        subject_raw = email.get('subject', '')
-        preview = email.get('body_preview', '')
-        corr_en = set(re.findall(r'[a-zA-Z]{3,}', f"{subject_raw} {preview}".lower())) - EN_STOPWORDS
-        corr_zh = set(re.findall(r'[一-鿿]{2,}', f"{subject_raw} {preview}")) - ZH_STOPWORDS
-        corr_codes = set(re.findall(r'[A-Za-z]+\d+[\w]*', f"{subject_raw} {preview}".upper()))
-        corr_words = corr_en | corr_zh | corr_codes
-        email_geo = extract_geo_from_email(email)
-
         for tid in contact_matches:
-            info = task_index.get(tid, {})
-            conf = 0.8
-
-            # Keyword corroboration: demote if zero overlap with task keywords
-            overlap = corr_words & info.get("keywords", set())
-            if not overlap:
-                conf -= 0.3  # 0.8 → 0.5 (ambiguous level)
-
-            # Geo mismatch penalty: task has specific geo, email geo differs
-            task_geo = info.get("geo", "")
-            if email_geo and task_geo and email_geo.lower() != task_geo.lower():
-                conf -= 0.25
-
-            # Master task penalty: umbrella tasks should not capture operational emails
-            title = info.get("title", "")
-            scope = info.get("scope", "")
-            if re.search(r'\bmaster\b', f"{title} {scope}", re.IGNORECASE):
-                conf -= 0.2
-
             matches.append({
                 "task_id": tid,
-                "confidence": round(conf, 2),
+                "confidence": 0.8,
                 "signal": "contact",
                 "already_known": False,
             })
 
-    # Signal 3: Keyword + geo match (confidence 0.5)
-    if not matches:
-        subject_raw = email.get('subject', '')
-        subject_en = set(re.findall(r'[a-zA-Z]{3,}', subject_raw.lower())) - EN_STOPWORDS
-        subject_zh = set(re.findall(r'[一-鿿]{2,}', subject_raw)) - ZH_STOPWORDS
-        subject_codes = set(re.findall(r'[A-Za-z]+\d+[\w]*', subject_raw.upper()))
-        subject_codes |= set(re.findall(r'\b[Qq][1-4]\b', subject_raw.upper()))
-        # Extract numeric IDs (EPD plan row IDs like 1032769)
-        subject_codes |= set(re.findall(r'\b\d{6,8}\b', subject_raw))
-        # Also extract from body_preview for richer signal
-        preview = email.get('body_preview', '')
-        if preview:
-            subject_en |= set(re.findall(r'[a-zA-Z]{3,}', preview.lower())) - EN_STOPWORDS
-            subject_zh |= set(re.findall(r'[一-鿿]{2,}', preview)) - ZH_STOPWORDS
-            subject_codes |= set(re.findall(r'[A-Za-z]+\d+[\w]*', preview.upper()))
-            subject_codes |= set(re.findall(r'\b[Qq][1-4]\b', preview.upper()))
-            subject_codes |= set(re.findall(r'\b\d{6,8}\b', preview))
-        email_words = subject_en | subject_zh | subject_codes
-        email_geo = extract_geo_from_email(email)
+    # Signal 3: Keyword / Identifier overlap match (confidence 0.5)
+    subject_raw = email.get('subject', '')
+    preview = email.get('body_preview', '')
+    text = f"{subject_raw} {preview}"
+    email_words = set(re.findall(r'[a-zA-Z]{3,}', text.lower())) - EN_STOPWORDS
+    email_words |= set(re.findall(r'[一-鿿]{2,}', text)) - ZH_STOPWORDS
+    email_codes = set(re.findall(r'[A-Za-z0-9_-]{4,}', text))
+    email_all = email_words | email_codes
 
-        scored_matches = []
-        for tid, info in task_index.items():
-            overlap = email_words & info["keywords"]
-            en_overlap = overlap & subject_en
-            zh_overlap = overlap & subject_zh
-            code_overlap = overlap & subject_codes
-            # EPD IDs (pure numeric, unique per task) get weight 3.0; other codes 1.5
-            epd_overlap = code_overlap & info["epd_ids"]
-            regular_code_overlap = code_overlap - epd_overlap
-            score = len(en_overlap) + len(regular_code_overlap) * 1.5 + len(epd_overlap) * 3.0
-            for w in zh_overlap:
-                score += 1.0 if len(w) >= 3 else 0.5
-            if score >= 2.0:
-                geo_match = (email_geo and info["geo"] and
-                             email_geo.lower() == info["geo"].lower())
-                geo_mismatch = (email_geo and info["geo"] and
-                                email_geo.lower() != info["geo"].lower())
-                conf = 0.5 + (0.15 if geo_match else 0) - (0.25 if geo_mismatch else 0)
-                # Master task penalty
-                t_title = info.get("title", "")
-                t_scope = info.get("scope", "")
-                if re.search(r'\bmaster\b', f"{t_title} {t_scope}", re.IGNORECASE):
-                    conf -= 0.2
-                scored_matches.append({
-                    "task_id": tid,
-                    "confidence": round(conf, 2),
-                    "signal": "keyword",
-                    "already_known": False,
-                    "_score": score,
-                })
+    for tid, info in task_index.items():
+        if any(m["task_id"] == tid for m in matches):
+            continue
+        overlap = email_all & info.get("keywords", set())
+        if len(overlap) >= 2:
+            matches.append({
+                "task_id": tid,
+                "confidence": 0.5,
+                "signal": "keyword",
+                "already_known": False,
+            })
 
-        # Dominance rule: if top scorer leads by >= 2.0 points, it wins outright
-        if scored_matches:
-            scored_matches.sort(key=lambda x: x["_score"], reverse=True)
-            best = scored_matches[0]["_score"]
-            second = scored_matches[1]["_score"] if len(scored_matches) > 1 else 0
-            if best - second >= 2.0:
-                matches = [scored_matches[0]]
-            else:
-                matches = scored_matches
+    matches.sort(key=lambda x: x["confidence"], reverse=True)
+    return matches
 
     # Check scope exclusions — flag matches where email content hits exclusion keywords
     subject_raw = email.get('subject', '')
@@ -959,7 +858,17 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
             subject = em_info.get("subject", "")
             candidates = em_info["_candidates"]
 
-            lines.append(f"→ #{num} {received} {sender_name}: \"{subject}\"")
+            is_sent = "sent" in em_info.get("folder", "").lower()
+            if is_sent:
+                to_names = []
+                for r in em_info.get("to_recipients", []):
+                    n = r.get("name", r.get("address", ""))
+                    if n:
+                        to_names.append(n.split('<')[0].strip() if '<' in n else n)
+                to_str = ", ".join(to_names[:2])
+                lines.append(f"← #{num} {received} to {to_str}: \"{subject}\"")
+            else:
+                lines.append(f"→ #{num} {received} {sender_name}: \"{subject}\"")
             eid = em_info.get("entry_id", "")
             if eid:
                 lines.append(f"  ID: {eid}")
@@ -1066,28 +975,33 @@ def format_output(matched: dict, ambiguous: list, unmatched: list,
                 lines.append(f"    ID: {eid}")
         lines.append("")
 
-    # --- Active Task Reference (for AI semantic matching in Pass B) ---
-    unmatched_tasks = {tid: info for tid, info in task_index.items()
-                       if tid not in matched and info.get("title") != "(closed)"}
-    if unmatched_tasks:
-        lines.append("### 📋 Active Tasks Not Matched (reference for AI Pass B)")
+    # --- Active Task Reference (Complete Index for Sub-Agent Semantic Matching) ---
+    all_active_tasks = {tid: info for tid, info in task_index.items() if info.get("title") != "(closed)"}
+    if all_active_tasks:
+        lines.append("### 📋 Active Tasks Compact Index (Complete Reference for Sub-Agent)")
         lines.append("")
-        for tid in sorted(unmatched_tasks.keys()):
-            info = unmatched_tasks[tid]
+        for tid in sorted(all_active_tasks.keys()):
+            info = all_active_tasks[tid]
             title = info.get("title", "")
             scope = info.get("scope", "")
             contacts = info.get("contacts", [])
             geo = info.get("geo", "")
+            epd_ids = info.get("epd_ids", set())
+            keywords = info.get("keywords", set())
             flag = GEO_FLAGS.get(geo, "")
+            
             contact_str = ", ".join(
                 c.get("name", c.get("email", "")) if isinstance(c, dict) else str(c)
                 for c in contacts[:5]
-            ) if contacts else ""
-            line = f"- **{tid}** {title} {flag}"
+            ) if contacts else "none"
+            epd_str = ", ".join(sorted(epd_ids)) if epd_ids else "none"
+            
+            codes = [k for k in keywords if re.match(r'^[A-Za-z]+\d+[\w]*$', k)]
+            code_str = ", ".join(sorted(set(codes))[:6]) if codes else "none"
+
+            line = f"- **{tid}** {title} {flag} | Geo: {geo or 'TBD'} | EPDs: {epd_str} | Codes: {code_str} | Contacts: {contact_str}"
             if scope:
-                line += f" | Scope: {scope[:80]}"
-            if contact_str:
-                line += f" | Contacts: {contact_str}"
+                line += f" | Scope: {scope[:120]}"
             lines.append(line)
         lines.append("")
 
@@ -1111,13 +1025,15 @@ def main():
     args = parser.parse_args()
 
     def emit_and_save(output: str):
-        print(output)
         out_file = save_sync_output(output, args.output_file)
         try:
             shown_path = out_file.relative_to(BRAIN_DIR.parent)
         except ValueError:
             shown_path = out_file
-        print(f"\n📁 Saved: {shown_path}")
+
+        if not args.output_file:
+            print(output)
+            print(f"\n📁 Saved: {shown_path}")
 
     # Read input
     if args.input_file:
@@ -1179,16 +1095,24 @@ def main():
             # Skip already ignored emails silently — do not add to ignored_emails_list so they won't be shown to the user
             continue
 
-        # Calendar items — task-linked ones go into matched section; unlinked ones shown separately
+        # Calendar items — task-linked ones go into matched section; unlinked/ambiguous ones shown separately
         if is_calendar_item(email):
             cal_matches = match_email_to_tasks(email, task_index, email_to_tasks, name_to_tasks)
             cal_matches = [m for m in cal_matches if m["confidence"] >= 0.5]
             if cal_matches:
-                # Task-linked calendar item → treat as regular task-matched email
-                email["_match"] = cal_matches[0]
-                email["_is_calendar"] = True
-                tid = cal_matches[0]["task_id"]
-                matched.setdefault(tid, []).append(email)
+                top_conf = cal_matches[0]["confidence"]
+                same_conf_count = sum(1 for m in cal_matches if m["confidence"] == top_conf)
+                if top_conf == 1.0 or same_conf_count == 1:
+                    # Uniquely task-linked calendar item → treat as regular task-matched email
+                    email["_match"] = cal_matches[0]
+                    email["_is_calendar"] = True
+                    tid = cal_matches[0]["task_id"]
+                    matched.setdefault(tid, []).append(email)
+                else:
+                    # Multiple candidates at top confidence → ambiguous for sub-agent semantic check
+                    email["_candidates"] = cal_matches
+                    email["_is_calendar"] = True
+                    ambiguous.append(email)
             else:
                 # Unlinked calendar item → separate section for AI semantic review
                 calendar_items.append(email)
@@ -1257,7 +1181,6 @@ def main():
         ignored_count=ignored_count,
         ignored_emails=ignored_emails_list,
     )
-    print(output)
 
     # Save output to file for later reference
     out_file = save_sync_output(output, args.output_file)
@@ -1268,7 +1191,10 @@ def main():
         shown_path = out_file.relative_to(BRAIN_DIR.parent)
     except ValueError:
         shown_path = out_file
-    print(f"\n📁 Saved: {shown_path}")
+
+    if not args.output_file:
+        print(output)
+        print(f"\n📁 Saved: {shown_path}")
 
 
 if __name__ == '__main__':

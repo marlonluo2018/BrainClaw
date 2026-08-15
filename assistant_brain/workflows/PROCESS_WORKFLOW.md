@@ -21,22 +21,12 @@
 
 **When:** User asks "next step T###" or after email sync updates a task.
 
+> **索引导航：** `[process/README.md](../process/README.md)` 是流程索引的唯一权威源。`business-process` skill 只负责引导 AI 去读 README（不维护映射表）。脚本侧由 `scripts/shared_config.py` 在 import 时自动解析 README 生成 `PROCESS_MATCH_RULES`，无需人工同步。本部分不再维护重复表格，避免漂移。
+
 **Steps:**
 
 1. Read task file → get **Category** + **Geo**
-2. Match against [`process/README.md`](../process/README.md) index:
-
-| Category keywords | Geo | Process File |
-|-------------------|-----|-------------|
-| Procurement, vendor, PO + offcycle/新增 | China | `china/offcycle-budget-approval.md` |
-| Procurement, vendor, PO (quarterly) | Philippines | `philippines/vendor-procurement.md` |
-| Voucher + AWS | Philippines | `philippines/aws-voucher-issuance.md` |
-| Voucher + Azure | Philippines | `philippines/azure-voucher-issuance.md` |
-| Retake, failed, 补考, reimbursement, 报销, no voucher | Philippines | `philippines/exam-reimbursement.md` |
-| Reimbursement, 报销 | China | `china/futurenow-quarterly-reimbursement.md` |
-| Snowflake | any | `global/snowflake-certification.md` |
-| Google, GCP | any | `global/google-exam-voucher-discount.md` |
-
+2. Match against `process/README.md` index (the authoritative source; `scripts/shared_config.py` derives `PROCESS_MATCH_RULES` from it automatically)
 3. Read matched process file → get Steps list
 4. Scan task `## Current State` → determine progress:
    - Consecutive checked `[x]` / `[✅]` from top = completed steps
@@ -146,6 +136,7 @@ For tasks that don't match a specific process file.
 
 **Effective:** {today}
 **Geo:** {geo}
+**Keywords:** {comma, separated, matching, keywords}
 
 ---
 
@@ -176,8 +167,10 @@ For tasks that don't match a specific process file.
 ```
 
 7. Present draft to user for confirmation
-8. On confirm → write to `process/{geo}/{name}.md` + update `process/README.md`
-9. Update `scripts/shared_config.py` → add entry to `PROCESS_MATCH_RULES` with keywords, geo, and file path from the new process
+8. On confirm → write to `process/{geo}/{name}.md` + register a row in `process/README.md` (fill Process / File / **Keywords** / Description columns). This is the single authoritative registration point — no other place needs updating.
+9. **Validate (MANDATORY gate):** run `py -3 -X utf8 assistant_brain/scripts/validate_processes.py`. Fix any **ERROR** before proceeding (dead link / orphan / empty keywords / keyword overlap). Warnings are advisory — report them to the user.
+
+> **完整性兜底（每次新增或修改 process 后必做）：** `assistant_brain/scripts/validate_processes.py` 是 process 新增/更新的安全网，校验 4 项硬错误（README 死链、孤儿文件、空 Keywords、同 geo 关键词重叠遮蔽）+ 3 项格式告警（geo 目录与章节不一致、缺必需章节、缺 Effective/Geo 元数据）。凡涉及 process 文件或 README 索引表的任何改动，结束后必须运行一次并确认 ERROR=0。
 
 ---
 

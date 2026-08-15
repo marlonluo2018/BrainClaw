@@ -35,23 +35,31 @@ PROJECT_ROOT = BRAIN_DIR.parent
 # Staleness thresholds (days) — aligned with views_config.md
 STALE_THRESHOLDS = {"P1": 3, "P2": 7, "P3": 14}
 
-# Process matching rules — used by followup.py and dashboard.py
-PROCESS_MATCH_RULES = [
-    {"keywords": ["procurement", "vendor", "po", "offcycle", "新增"], "geo": "China", "file": "china/offcycle-budget-approval.md"},
-    {"keywords": ["procurement", "vendor", "po"], "geo": "Philippines", "file": "philippines/vendor-procurement.md"},
-    {"keywords": ["voucher", "aws"], "geo": "Philippines", "file": "philippines/aws-voucher-issuance.md"},
-    {"keywords": ["voucher", "azure"], "geo": "Philippines", "file": "philippines/azure-voucher-issuance.md"},
-    {"keywords": ["retake", "failed", "补考", "reimbursement", "报销", "no voucher", "out of pocket"], "geo": "Philippines", "file": "philippines/exam-reimbursement.md"},
-    {"keywords": ["reimbursement", "报销"], "geo": "China", "file": "china/futurenow-quarterly-reimbursement.md"},
-    {"keywords": ["hashicorp", "terraform", "vault"], "geo": None, "file": "global/hashicorp-voucher-request.md"},
-    {"keywords": ["snowflake"], "geo": None, "file": "global/snowflake-certification.md"},
-    {"keywords": ["claude", "anthropic"], "geo": "Philippines", "file": "philippines/claude-certification.md"},
-    {"keywords": ["claude", "anthropic"], "geo": None, "file": "global/claude-certification.md"},
-    {"keywords": ["google", "gcp", "cloud digital leader", "genai leader"], "geo": "Philippines", "file": "philippines/google-foundation-cert-reimbursement.md"},
-    {"keywords": ["google", "gcp"], "geo": None, "file": "global/google-exam-voucher-discount.md"},
-    {"keywords": ["communication", "comms", "campaign", "signature event"], "geo": None, "file": "global/communication-request.md"},
-    {"keywords": ["webinar", "global webinar", "epd webinar", "marketo"], "geo": None, "file": "global/global-webinar-delivery.md"},
-]
+# Process matching rules — used by followup.py and dashboard.py.
+# Single authoritative source: process/README.md index table.
+# Parsed at import time; do NOT hardcode process mappings here.
+def _build_process_match_rules() -> list:
+    rules = []
+    readme = BRAIN_DIR / 'process' / 'README.md'
+    if not readme.exists():
+        return rules
+    current_geo = None
+    for line in readme.read_text(encoding='utf-8').split('\n'):
+        hdr = re.match(r'^##\s+(.+)$', line)
+        if hdr:
+            section = hdr.group(1).strip()
+            current_geo = None if section == 'Global' else section
+            continue
+        m = re.match(r'^\|\s*([^|]+?)\s*\|\s*\[`([^`]+)`\]\(([^)]+)\)\s*\|\s*([^|]+)\|', line)
+        if m:
+            file_path = m.group(3).strip()
+            keywords = [k.strip().lower() for k in m.group(4).split(',') if k.strip()]
+            if file_path and keywords:
+                rules.append({"keywords": keywords, "geo": current_geo, "file": file_path})
+    return rules
+
+
+PROCESS_MATCH_RULES = _build_process_match_rules()
 
 
 # Timeline tag alias mapping — normalises legacy tags to canonical form

@@ -39,8 +39,7 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
 ┌─────────────────────────────────────────────────────────────┐
 │         Workflow Layer (orchestration + business logic)     │
 │  TASK_WORKFLOW | EMAIL_WORKFLOW | PROCESS_WORKFLOW |        │
-│  FOLLOWUP_WORKFLOW | RECORDING_WORKFLOW | WEB_WORKFLOW |    │
-│  VIEWS_WORKFLOW                                              │
+│  REDHAT_WORKFLOW | VIEWS_WORKFLOW                            │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -87,7 +86,7 @@ BrainClaw/
 │   │   ├── TASK_WORKFLOW.md
 │   │   ├── EMAIL_WORKFLOW.md
 │   │   ├── PROCESS_WORKFLOW.md
-│   │   ├── RECORDING_WORKFLOW.md
+│   │   ├── REDHAT_WORKFLOW.md
 │   │   └── VIEWS_WORKFLOW.md
 │   │
 │   ├── scripts/                  # Python automation
@@ -141,7 +140,7 @@ The memory system enables persistent learning across sessions. Memory files hold
 
 **Note:** `views_config.md` (view thresholds + defaults) is **not** memory — it's system config. Lives at `assistant_brain/` root.
 
-**Recording Threshold**: See `RECORDING_WORKFLOW.md`
+**Recording Threshold**: See `TASK_WORKFLOW.md` (Event & Memory Recording)
 
 ### 4.3 Workflows
 
@@ -149,12 +148,10 @@ Workflows hold **all business logic** and step-by-step procedures. They orchestr
 
 | Workflow | Purpose | I/O Skills Used |
 |----------|---------|-----------------|
-| `TASK_WORKFLOW.md` | Task CRUD, keyword extraction, achievement extraction on completion | (none — pure file ops) |
-| `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction, Key Email Criteria for EntryID tracking | `outlook-com-skill` |
+| `TASK_WORKFLOW.md` | Task CRUD, keyword extraction, achievement extraction on completion, event & memory recording | (none — pure file ops) |
+| `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction, Key Email Criteria for EntryID tracking, stale-task follow-up | `outlook-com-skill` |
 | `PROCESS_WORKFLOW.md` | Process matching, auto-advance suggestions, process learning from email patterns, codification | (none — pure file ops) |
-| `FOLLOWUP_WORKFLOW.md` | Stale task detection, follow-up email drafting with tone-aware templates, chase history | `outlook-com-skill` |
-| `RECORDING_WORKFLOW.md` | Event recording, memory recording, archival | (none — pure file ops) |
-| `WEB_WORKFLOW.md` | Web search, page extraction, site crawling, deep research via Tavily MCP | (Tavily MCP) |
+| `REDHAT_WORKFLOW.md` | Red Hat audience targeting & shortlisting (4-phase lifecycle, course exclusion tables), TU ledger sync, Smartsheet balance | `redhat-audience-processor`, `enrollment-downloader`, `outlook-com-skill` |
 | `VIEWS_WORKFLOW.md` | Per-task and cross-task views: status, owed, waiting, before, review/述職, digest, timesheet | (none — pure file ops) |
 
 **Design Pattern:**
@@ -449,21 +446,22 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 2. **Create process file**: `process/{geo}/{descriptive-name}.md`
    ```markdown
    # Process Title
-   
+
    **Effective:** YYYY-MM-DD
    **Geo:** Philippines | China | Global
-   
+   **Keywords:** comma, separated, matching, keywords
+
    ## When This Applies
    Brief description of trigger
-   
+
    ## Steps
    1. **Action** — details
-   
+
    ## Key Rules
    - Critical constraint
    ```
 
-3. **Update `process/README.md`** index
+3. **Register in `process/README.md`** index — add one row filling Process / File / **Keywords** / Description columns. This is the single authoritative registration point: `scripts/shared_config.py` parses the README table at import time to build `PROCESS_MATCH_RULES` (used by followup/dashboard), so no script edits are needed. Do NOT hardcode process mappings anywhere else.
 
 ### 5.4 Adding a New Memory Type
 
@@ -471,7 +469,7 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 
 2. **Define structure and purpose**
 
-3. **Update `RECORDING_WORKFLOW.md`** memory types table
+3. **Update `TASK_WORKFLOW.md`** memory types table (Event & Memory Recording section)
 
 4. **Update `CLAUDE.md`** to load at startup
 
@@ -485,7 +483,7 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 |-------|---------------|---------|
 | System Prompt | Startup & loading rules | CLAUDE.md |
 | Memory | Learned preferences & patterns | preferences, things_to_avoid, achievements |
-| Workflows | Orchestration + business logic | TASK_WORKFLOW, EMAIL_WORKFLOW, FOLLOWUP_WORKFLOW |
+| Workflows | Orchestration + business logic | TASK_WORKFLOW, EMAIL_WORKFLOW, PROCESS_WORKFLOW, REDHAT_WORKFLOW, VIEWS_WORKFLOW |
 | Skills | I/O against external systems | outlook-com-skill, minimax-xlsx |
 | Data | Persistence | Task files, contacts, processes |
 

@@ -54,12 +54,8 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
 │  │  │   ├── PROCESS_WORKFLOW.md                           │  │
-│  │  │   ├── FOLLOWUP_WORKFLOW.md                          │  │
-│  │  │   ├── RECORDING_WORKFLOW.md                         │  │
-│  │  │   ├── WEB_WORKFLOW.md                               │  │
-│  │  │   ├── VIEWS_WORKFLOW.md                             │  │
-│  │  │   ├── TU_SYNC_WORKFLOW.md                           │  │
-│  │  │   └── REDHAT_AUDIENCE_WORKFLOW.md                   │  │
+│  │  │   ├── REDHAT_WORKFLOW.md                            │  │
+│  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — 外部系统)            │  │
 │  │  │   ├── outlook-com-skill/    (Outlook COM 后端)      │  │
 │  │  │   ├── minimax-xlsx/     (Excel 读写)                │  │
@@ -159,12 +155,8 @@ BrainClaw/
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── PROCESS_WORKFLOW.md        # 流程匹配、自动推进、学习
-    │   ├── FOLLOWUP_WORKFLOW.md       # 催办 / 追踪 / 提醒
-    │   ├── RECORDING_WORKFLOW.md
-    │   ├── WEB_WORKFLOW.md            # 网页搜索与页面提取 (Tavily)
-    │   ├── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review/digest/timesheet
-│   ├── TU_SYNC_WORKFLOW.md        # 按需 TU 解析和余额同步工作流
-│   └── REDHAT_AUDIENCE_WORKFLOW.md # Red Hat 受众提取与报名审核工作流
+    │   ├── REDHAT_WORKFLOW.md         # Red Hat 受众提取与 TU 账本同步
+    │   └── VIEWS_WORKFLOW.md          # status/owed/waiting/before/review/digest/timesheet
     ├── contacts.md          ⭐ # 联系人唯一数据源（语气、邮箱、角色、流程角色）
     ├── scripts/                 # Python 自动化脚本
     │   ├── dashboard.py            # 启动面板、taskboard、pending、digest、timesheet
@@ -288,11 +280,9 @@ CLAUDE.md (单一可信源 — 启动规则 + 核心策略)
 │  - TASK_WORKFLOW                         │     流程匹配、自动推进、
 │  - EMAIL_WORKFLOW                        │     关键词提取、邮件撰写、
 │  - PROCESS_WORKFLOW                      │     流程学习与固化、成就抽取、
-│  - FOLLOWUP_WORKFLOW                     │     催办自动化、网页搜索、
-│  - RECORDING_WORKFLOW                    │     周报与工时生成、
-│  - WEB_WORKFLOW                          │     按需 TU 台账与余额同步、
-│  - REDHAT_AUDIENCE_WORKFLOW              │     Red Hat 受众提取与报名审核
-│  - VIEWS_WORKFLOW                        │     视图(status/owed/waiting/...)
+│  - REDHAT_WORKFLOW                       │     催办自动化、网页搜索、
+│  - VIEWS_WORKFLOW                        │     周报与工时生成、视图、
+│                                         │     Red Hat 受众与 TU 台账同步
 └──────────────┬───────────────────────────┘
                ↓ （仅在需要 I/O 时调用）
 ┌──────────────────────────────────────────┐

@@ -73,3 +73,5 @@ confirm_submission.py
 dashboard_output.txt
 dashboard.out.txt
 .codex/
+execute_batch_forwards.py
+generate_do188_audience.py

@@ -15,7 +15,7 @@
 **Steps:**
 1. Determine next Task ID (auto-incremented from highest existing T-number in task files)
 2. Extract keywords from content (see [Keyword Extraction Rules](#keyword-extraction-rules))
-3. Match to process template (see [PROCESS_WORKFLOW](PROCESS_WORKFLOW.md)) → suggest RACI roles + initial Current State steps
+3. Match to process template (see [PROCESS_WORKFLOW](PROCESS_WORKFLOW.md)): **READ the matched process file in `assistant_brain/process/{geo}/{process}.md`** → extract RACI roles, process steps, key rules, and email templates.
 3a. **Define Scope** → Write a one-line boundary statement (what belongs in this task and what doesn't). Check active task files for same vendor/geo/topic overlap — if overlap found, sharpen BOTH Scopes to disambiguate. Scope is mandatory; never leave it empty.
 4. Present RACI matrix to user for confirmation
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
@@ -147,3 +147,52 @@
 ## Process Matching
 
 For RACI assignment and process step mapping, see [PROCESS_WORKFLOW](PROCESS_WORKFLOW.md) and [`contacts.md` Process Roles](../contacts.md#process-roles-quick-reference).
+
+---
+
+## Event & Memory Recording
+
+### Record Event
+
+**Trigger:** Task created/completed, meeting, decision, tracking issue.
+
+**Event formats:**
+
+| Event Type | Icon | Source | Format |
+|------------|------|--------|--------|
+| Task Created | 📋 | Derived from `Created:` field | `- **{Wkd Mon DD, YYYY}**: 📋 Created [{TID}](path) - {title}` |
+| Task Completed | ✅ | Derived from `Completed:` field | `- **{Wkd Mon DD, YYYY}**: ✅ Completed [{TID}](path) - {title}` |
+| Task Blocked | 🔴 | Task file Status field | `- **{Wkd Mon DD, YYYY}**: 🔴 Blocked [{TID}](path) - {title}` |
+| Task Update | - | Task file Timeline only | `- **{Wkd Mon DD, YYYY}** [{source}]: {description}` |
+
+> **Note:** Recent Events are derived automatically by `dashboard.py` from task file metadata (Created/Completed fields within a 14-day window). No manual recording needed.
+
+Keep last 12 months, delete older (optional).
+
+### Record Memory
+
+**Trigger:** User preference, repeated mistake, frequent contact.
+
+| File | Trigger | Skip |
+|------|---------|------|
+| `preferences.md` | User explicitly states preference | Technical details |
+| `things_to_avoid.md` | Work mistake repeats 2+ times | Technical errors |
+| `contacts.md` | External contact mentioned 3+ times | Internal colleagues |
+| `tracking.md` | Item requires cross-session monitoring | Temporary states |
+
+**Steps:** 1. Detect candidate → check threshold → 2. Filter (work-related only) → 3. Show user, ask approval → 4. Record if approved.
+
+**things_to_avoid.md entry template:**
+
+```markdown
+## {Title}
+- Context: {When/where}
+- What went wrong: {What failed}
+- Correction: {Right way}
+- Count: {X}/2 [✓ VERIFIED when 2/2]
+```
+
+### Query Flow
+
+- **"What did I do recently?"** → `py -3 assistant_brain/scripts/dashboard.py` → Recent Events section (14-day window).
+- **"What happened with T###?"** → Read task Timeline → check `Created:`/`Completed:` fields for lifecycle dates.

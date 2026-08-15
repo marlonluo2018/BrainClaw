@@ -54,12 +54,8 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  │   ├── TASK_WORKFLOW.md                              │  │
 │  │  │   ├── EMAIL_WORKFLOW.md                             │  │
 │  │  │   ├── PROCESS_WORKFLOW.md                           │  │
-│  │  │   ├── FOLLOWUP_WORKFLOW.md                          │  │
-│  │  │   ├── RECORDING_WORKFLOW.md                         │  │
-│  │  │   ├── WEB_WORKFLOW.md                               │  │
-│  │  │   ├── VIEWS_WORKFLOW.md                             │  │
-│  │  │   ├── TU_SYNC_WORKFLOW.md                           │  │
-│  │  │   └── REDHAT_AUDIENCE_WORKFLOW.md                   │  │
+│  │  │   ├── REDHAT_WORKFLOW.md                            │  │
+│  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — external systems)    │  │
 │  │  │   ├── outlook-com-skill/    (Outlook COM backend)   │  │
 │  │  │   ├── minimax-xlsx/     (Excel I/O)                 │  │
@@ -158,12 +154,8 @@ BrainClaw/
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── PROCESS_WORKFLOW.md        # Process matching, auto-advance, learning
-    │   ├── FOLLOWUP_WORKFLOW.md       # Chase / nudge / remind stakeholders
-    │   ├── RECORDING_WORKFLOW.md
-    │   ├── WEB_WORKFLOW.md            # Web search & page extraction (Tavily)
-    │   ├── VIEWS_WORKFLOW.md           # status/owed/waiting/before/review
-│   ├── TU_SYNC_WORKFLOW.md        # On-demand TU parsing and balance syncs
-│   └── REDHAT_AUDIENCE_WORKFLOW.md # Red Hat audience targeting & enrollment shortlisting workflows
+    │   ├── REDHAT_WORKFLOW.md         # Red Hat audience & TU ledger sync
+    │   └── VIEWS_WORKFLOW.md          # status/owed/waiting/before/review
     ├── contacts.md          ⭐ # Single source of truth for people (tone, email, role, process roles)
     ├── scripts/                 # Python automation scripts
     │   ├── dashboard.py            # Startup display, taskboard, pending, digest, timesheet
@@ -270,12 +262,10 @@ CLAUDE.md (Single source of truth — startup rules + core policies)
 │  - TASK_WORKFLOW                         │     Process matching, auto-advance,
 │  - EMAIL_WORKFLOW                        │     keyword extraction, composition
 │  - PROCESS_WORKFLOW                      │     guidelines, achievement extraction,
-│  - FOLLOWUP_WORKFLOW                     │     process learning & codification,
-│  - RECORDING_WORKFLOW                    │     follow-up automation, web search,
-│  - WEB_WORKFLOW                          │     digest & timesheet generation,
-│  - VIEWS_WORKFLOW                        │     views (status/owed/waiting/...)
-│  - TU_SYNC_WORKFLOW                      │     TU ledger & Smartsheet syncs
-│  - REDHAT_AUDIENCE_WORKFLOW              │     Red Hat audience & enrollment shortlists
+│  - REDHAT_WORKFLOW                       │     process learning & codification,
+│  - VIEWS_WORKFLOW                        │     digest & timesheet generation,
+│                                         │     views (status/owed/waiting/...)
+│                                         │     Red Hat audience & TU ledger sync
 └──────────────┬───────────────────────────┘
                ↓ (only when external I/O needed)
 ┌──────────────────────────────────────────┐

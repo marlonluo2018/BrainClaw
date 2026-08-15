@@ -83,13 +83,10 @@ Before executing ANY operation from the tables below, follow this mandatory sequ
 
 | Operation | Trigger Commands | Workflow |
 |-----------|------------------|----------|
-| Email | "check email", "check new email", "查看邮件", "查看新邮件", "draft", "reply", "forward", "email sync", "同步邮件", "邮件同步" | `../assistant_brain/workflows/EMAIL_WORKFLOW.md` |
-| Task | "create task", "update task", "complete task" | `../assistant_brain/workflows/TASK_WORKFLOW.md` |
+| Email & Follow-up | "check email", "check new email", "查看邮件", "查看新邮件", "draft", "reply", "forward", "email sync", "同步邮件", "邮件同步", "follow up", "催办", "chase", "nudge", "提醒一下" | `../assistant_brain/workflows/EMAIL_WORKFLOW.md` |
+| Task & Recording | "create task", "update task", "complete task", "record event", "archive events" | `../assistant_brain/workflows/TASK_WORKFLOW.md` |
 | Process | "next step", "推进", "下一步", "what process", "create process", "save as process", "固化流程" | `../assistant_brain/workflows/PROCESS_WORKFLOW.md` |
-| Follow-up | "follow up", "催办", "chase", "nudge", "提醒一下" | `../assistant_brain/workflows/FOLLOWUP_WORKFLOW.md` |
-| Recording | "record event", "archive events" | `../assistant_brain/workflows/RECORDING_WORKFLOW.md` |
-| Web | "search", "搜索", "查一下", "look up", "open URL", "查看网页", "抓取" | `../assistant_brain/workflows/WEB_WORKFLOW.md` |
-| TU Sync | "tu sync", "sync tu", "同步TU", "TU更新", "update tu", "tu balance", "TU余额" | `../assistant_brain/workflows/TU_SYNC_WORKFLOW.md` |
+| Red Hat Training | "target audience", "audience targeting", "shortlist", "check enrollment", "roster", "tu sync", "sync tu", "同步TU", "TU更新", "update tu", "tu balance", "TU余额" | `../assistant_brain/workflows/REDHAT_WORKFLOW.md` |
 | Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard`, `digest`, `timesheet` | `../assistant_brain/workflows/VIEWS_WORKFLOW.md` |
 
 ### Skills
