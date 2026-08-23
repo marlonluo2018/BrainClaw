@@ -330,7 +330,8 @@ def format_brief(tasks, skills, processes_grouped, contacts, today, recurring_du
     lines.append(f"Contacts: {contact_str}")
 
     # Task counts
-    standalone_tasks = [t for t in tasks if not t.parent]
+    master_count = sum(1 for t in tasks if not t.parent)
+    sub_count = sum(1 for t in tasks if t.parent)
     all_tasks_flat = tasks
     overdue_count = sum(1 for t in all_tasks_flat if compute_overdue_days(t.due, today.date()))
     owed_out = sum(len(t.asks_out) for t in all_tasks_flat)
@@ -338,7 +339,10 @@ def format_brief(tasks, skills, processes_grouped, contacts, today, recurring_du
 
     stale_count = count_stale_tasks(all_tasks_flat, today.date())
 
-    counts = f"Tasks: {len(all_tasks_flat)} active"
+    if sub_count:
+        counts = f"Tasks: {len(all_tasks_flat)} active ({master_count} master · {sub_count} subtasks)"
+    else:
+        counts = f"Tasks: {len(all_tasks_flat)} active"
     if overdue_count:
         counts += f" · {overdue_count} overdue"
     if stale_count:
@@ -412,7 +416,13 @@ def format_brief(tasks, skills, processes_grouped, contacts, today, recurring_du
         if not filtered_geo_tasks:
             continue
 
-        lines.append(f"### {flag} {geo} ({len(filtered_geo_tasks)})")
+        total_master = len(filtered_geo_tasks)
+        total_subtasks = sum(len(t.subtasks) for t in filtered_geo_tasks)
+        total_geo_tasks = total_master + total_subtasks
+        if total_subtasks > 0:
+            lines.append(f"### {flag} {geo} ({total_geo_tasks}: {total_master} master · {total_subtasks} subtasks)")
+        else:
+            lines.append(f"### {flag} {geo} ({total_master})")
         lines.append("")
 
         # Group by priority
@@ -636,6 +646,8 @@ def load_tasks_with_asks():
         if t.parent and t.parent in task_map:
             parent = task_map[t.parent]
             parent.subtasks.append(t)
+        elif t.parent:
+            t.parent = ""  # Parent archived/closed -> promote to standalone master task
 
     # Collect recurring IDs from scanned tasks for recurring-due check
     recurring_ids_in_use = {st.recurring_id for st in scanned_tasks if st.recurring_id}

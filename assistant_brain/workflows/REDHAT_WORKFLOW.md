@@ -23,27 +23,50 @@
 
 **When:** 2 weeks before course start, OR class registration < 30, OR full employee-base promo needed.
 
-5 mandatory data sources (CLI args in skill):
+5 data sources evaluated (CLI args in skill — parameters default gracefully if a report is unavailable or omitted):
 
 | # | Data Report | Purpose |
 |---|-------------|---------|
 | 1 | Certifications & Badges | Excludes active target cert holders; +100 pts for prereq certs |
 | 2 | Past 1-Year Class Attendance | Excludes learners who attended target class in last 12 months |
 | 3 | Target Course Self-Paced Transcripts | +60 pts for target self-paced completers |
-| 4 | Prerequisite Transcripts | +80 pts for prereq course completers |
+| 4 | Prerequisite Transcripts | +80 pts for prereq course completers (bypassed for foundational courses with no prereqs like DO188) |
 | 5 | Headcount Database (GDMIS PIR) | Base pool; +15~35 pts for skill/role match |
+
+### 📥 5-File Report Input Process (MANDATORY USER PROMPT)
+
+> **⛔ DO NOT AUTO-SCAN FOLDERS:** The agent MUST NOT automatically scan `Downloads/` or workspace folders for report files without asking the user first, as local files may be stale or outdated.
+
+When executing Phase 2 (Target Audience Extraction) or Phase 3 (Participant Shortlist):
+
+1. **Always Prompt the User First:**
+   * Identify the course code for the target class and run `py -3 "assistant_brain/skills/redhat-audience-processor/scripts/course_rules.py" <COURSE_CODE>` (or check the table below) to fetch its exact prerequisite rules.
+   * Prompt the user to provide or confirm the exact paths for the 5 report files (or reply `none` for any unavailable/unneeded report). **In the prompt, explicitly state the target course code and list the exact Tier 1 Certifications and Tier 2 Prerequisite Course Codes for File #4 (`--prereq`) and File #1 (`--cert`)**:
+     - **1. Certificate Data (`--cert`):** T2G / Credly certificate report (filters Tier 1 certs: `{TIER_1_CERTS}`)
+     - **2. Past Attendance (`--past`):** Past 1-Year class attendance report
+     - **3. Target Self-Paced (`--selfpaced`):** Target course self-paced completion report
+     - **4. Prerequisite Transcripts (`--prereq`):** Prerequisite course completion report — **for `{COURSE_CODE}`, filter for Tier 2 courses: `{TIER_2_COURSES}`** *(optional for DO188)*
+     - **5. Headcount Database (`--hc`):** GDMIS PIR headcount database report
+   * Only run the script once the user has provided or confirmed the file paths. Any omitted file (`none`) defaults gracefully.
+
+### ✉️ Standard Batch Promotional Email Template
+
+Use this standardized template when dispatching batch-forward eCard campaigns to target audiences in Phase 2:
+
+```html
+<p>Dear Team,</p>
+<p>We encourage you to enroll in this {COURSE_CODE} {COURSE_NAME} class ({START_DATE}–{END_DATE}). This skills-focused course is highly recommended to boost your {TOPIC_SKILLS} capabilities.</p>
+<p>Please note:<br>
+- Your enrollment will be 'wait-listed' by default.<br>
+- Confirmation is on a first-come, first-served basis, subject to L&K eligibility checks.<br>
+- Confirmed learners will receive a final confirmation email next Monday ({CONFIRMATION_DATE}).</p>
+<p>Enrollment links and details are in the eCard below.</p>
+```
 
 ### Red Hat Course Reference Rules
 
-| Course | Prerequisite Credentials (Tier 1, +100) | Prerequisite Courses (Tier 2, +80) | Target Cert Exclusions (Pass 1) |
-|--------|------------------------------------------|------------------------------------|---------------------------------|
-| DO316 OpenShift Virtualization | EX200, EX280 | DO180, DO280, RH124, RH134, DO188 | EX316 |
-| DO374 Ansible Automation Platform | EX294 / RHCE | RH294, AU294, RH124, RH134 | EX374 |
-| RH294 Linux Automation w/ Ansible | EX200 | RH124, RH134 | EX294 / RHCE / any active Ansible cert |
-| DO288 OpenShift Developer II | EX188, EX180, EX280 | DO188, DO180, DO280 | EX288 |
-| DO280 OpenShift Administration II | EX200 | DO180, RH124, RH134 | EX280 |
-| DO188 Intro to Containers w/ Podman | None (Linux/Unix role priority) | RH124, RH134 | EX188, EX180, EX280, EX288, EX380 |
-| AI267 AI/ML on OpenShift AI | EX280, EX188 | DO280, DO188, DO288 | EX267 |
+> **Single Source of Truth:** Course prerequisite rules and Tier 1 / Tier 2 mappings are maintained in:  
+> 👉 **[`assistant_brain/skills/redhat-audience-processor/references/course_rules.md`](../skills/redhat-audience-processor/references/course_rules.md)**
 
 ### Phase 3: Final Shortlist & Roster Selection
 

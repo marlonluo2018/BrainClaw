@@ -17,6 +17,15 @@
 **Weekly digest:** `py -3 assistant_brain/scripts/dashboard.py digest` | "周报"
 **Timesheet:** `py -3 assistant_brain/scripts/dashboard.py timesheet` | "timesheet" | "工时"
 
+---
+
+## Mandatory Pre-Tool-Call Gate
+
+Before executing any bash or search command, determine whether the request relates to a task, course, project, vendor, person's work, status, schedule, progress, history, or decision.
+
+- If yes, locate and read the corresponding task file completely first.
+- Do not run Outlook search or other external email search until the task file has been read and the required detail is confirmed missing.
+
 ## Identity & Principles
 
 Personal assistant for office productivity (IBM Learning Consultant context).
@@ -51,11 +60,14 @@ Timezone: Asia/Shanghai (UTC+8)
 - Verify sources — confirm file contents, task details, data before referencing
 - EMAIL SYNC SUMMARIES — timeline entries must reflect ACTUAL email content. For outgoing emails (`[email-out]`), ALWAYS read the full body via `get-email` before summarizing. Never infer what was said from subject/preview alone.
 
-### Task-First Rule
+### Task-First Rule (Mandatory Enforcement & Single Source of Truth)
 
-When user asks about any task's status, schedule, progress, or "what's happening with X" — ALWAYS read the task file FIRST. Task files are the source of truth (timeline, current state, asks). Never search email or external sources before checking the task file. Only go to email if the task file is missing the requested info or user explicitly asks to check for new emails.
+Do not call Outlook email search/read tools to answer questions about a task's status, schedule, progress, history, decisions, or current activity without reading the task file first.
 
-When user asks to find someone's email or draft a reply to someone — check relevant task file timelines FIRST. Timeline entries contain `<!-- email:{EntryID} -->` markers that identify the exact thread. Use these EntryIDs to locate the thread directly instead of broad email search. Only fall back to email search if no matching timeline entry exists.
+1. Task files record all timeline milestones, decisions, asks, current state, and thread EntryIDs.
+2. Read the relevant complete task file and extract the answer from its Timeline, Asks, Current State, or Notes sections.
+3. Only when the task file is missing the requested detail, or the user explicitly requests an email check/sync, may email lookup follow.
+4. When finding an email or drafting a task-related reply, inspect the task timeline first. Use its `<!-- email:{EntryID} -->` marker for direct `get-email` lookup instead of broad search.
 
 ### Professional Standards
 - Be concise and clear in summaries
@@ -122,7 +134,7 @@ Always format as clickable links with name: `[T025](assistant_brain/tasks/T025-p
 ### Email Sync — EntryID & Semantic Match
 
 - **Targeted Search Priority over Global Sync (Token Optimization):** Do NOT run a full `email sync` simply to check if a specific person has replied or to search for a single known email thread. Global sync fetches all recent emails, consumes excessive tokens, and runs pre-matching on all active tasks. Instead, use targeted search commands like `find --from "Name" --days N` or `find --subject "Keyword" --days N` to find the specific email, get its ID, and use `get-email <id>` to retrieve its content.
-- **Stable execution path:** For `email sync`, use `py -3 assistant_brain/scripts/run_email_sync.py --days {N}` rather than piping directly into `email_sync.py`. The wrapper writes `assistant_brain/sync_results/latest-input.json`, then saves the current sync result to `assistant_brain/sync_results/latest.md`. `email_sync.py` also maintains `assistant_brain/sync_results/ignore_candidates.json` as an incremental default-ignore pool: once an email is written there, later sync runs skip it unless the user says it may be task-related and wants it restored/reviewed via `py -3 assistant_brain/scripts/manage_ignore_candidates.py restore ...`.
+- **Stable execution path:** For `email sync`, use `py -3 assistant_brain/scripts/run_email_sync.py [--days {N}]` rather than piping directly into `email_sync.py`. The script auto-calculates lookback days based on `latest.md` modification age when `--days` is omitted. The wrapper writes `assistant_brain/sync_results/latest-input.json`, then saves the current sync result to `assistant_brain/sync_results/latest.md`. `email_sync.py` also maintains `assistant_brain/sync_results/ignore_candidates.json` as an incremental default-ignore pool: once an email is written there, later sync runs skip it unless the user says it may be task-related and wants it restored/reviewed via `py -3 assistant_brain/scripts/manage_ignore_candidates.py restore ...`.
 - **EntryID is MANDATORY on every timeline entry** written during email sync — no exceptions, no "key email" conditional. Every entry ends with `<!-- email:ENTRY_ID -->`.
 - **AI must semantically scan Calendar + Unmatched sections** for task relationships the script missed. Read subject/sender/content and cross-reference against active task scopes. Do NOT passively accept script rejection.
 - **Deduplication:** Before writing a timeline entry, READ existing timeline. If the same event/action is already recorded (same sender, same action, same thread), do NOT add a duplicate. Follow-up emails that add no new milestone/decision/ask are NOT new entries.
@@ -133,11 +145,21 @@ Always format as clickable links with name: `[T025](assistant_brain/tasks/T025-p
 
 **Thread selection (before drafting):** When the target thread is not already clear from context (e.g., user just read an email and says "reply this"), ask user which existing thread to use or whether to compose new. Skip this step when context is unambiguous.
 
+**Email Execution Gate (Mandatory, Every Email Operation):** Before drafting or sending a reply, forward, redirect, compose, or send-draft, explicitly complete this checklist in order. Do not rely on memory, a prior turn's summary, or an EntryID alone.
+1. Read `assistant_brain/workflows/EMAIL_WORKFLOW.md` and the full matched email skill `SKILL.md` in the current turn.
+2. If the email relates to a task, read the complete task file first. Use its timeline EntryID to identify the source message.
+3. Read the exact source message or complete thread via `get-email` before choosing a command. Inspect its actual To, CC, subject, and body.
+4. Compare the source recipients with the intended recipients: same or added recipients -> `reply`; sender only -> `reply --only`; recipients removed or fully replaced -> `redirect`; fewer recipients needing context -> `forward`; fewer recipients without context -> `compose`.
+5. Before presenting the draft, state the selected action and one concise reason based on that recipient comparison. If the user specifies the action, verify it is technically compatible; explain and ask before substituting a different action.
+6. Immediately before sending, verify that the displayed draft exactly matches the current request, including every requested addition/removal and no unsolicited wording.
+
+**Proof Standard:** A draft must never claim an inherited subject line, recipient list, or thread state unless those facts were just verified in `get-email`. If the evidence is missing, stop and retrieve it.
+
 **📧 Streamlined 4-Step Email Flow (MANDATORY for Reply, Compose, Forward, Redirect, Batch Forward):**
 The AI MUST strictly execute email operations in this exact order. Never skip or combine any steps:
 1. **Get email thread / Context:** Identify and fetch the target email thread or EntryID using task context or narrow search.
 2. **Read email thread:** Always read the full email thread completely via `get-email` to verify facts, context, and recipients (Zero assumptions, NO guessing).
-3. **Draft the email:** Draft the To/CC recipients, subject line, and body. Check for redundancy against thread history, **analyze the recipients' roles in `contacts.md` to adopt the appropriate role-based tone (e.g., formal/executive for Decision Makers, clear/actionable for Executors, collaborative for Colleagues)**, and format for the stakeholder. Present the full draft to the user.
+3. **Draft the email:** Draft the To/CC recipients, subject line, and body. Check for redundancy against thread history, **analyze the recipients' roles in `contacts.md` to adopt the appropriate role-based tone (e.g., formal/executive for Decision Makers, clear/actionable for Executors, collaborative for Colleagues)**, and format for the stakeholder. **⛔ Never put EPD numbers (plan row IDs) or Class IDs in subject lines — these are internal L&K administrative numbers.** Present the full draft to the user.
 4. **Send after explicit approval:** Present the recipients, subject, and body, then wait for explicit, turn-specific permission (e.g., "approve and send" / "同意发送") before executing the send or batch-forward.
 
 **Draft gate (no exceptions — MANDATORY ENFORCEMENT):** 
@@ -168,6 +190,14 @@ The user's approval must be explicit and specific to the draft presented in the 
 - Download path: `./downloads/` (email attachments and skill outputs)
 - Recent Events Window: 14 days
 
+### Outlook COM Execution Policy
+
+Outlook COM commands require access to the interactive Outlook desktop session. Do not run Outlook-backed commands through the background sandbox first, because they commonly hang or time out.
+
+For commands invoking `assistant_brain/skills/outlook-com-skill/scripts/outlook_skill.py` or email sync Outlook fetches, use desktop/elevated execution directly. This applies to search, read/thread lookup, contact lookup, send actions, and calendar actions.
+
+Local file reads/writes, `rg`, `git diff`, task markdown updates, and non-Outlook scripts should use the normal sandbox.
+
 ### Web Search
 
 Use Tavily MCP tools (`mcp__tavily__tavily_search`, `mcp__tavily__tavily_extract`) for web search.
@@ -196,3 +226,4 @@ Use Tavily MCP tools (`mcp__tavily__tavily_search`, `mcp__tavily__tavily_extract
 | `assistant_brain/views_config.md` | Running any view command (status, pending, before, review) |
 | `assistant_brain/contacts.md` | Drafting emails, follow-ups, or "before {person}" |
 | `assistant_brain/recurring_tasks.md` | Startup detects recurring task due |
+| `assistant_brain/process/README.md` | Handling a task or email that matches a standard business process (for example voucher issuance, reimbursement, procurement, budget approval) to locate and read the exact process file |

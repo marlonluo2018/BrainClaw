@@ -21,7 +21,7 @@
 5. Generate filename: `T{ID}-{keyword1}-{keyword2}.md`
 6. Create task file using template from [`tasks/FORMATS.md`](../tasks/FORMATS.md). **The `## Asks` section (with both `### My Actions` and `### Waiting on Others` subsections) MUST be present**, even if empty. The template includes them — do not strip them out.
 6a. **Email Entry ID (mandatory)** — When a timeline entry originates from an email, append the entry_id as an HTML comment: `<!-- email:{ENTRY_ID} -->`. Retrieve the ID from sync results or via `outlook_skill.py get-email`. Never omit this for email-sourced entries.
-    - ⚠️ **CRITICAL:** `<!-- email:ENTRY_ID -->` comments belong STRICTLY in the `## Timeline` section. **NEVER** append them to any items in the `## Asks` section (`My Actions` / `Waiting on Others`), as they clutter the active taskboard view.
+    - ⚠️ **STRICT RULE:** `<!-- email:ENTRY_ID -->` comments belong STRICTLY in the `## Timeline` section (for tracking & audit logging). **NEVER** append them to any items in the `## Asks` section (`My Actions` / `Waiting on Others`), as `## Asks` is strictly for clean, actionable plan items and commitments.
 6b. **Match-Friendly Metadata** — Ensure these fields are populated for `email_sync.py` auto-matching:
    - **EPD:** Fill if a plan row ID exists (e.g., `1032769`). Pure numeric IDs score 3× in matching.
    - **Tags:** Include the most discriminating identifiers — EPD numbers, course codes (`DO288`), vendor names (`Red Hat`), geo shorthand (`FNC India`), PO numbers. See [Tag Guidelines](../tasks/FORMATS.md#tag-guidelines).

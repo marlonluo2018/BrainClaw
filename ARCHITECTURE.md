@@ -236,11 +236,11 @@ Claude  (semantic judgment: scope validation, ask extraction, task updates)
 
 #### Subject Line Strategy (outgoing emails)
 
-To maximize reply auto-matching, outgoing emails include the highest-priority identifier in the subject:
+To maximize reply auto-matching while protecting internal administrative data, outgoing emails include clear, public identifiers in the subject (**never EPD numbers or Class IDs, as they are internal L&K numbers**):
 
-1. EPD: `[1032769] Red Hat Q3 TU Order` (weight 3.0 on all replies)
-2. Course code: `DO288 Schedule Update — FNC India W5` (weight 1.5)
-3. Vendor + geo: `Temenos TLC — China User Setup` (weight 1.0 each)
+1. Course code: `DO288 Schedule Update — FNC India` (weight 2.0)
+2. Vendor + geo: `Temenos TLC — China User Setup` (weight 1.5)
+3. Topic / Event: `OpenShift AI Skills Training — Aug 31` (weight 1.0)
 
 Replies inherit the subject → entire thread auto-matches back to the correct task.
 
