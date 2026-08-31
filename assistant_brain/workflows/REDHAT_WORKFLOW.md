@@ -74,6 +74,8 @@ Executed exactly 1 week prior to course start.
 
 1. **Download live roster** → `enrollment-downloader` skill: `download_roster.py <class_id>`
 2. **Select participant** → `redhat-audience-processor` skill: `select_participant.py <class_id>` with the 5 data source CLI args (see skill).
+   - If the roster was already downloaded in the same workflow/session, **reuse it** with `--skip-download --input "downloads/class_<class_id>_enrollments.csv"` instead of downloading again.
+   - Only omit `--skip-download` when a fresh live roster refresh is explicitly needed.
    - **Filter 1 (Exclusions):** non-India (Country Code != 744 / email != @in.ibm.com), non-Regular (Type != P), prior completions.
    - **Filter 2 (Scoring):** role fit +30, target band +10, prereq credentials +100. Waitlist position = baseline tiebreaker.
    - **Output:** 🟩 Green (Top 12 Confirmed) · 🟨 Yellow (Backup) · 🟥 Red (Excluded).

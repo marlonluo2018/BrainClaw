@@ -26,6 +26,7 @@
 
 ## PH L&K Colleagues (CC list)
 
+- MEI CHEN CHIN <chinmc@my.ibm.com> — Delivery Learning Consultant / Validation & Voucher Support
 - Ian IBANA <ibanaje@ph.ibm.com> — Delivery Learning Consultant, FutureNow PH | Dept: LK9 | Mobile: +63-9988693557
 - ERDA FRANCES AFABLE <afableer@ph.ibm.com> — L&K Leader, CIC Philippines | Dept: LK8 | Mobile: +63-917-883-8389
 - Lani PEDRO <pedroml@ph.ibm.com> — Delivery Learning Consultant, FutureNow Centers (PH & China) | Dept: LK9 | Mobile: +63-917-857-0611
