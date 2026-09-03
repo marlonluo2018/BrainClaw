@@ -9,7 +9,6 @@
 BrainClaw is a personal AI assistant system designed for office productivity. It uses a **Brain File System** architecture where knowledge, workflows, and skills are stored as markdown files, enabling the AI to read and execute operations dynamically.
 
 ### Key Features
-- **Memory-driven learning**: Remembers user preferences and avoids past mistakes
 - **Workflow orchestration**: Multi-step operations guided by workflow files
 - **Skill-based extensibility**: Modular skills for specific functionalities
 - **Task management**: Comprehensive task tracking with RACI stakeholder mapping
@@ -29,9 +28,8 @@ BrainClaw is a personal AI assistant system designed for office productivity. It
 ┌─────────────────────────────────────────────────────────────┐
 │                    Brain Files                               │
 │  ┌──────────────────────────────────────────┐              │
-│  │         Memory Files                     │              │
-│  │  preferences | things_to_avoid |         │              │
-│  │  contacts | achievements                 │              │
+│  │         Core Context & Tasks             │              │
+│  │  contacts | tasks | process definitions  │              │
 │  └──────────────────────────────────────────┘              │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -75,12 +73,6 @@ BrainClaw/
 ├── assistant_brain/              # Core brain directory
 │   ├── recurring_tasks.md        # Recurring task definitions
 │   ├── views_config.md           # View thresholds & display config
-│   │
-│   ├── memory/                   # Learning & persistence
-│   │   ├── preferences.md        # User preferences
-│   │   ├── things_to_avoid.md    # Cognitive blind-spot patterns
-│   │   ├── achievements.md       # 述职 fact base
-│   │   └── vendor-accounts.md    # Vendor portal credentials
 │   │
 │   ├── workflows/                # Orchestration + business logic
 │   │   ├── TASK_WORKFLOW.md
@@ -127,32 +119,17 @@ BrainClaw/
 
 All behavioral rules, user config, and operational policies live in `CLAUDE.md` (always in context). Workflows and skills are loaded on-demand per the routing table in CLAUDE.md.
 
-### 4.2 Memory System
-
-The memory system enables persistent learning across sessions. Memory files hold **user-derived data** that the system learns over time — distinct from system config (which lives at `assistant_brain/` root).
-
-| File | Trigger | Purpose |
-|------|---------|---------|
-| `memory/preferences.md` | User explicitly states preference | Store work preferences (tone, language, formatting) |
-| `memory/things_to_avoid.md` | Recurring failure mode (Pattern) OR composition Don't | Drives blind-spot prompts; tactical output Don'ts |
-| `memory/achievements.md` | Auto-fed from Complete Task; manual additions also welcome | 述职 fact base, used by `review` view command |
-| `memory/vendor-accounts.md` | Vendor portal credentials discovered | Vendor login info for procurement portals |
-
-**Note:** `views_config.md` (view thresholds + defaults) is **not** memory — it's system config. Lives at `assistant_brain/` root.
-
-**Recording Threshold**: See `TASK_WORKFLOW.md` (Event & Memory Recording)
-
-### 4.3 Workflows
+### 4.2 Workflows
 
 Workflows hold **all business logic** and step-by-step procedures. They orchestrate work and call I/O skills directly when external system access is needed.
 
 | Workflow | Purpose | I/O Skills Used |
 |----------|---------|-----------------|
-| `TASK_WORKFLOW.md` | Task CRUD, keyword extraction, achievement extraction on completion, event & memory recording | (none — pure file ops) |
+| `TASK_WORKFLOW.md` | Task CRUD, keyword extraction, event recording | (none — pure file ops) |
 | `EMAIL_WORKFLOW.md` | Email processing, geo detection, composition rules, email→task asks/decisions extraction, Key Email Criteria for EntryID tracking, stale-task follow-up | `outlook-com-skill` |
 | `PROCESS_WORKFLOW.md` | Process matching, auto-advance suggestions, process learning from email patterns, codification | (none — pure file ops) |
-| `REDHAT_WORKFLOW.md` | Red Hat audience targeting & shortlisting (4-phase lifecycle, course exclusion tables), TU ledger sync, Smartsheet balance | `redhat-audience-processor`, `enrollment-downloader`, `outlook-com-skill` |
-| `VIEWS_WORKFLOW.md` | Per-task and cross-task views: status, owed, waiting, before, review/述職, digest, timesheet | (none — pure file ops) |
+| `REDHAT_WORKFLOW.md` | Red Hat audience targeting & shortlisting (4-phase lifecycle, course exclusion tables) | `redhat-audience-processor`, `enrollment-downloader`, `outlook-com-skill` |
+| `VIEWS_WORKFLOW.md` | Per-task and cross-task views: status, owed, waiting, before, digest, timesheet | (none — pure file ops) |
 
 **Design Pattern:**
 ```markdown
@@ -463,16 +440,6 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 
 3. **Register in `process/README.md`** index — add one row filling Process / File / **Keywords** / Description columns. This is the single authoritative registration point: `scripts/shared_config.py` parses the README table at import time to build `PROCESS_MATCH_RULES` (used by followup/dashboard), so no script edits are needed. Do NOT hardcode process mappings anywhere else.
 
-### 5.4 Adding a New Memory Type
-
-1. **Create file**: `memory/[type].md`
-
-2. **Define structure and purpose**
-
-3. **Update `TASK_WORKFLOW.md`** memory types table (Event & Memory Recording section)
-
-4. **Update `CLAUDE.md`** to load at startup
-
 ---
 
 ## 6. Design Principles
@@ -482,7 +449,6 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 | Layer | Responsibility | Example |
 |-------|---------------|---------|
 | System Prompt | Startup & loading rules | CLAUDE.md |
-| Memory | Learned preferences & patterns | preferences, things_to_avoid, achievements |
 | Workflows | Orchestration + business logic | TASK_WORKFLOW, EMAIL_WORKFLOW, PROCESS_WORKFLOW, REDHAT_WORKFLOW, VIEWS_WORKFLOW |
 | Skills | I/O against external systems | outlook-com-skill, minimax-xlsx |
 | Data | Persistence | Task files, contacts, processes |
@@ -503,14 +469,7 @@ Skills are reserved for I/O against external systems. If a capability can be exp
 - Calendar changes
 - Destructive operations
 
-### 6.4 Memory-Driven Learning
-
-- Read memory files at startup
-- Learn from interactions
-- Update memory after significant events
-- Avoid repeated mistakes
-
-### 6.5 Clickable References
+### 6.4 Clickable References
 
 Always format IDs as clickable links:
 ```
@@ -542,14 +501,7 @@ Always format IDs as clickable links:
 - Be explicit about which skill performs each action
 - Keep steps atomic and clear
 
-### 7.4 Memory Recording
-
-- Check thresholds before recording
-- Get user approval for new memories
-- Keep entries concise and actionable
-- Review and clean periodically
-
-### 7.5 Task Management
+### 7.4 Task Management
 
 - Use correct status symbols
 - Update status promptly
@@ -562,15 +514,11 @@ Always format IDs as clickable links:
 
 ```
 1. Run dashboard script (py -3 assistant_brain/scripts/dashboard.py)
-2. Load memory files (preferences, things_to_avoid)
-3. Load task context (queue.md, recurring_tasks.md)
-4. Load contacts (contacts.md)
-5. Load process index (process/README.md)
-6. Query OS for local date/time
-7. Archive old events
-8. Parse recurring tasks
-9. Scan skill frontmatter (skills/*/SKILL.md)
-10. Output startup status
+2. Load task context (recurring_tasks.md)
+3. Load contacts (contacts.md)
+4. Load process index (process/README.md)
+5. Query OS for local date/time
+6. Output startup status
 ```
 
 **Output Format**:

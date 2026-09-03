@@ -150,7 +150,7 @@ For RACI assignment and process step mapping, see [PROCESS_WORKFLOW](PROCESS_WOR
 
 ---
 
-## Event & Memory Recording
+## Event Recording
 
 ### Record Event
 
@@ -168,29 +168,6 @@ For RACI assignment and process step mapping, see [PROCESS_WORKFLOW](PROCESS_WOR
 > **Note:** Recent Events are derived automatically by `dashboard.py` from task file metadata (Created/Completed fields within a 14-day window). No manual recording needed.
 
 Keep last 12 months, delete older (optional).
-
-### Record Memory
-
-**Trigger:** User preference, repeated mistake, frequent contact.
-
-| File | Trigger | Skip |
-|------|---------|------|
-| `preferences.md` | User explicitly states preference | Technical details |
-| `things_to_avoid.md` | Work mistake repeats 2+ times | Technical errors |
-| `contacts.md` | External contact mentioned 3+ times | Internal colleagues |
-| `tracking.md` | Item requires cross-session monitoring | Temporary states |
-
-**Steps:** 1. Detect candidate → check threshold → 2. Filter (work-related only) → 3. Show user, ask approval → 4. Record if approved.
-
-**things_to_avoid.md entry template:**
-
-```markdown
-## {Title}
-- Context: {When/where}
-- What went wrong: {What failed}
-- Correction: {Right way}
-- Count: {X}/2 [✓ VERIFIED when 2/2]
-```
 
 ### Query Flow
 

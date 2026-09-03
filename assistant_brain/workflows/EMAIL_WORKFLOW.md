@@ -91,7 +91,14 @@ Analyze the original TO/CC list and intended audience, then pick autonomously:
 
 ### Send Safely
 
-> Shell-safe transport syntax (`--body-base64`, `--body-file`, `--no-attachments`) lives in `outlook-com-skill/SKILL.md` Ã¢â‚¬â€ use those command patterns there. Key rules: prefer in-memory Base64 over temp files; direct `--body` only for short single-line HTML; never pipe non-ASCII strings via stdin.
+> **⚠️ SHELL-SAFE BODY POLICY (MANDATORY):**
+> NEVER embed unescaped email text inside Bash or PowerShell strings (`powershell -Command "..."` or `$body = "..."`). Any dollar sign (e.g. `$60`, `$500`, `$15,000`) is parsed by Bash/PowerShell as an empty variable, causing text corruption (e.g. `$60` turning into `0`).
+>
+> **Mandatory execution paths for sending/replying/forwarding:**
+> 1. **Python Inline Base64 (Preferred):** Use Python to encode the string into Base64 and call `outlook_skill.py --body-base64 <b64>` directly.
+> 2. **Body File:** Write the body to a file in `./downloads/` and pass `--body-file "downloads/body.html"`.
+> 
+> Detailed transport syntax lives in `outlook-com-skill/SKILL.md`.
 
 - **Forward:** add `--no-attachments` to strip heavy/irrelevant original attachments.
 - Avoid emojis/decorative Unicode in business emails unless explicitly requested.

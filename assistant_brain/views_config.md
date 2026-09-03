@@ -1,6 +1,6 @@
 # Views Config
 
-> Thresholds and display preferences for view commands (`status`, `owed`, `waiting`, `before`, `review`). The view workflow MUST read this file before computing — never hardcode thresholds elsewhere.
+> Thresholds and display preferences for view commands (`status`, `owed`, `waiting`, `before`). The view workflow MUST read this file before computing — never hardcode thresholds elsewhere.
 >
 > **Implementation:** Scripts consume these values via `assistant_brain/scripts/shared_config.py`. If thresholds change here, update `shared_config.py` to match.
 
@@ -29,7 +29,7 @@
 | High Power stakeholder | 1 day past `response_due` |
 | Medium Power | 2 days past `response_due` |
 | Low Power / unknown | 3 days past `response_due` |
-| No `response_due` set | Use [Follow-up Timing](memory/preferences.md) standard: 3-5 business days from ask date |
+| No `response_due` set | Standard: 3-5 business days from ask date |
 
 ---
 
@@ -85,23 +85,10 @@ If a section has no content, omit it (don't print "(none)").
 
 ---
 
-## Review / 述职 Defaults
-
-`review {period}` (e.g., `review Q2 2026`, `半年述职`, `annual review 2026`):
-- Read [achievements.md](memory/achievements.md) entries in period
-- Group by category (already in achievements format)
-- Read tone preference from [preferences.md](memory/preferences.md)
-- Output two formats sequentially:
-  1. **Bullet summary** (for self-review tracking)
-  2. **Narrative draft** (述职 paragraph form, in user's preferred tone)
-- Always show task ID linkbacks `[T###]` so user can verify details
-
----
-
 ## Notes for AI
 
 - **Startup is minimal.** Only overdue tasks (`**Due:**` < today) are listed by ID at startup. No global dashboard, no per-task status lines.
-- **All operations are read-time and focus-driven.** `status T###` reads one task file. `owed` / `waiting` use a single Grep across `tasks/T*.md`. `before {person}` greps for the person's name then reads only the matching subset. `review` reads `achievements.md`.
+- **All operations are read-time and focus-driven.** `status T###` reads one task file. `owed` / `waiting` use a single Grep across `tasks/T*.md`. `before {person}` greps for the person's name then reads only the matching subset.
 - **Never store view results.** Always recompute from task files + grep + this config.
 - **Empty sections collapse.** Don't print headings for sections with zero items.
 - **All thresholds are user-tunable.** If user says "make P1 staleness 5 days", update this file, not workflow files.

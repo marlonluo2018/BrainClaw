@@ -63,7 +63,6 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  │   ├── enrollment-downloader/ (报名名册下载)          │  │
 │  │  │   └── skill-creator/    (新技能脚手架)              │  │
 │  │  ├── tasks/                (任务队列)                  │  │
-│  │  ├── memory/               (偏好记忆)                  │  │
 │  │  └── process/              (操作流程)                  │  │
 │  └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
@@ -75,16 +74,13 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 |------|------|
 | **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、RACI 利益相关方、父子关系、结构化 `Asks`（我欠的 / 别人欠我的）|
 | **任务优先规则** | 当被询问任何任务的状态、排期或进度时，系统**总是**首先检查任务文件（单一可信源），然后再检索邮件或外部资源。 |
-| **视图引擎** | `status T###`（或直接 `T###`）/ `待我处理` / `等待` / `before {人}` / `review` / `digest` / `timesheet` —— 跨任务揭示逾期、欠回复、述职素材、周报和工时 |
+| **视图引擎** | `status T###`（或直接 `T###`）/ `待我处理` / `等待` / `before {人}` / `digest` / `timesheet` —— 跨任务揭示逾期、欠回复、待办事项、周报和工时 |
 | **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。三级匹配：ConversationID 线程 → 任务联系人 → 关键词+地区。自动抽取 ask/decision/deadline 写入任务。邮件同步使用稳定的包装脚本（`py -3 assistant_brain/scripts/run_email_sync.py`），支持保存 `latest-input.json`、`latest.md` 以及维护增量忽略候选池 `ignore_candidates.json`。所有发送命令自动输出 EntryID 供 Timeline 追踪 |
 | **精简四步邮件流** | 邮件发送/回复的强制流：1. 获取线程/上下文 → 2. 通过 `get-email` 完整读取历史邮件（零猜测、无假定）→ 3. 撰写草稿（To/CC、Subject、纯文本正文；“无冗余原则”防止重复已有参数事实）→ 4. **仅**在当前轮次获得显式授权批复后执行发送。 |
 | **邮件线程追踪** | 基于 ConversationID 的线程匹配——邮件一旦关联到任务，同线程后续邮件自动命中 |
 | **关联邮件发现** | 多策略搜索（线程 + 发件人 + 关键词）实现跨线程发现 |
 | **报名名册与短名单** | 基于 Playwright 自动下载 YourLearning 课程报名名册。评估注册情况、自动交叉比对人员 headcount 数据库、排除历史重复/非正式/非特定 geo 员工、按照职级和岗位打分，并向 Excel 导出高亮显色、清晰明了的学员入选（绿色）与备份名单（黄色），方便与 LDM 分享。 |
-| **TU 同步与余额台账** | 按需追踪红帽 Training Units (TU)。自动扫描来自 `no-reply@training.redhat.com` 的订单确认邮件，将其中的订单行、TU 数量、所属 TUA 账号解析进参考台账 `redhat-tu-tracking.md`。交叉比对来自 `automation@app.smartsheet.com` 的 Smartsheet 余额快照，更新余额并对额度告急触发预警。 |
 | **Blue Pages 员工查询** | 通过 IBM W3 Unified Profile/Blue Pages API 快速查询 CNUM、员工类型、上下级汇报关系（经理和下属）、Slack 账号和 HR 在职状态。 |
-| **记忆系统** | 用户偏好、认知盲点模式、外部联系人、成就（述职事实库）|
-| **成就自动捕获** | 任务完成时 AI 从 `[decision]` / `[milestone]` / `[delivery]` 标签的 Timeline 抽取述职素材 |
 | **流程智能** | 自动匹配任务到流程模板，建议下一步行动+联系人。Email sync 时检测未记录的流程步骤，重复模式自动固化为流程文件 |
 | **催办自动化** | 检测超期任务，自动起草语气适配的催办邮件，追踪催办历史 |
 | **网页搜索与浏览** | 通过 Tavily MCP 搜索网页、提取页面内容、爬取站点、深度调研 |
@@ -146,17 +142,14 @@ BrainClaw/
     ├── recurring_tasks.md    ⭐ # 定期任务定义
     ├── formats/
     │   └── EMAIL_SYNC_FORMAT.md        # 邮件同步排版规范
-    ├── references/
-    │   ├── redhat-tu-tracking.md       # TU 消费追踪台账与规范
-    │   └── redhat_audience_filtering_rules.md # 大型宣贯推广的受众筛选与评分规则
     ├── process/
     │   └── README.md         ⭐ # 流程索引（按地区分组）
     ├── workflows/               # 编排 + 业务逻辑（按需加载）
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── PROCESS_WORKFLOW.md        # 流程匹配、自动推进、学习
-    │   ├── REDHAT_WORKFLOW.md         # Red Hat 受众提取与 TU 账本同步
-    │   └── VIEWS_WORKFLOW.md          # status/owed/waiting/before/review/digest/timesheet
+    │   ├── REDHAT_WORKFLOW.md         # Red Hat 受众提取与短名单筛选
+    │   └── VIEWS_WORKFLOW.md          # status/owed/waiting/before/digest/timesheet
     ├── contacts.md          ⭐ # 联系人唯一数据源（语气、邮箱、角色、流程角色）
     ├── scripts/                 # Python 自动化脚本
     │   ├── dashboard.py            # 启动面板、taskboard、pending、digest、timesheet
@@ -165,11 +158,6 @@ BrainClaw/
     │   ├── manage_ignore_candidates.py # 管理和恢复被默认忽略的同步邮件
     │   ├── followup.py             # 超期任务检测（供催办工作流使用）
     │   └── shared_config.py        # 集中管理脚本与文件路径配置
-    ├── memory/                  # 用户衍生数据（系统从用户身上学到的）
-    │   ├── preferences.md       ⭐ # 用户偏好（语气、时间格式等）
-    │   ├── things_to_avoid.md   ⭐ # 认知盲点模式 + 战术 Don'ts
-    │   ├── achievements.md         # 述职事实库（任务完成时自动喂养）
-    │   └── vendor-accounts.md      # 供应商门户账号与凭证
     ├── skills/                  # 与外部系统交互的 I/O
     │   ├── outlook-com-skill/      # Outlook COM — Python 后端 + CLI
     │   │   ├── SKILL.md            #   命令参考
@@ -194,8 +182,6 @@ BrainClaw/
 
 | 文件 | 用途 |
 |------|------|
-| `memory/preferences.md` | 用户偏好 |
-| `memory/things_to_avoid.md` | 认知盲点模式 + 战术 Don'ts |
 | `views_config.md` | 视图命令的阈值与默认值 |
 | `tasks/queue.md` | 活跃任务与近期事件 |
 | `recurring_tasks.md` | 定期任务定义 |
@@ -219,8 +205,6 @@ BrainClaw/
 | **会前预备** | "见 Beng 之前"、"明天 and Mridul 开会前"、"下午要见 X"、"before Beng" | 拉所有该人相关任务 + 议程草稿 |
 | **员工/部门查询** | "who is Beng"、"bluepages HONG YANG"、"reports to X" | 通过 Blue Pages 查询 Profile 详情、Slack、汇报关系和组织结构 |
 | **班级名册/评估** | "download roster T134"、"check enrollment 10580795"、"evaluate roster" | 连接浏览器自动下载名册、交叉比对人员信息并输出带高亮显色的短名单 Excel |
-| **TU 同步/余额** | "tu sync"、"sync tu"、"tu balance"、"TU余额" | 解析红帽订单确认邮件、比对 Smartsheet 额度、自动更新台账并发送余额状态与告警 |
-| **述职 / 总结** | "述职"、"半年述职"、"Q2 做了啥"、"总结这半年"、"年度总结"、"review Q2 2026" | bullet 概要 + narrative 草稿,从 achievements.md 整理 |
 | **看完整任务清单** | "全部任务"、"完整队列"、"show all" | 重新渲染启动同款分组任务列表 |
 | **任务操作** | "新建任务"、"完成 T033"、"block T040"、"create/update/complete/block task" | 任务生命周期 |
 | **流程推进** | "next step T033"、"推进 T033"、"下一步"、"固化流程" | 匹配流程模板，建议下一步行动+联系人；固化重复模式 |
@@ -256,18 +240,6 @@ BrainClaw 使用智能关键字系统帮助你追溯任务来源：
 - ✅ 好的：`Req 11695, Informatica PowerCenter` → 唯一请求
 - ❌ 不好：`certification, approval, Salesforce` → 找到数百封邮件
 
-## 记忆系统
-
-BrainClaw 跨会话学习和记忆：
-
-| 记忆文件 | 用途 |
-|----------|------|
-| `memory/preferences.md` | 用户偏好（时区、语气、时间格式）|
-| `memory/things_to_avoid.md` | **Patterns**(认知盲点)+ **Tactical Don'ts**(输出格式错误)|
-| `memory/achievements.md` | 述职事实库 — 任务完成时自动喂养;季度 × 类别两轴结构 |
-| `memory/vendor-accounts.md` | 供应商门户账号与凭证参考 |
-| `views_config.md` | (不是 memory — 系统配置) 视图命令的阈值和默认值。位于 `assistant_brain/` 根目录,不在 memory/ 下。 |
-
 ## 架构：工作流与技能
 
 BrainClaw 采用分层架构，更好地组织代码：
@@ -279,10 +251,9 @@ CLAUDE.md (单一可信源 — 启动规则 + 核心策略)
 │  Workflows（编排 + 业务逻辑）            │  ← 所有业务逻辑都在这里
 │  - TASK_WORKFLOW                         │     流程匹配、自动推进、
 │  - EMAIL_WORKFLOW                        │     关键词提取、邮件撰写、
-│  - PROCESS_WORKFLOW                      │     流程学习与固化、成就抽取、
-│  - REDHAT_WORKFLOW                       │     催办自动化、网页搜索、
-│  - VIEWS_WORKFLOW                        │     周报与工时生成、视图、
-│                                         │     Red Hat 受众与 TU 台账同步
+│  - PROCESS_WORKFLOW                      │     流程学习与固化、催办自动化、
+│  - REDHAT_WORKFLOW                       │     网页搜索、周报与工时生成、
+│  - VIEWS_WORKFLOW                        │     视图、Red Hat 受众与短名单筛选
 └──────────────┬───────────────────────────┘
                ↓ （仅在需要 I/O 时调用）
 ┌──────────────────────────────────────────┐

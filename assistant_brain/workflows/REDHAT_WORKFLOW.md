@@ -1,12 +1,12 @@
 # Red Hat Training Workflow
 
-> Red Hat Training operations domain: **audience targeting & shortlisting** + **Training Unit (TU) ledger sync**.
+> Red Hat Training operations domain: **audience targeting & shortlisting**.
 >
 > **Script execution** (extract/select CLI args) lives in `skills/redhat-audience-processor/SKILL.md` — load it before running any script.
 
 ---
 
-## Part A: Audience Targeting & Enrollment Shortlist
+## Audience Targeting & Enrollment Shortlist
 
 > **Lifecycle** applies to Red Hat training classes in FNC India.
 
@@ -81,44 +81,3 @@ Executed exactly 1 week prior to course start.
    - **Output:** 🟩 Green (Top 12 Confirmed) · 🟨 Yellow (Backup) · 🟥 Red (Excluded).
 3. **Handoff to LDM** → share color-coded Excel with LDM B Sowmya for LMS confirmation + RHID/registration dispatch.
 
----
-
-## Part B: Training Unit (TU) Ledger Sync
-
-> On-demand sync of Red Hat TU consumption from email notifications into the reference ledger.
-
-**Reference file:** `assistant_brain/references/redhat-tu-tracking.md`
-
-### TU Sync
-
-**Triggers:** "tu sync", "sync tu", "同步TU", "TU更新", "update tu"
-
-1. **Read reference file** → get "Next sync" boundary + processed order numbers list.
-2. **Load email skill** → search emails from `no-reply@training.redhat.com` dated after the boundary date.
-3. **Filter new orders** → for each email: extract order number (subject `Your Red Hat Training order {ORDER_NUM} is confirmed`), skip if already processed; extract Order #, Line #, Learner, Course, Start, End, TUs, TUA account.
-4. **Update reference file** → append rows to correct TUA section, update TUA subtotal (Used/Left) + Balance Summary, add order number to processed list.
-5. **Update sync metadata** → "Last Updated", Sync Log row, advance "Next sync" boundary.
-6. **Report:**
-   ```
-   TU Sync Complete
-   Emails checked: {count} | New orders found: {count} | TUs consumed: {total}
-   Balance changes: - {TUA}: {old_left} → {new_left}
-   Alerts: - {any TUA with Left < 50}
-   ```
-
-### Smartsheet Balance Update
-
-**Triggers:** "tu balance", "TU余额", "smartsheet balance"
-
-1. Read reference file → current balances.
-2. Search latest email from `automation@app.smartsheet.com` containing "Training Unit".
-3. Extract TUA balances from Smartsheet notification.
-4. **Cross-reference** vs calculated balances — Smartsheet is authoritative for total Used/Left.
-5. Update Balance Summary if divergent; report discrepancies + corrections.
-
-### TU Notes
-
-- Each email may contain multiple line items (same order, different lines).
-- TUA assignment in body: `Training Unit Account: {TUA_ID}`.
-- "Total Training Units used to Date" = batch snapshot — use to cross-check Left.
-- Near-depletion threshold: Left < 50 TUs → flag alert.

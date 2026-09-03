@@ -55,7 +55,7 @@ The fundamental realization of the enterprise roadmap is that **the input source
 ```
 
 *   **Organizational Process Assets (组织过程资产 - OPA)**:
-    *   *SOP Processes (`process/`)* and *Standard Ledgers (`references/`)* represent corporate compliance rules and data. They are immutable to the end-user and managed centrally.
+    *   *SOP Processes (`process/`)* represent corporate compliance rules and data. They are immutable to the end-user and managed centrally.
 *   **Personal Productivity Assets (个人生产力资产)**:
     *   Under email-driven modes, workflows are personal because emails are non-standard and highly customized to individual habits. The workflow serves as Marlon's "cognitive patch".
 *   **Transition to Organizational Workflow (向组织资产转化)**:
@@ -125,11 +125,11 @@ Even without immediate server resources or budget, a non-technical business doma
 ### 7.1 Immediate Action Plan for Non-Technical Users (非技术用户的零门槛起步)
 
 1.  **Physical Isolation of Process Files (公司共享网盘隔离)**:
-    *   Move standard corporate procedures (`process/`) and standard shared databases (`references/redhat-tu-tracking.md`) into a shared corporate directory (e.g., **SharePoint or Microsoft Teams Shared Folder**).
-    *   Keep only your own active task queues (`tasks/queue.md`) and personal memory configurations (`memory/preferences.md`) on your local machine.
+    *   Move standard corporate procedures (`process/`) into a shared corporate directory (e.g., **SharePoint or Microsoft Teams Shared Folder**).
+    *   Keep only your own active task queues (`tasks/queue.md`) on your local machine.
     *   *Result*: This establishes a clean OPA-vs-Personal boundary. Other team members can map their BrainClaw workspaces to the same SharePoint folder to share centralized assets, preventing local fragmentation.
 2.  **Prompt-Driven "Base-Override" Isolation (自然语言基线隔离)**:
-    *   You do not need to write complex Python hooks. Declare logical segregation directly inside your `memory/preferences.md` using plain language:
+    *   You do not need to write complex Python hooks. Declare logical segregation directly inside prompt instructions using plain language:
         > *"When executing the standard `ENROLLMENT_WORKFLOW` (from SharePoint), always follow the corporate scoring criteria first. Once complete, execute my personal preference override: automatically copy the output Excel sheet to my personal Desktop backup folder and draft a customized, friendly MS Teams message to Sowmya for my review."*
     *   *Result*: The AI dynamically weaves your individual work habits at the tail-end of the standardized read-only workflow.
 3.  **Data Formats Standardization (数据契约标准化)**:

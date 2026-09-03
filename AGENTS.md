@@ -103,8 +103,8 @@ Before executing ANY operation from the tables below, follow this mandatory sequ
 | Email & Follow-up | "check email", "check new email", "查看邮件", "查看新邮件", "draft", "reply", "forward", "email sync", "同步邮件", "邮件同步", "follow up", "催办", "chase", "nudge", "提醒一下" | `assistant_brain/workflows/EMAIL_WORKFLOW.md` |
 | Task & Recording | "create task", "update task", "complete task", "record event", "archive events" | `assistant_brain/workflows/TASK_WORKFLOW.md` |
 | Process | "next step", "推进", "下一步", "what process", "create process", "save as process", "固化流程" | `assistant_brain/workflows/PROCESS_WORKFLOW.md` |
-| Red Hat Training | "target audience", "audience targeting", "shortlist", "check enrollment", "roster", "tu sync", "sync tu", "同步TU", "TU更新", "update tu", "tu balance", "TU余额" | `assistant_brain/workflows/REDHAT_WORKFLOW.md` |
-| Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `review`, `taskboard`, `digest`, `timesheet` | `assistant_brain/workflows/VIEWS_WORKFLOW.md` |
+| Red Hat Training | "target audience", "audience targeting", "shortlist", "check enrollment", "roster" | `assistant_brain/workflows/REDHAT_WORKFLOW.md` |
+| Views | `status T###`, `pending`, `pending out`, `pending in`, `before {person}`, `taskboard`, `digest`, `timesheet` | `assistant_brain/workflows/VIEWS_WORKFLOW.md` |
 
 ### Skills
 
@@ -129,6 +129,14 @@ powershell -Command "$d=Get-Date; $days=($d.DayOfWeek.value__+2)%7; if($days -eq
 # N days ago (e.g., 3)
 powershell -Command "(Get-Date).AddDays(-3).ToString('yyyy-MM-dd')"
 ```
+
+### Send Safely & Shell-Safe Body Rule (MANDATORY)
+
+- **NEVER embed unescaped email body strings in Bash/PowerShell commands (e.g. `powershell -Command "..."` or `$body = "..."`).**
+- Any dollar sign (e.g., `$60`, `$500`, `$15,000`) or special character will be interpreted by Bash/PowerShell as an empty variable or syntax token, causing critical text corruption (e.g. `$60 USD` turning into `0 USD`).
+- **Approved execution paths:**
+  1. **File-based Body (Preferred):** Write the HTML body to `downloads/body.html` using file tools, then call `outlook_skill.py ... --body-file "downloads/body.html"`.
+  2. **Python inline Base64:** `py -3 -c "import base64, subprocess, sys; b64 = base64.b64encode('''<body>'''.encode('utf-8')).decode('ascii'); sys.exit(subprocess.call(['py', '-3', 'assistant_brain/skills/outlook-com-skill/scripts/outlook_skill.py', '<action>', '<id>', '--body-base64', b64, ...]))"`
 
 ### Identity Lookups
 
@@ -227,7 +235,7 @@ Use Tavily MCP tools (`mcp__tavily__tavily_search`, `mcp__tavily__tavily_extract
 | File | Load when |
 | ---- | --------- |
 | `assistant_brain/tasks/FORMATS.md` | Creating or updating tasks |
-| `assistant_brain/views_config.md` | Running any view command (status, pending, before, review) |
+| `assistant_brain/views_config.md` | Running any view command (status, pending, before) |
 | `assistant_brain/contacts.md` | Drafting emails, follow-ups, or "before {person}" |
 | `assistant_brain/recurring_tasks.md` | Startup detects recurring task due |
 | `assistant_brain/process/README.md` | Handling any task or email that matches a standard business process (e.g. voucher issuance, reimbursement, procurement, budget approval) to locate and read the exact process file `assistant_brain/process/{geo}/{process}.md` |

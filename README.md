@@ -63,7 +63,6 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  │   ├── enrollment-downloader/ (Classroom rosters)    │  │
 │  │  │   └── skill-creator/    (scaffold new skills)       │  │
 │  │  ├── tasks/                (task queue)                │  │
-│  │  ├── memory/               (preferences)               │  │
 │  │  └── process/              (operational processes)     │  │
 │  └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
@@ -75,16 +74,13 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 |---------|-------------|
 | **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, RACI stakeholders, Parent-Child relationships, structured `Asks` (owed by me / owed to me) |
 | **Task-First Rule** | When asked about a task's status, schedule, or progress, the system ALWAYS checks the task file first (the single source of truth) before checking email or other resources. |
-| **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `review`, `digest`, `timesheet` — surface what's overdue, owed, and 述职-worthy across all tasks |
+| **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `digest`, `timesheet` — surface what's overdue, owed, and pending across all tasks |
 | **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. Three-tier matching: ConversationID thread → task contacts → keyword+geo. Auto-extracts asks/decisions/deadlines into task slots. Email sync now uses a stable wrapper command (`py -3 assistant_brain/scripts/run_email_sync.py`) that manages `assistant_brain/sync_results/latest-input.json`, `assistant_brain/sync_results/latest.md`, and an incremental default-ignore pool at `assistant_brain/sync_results/ignore_candidates.json`. All send commands auto-output EntryID for timeline tracking |
 | **Streamlined 4-Step Email Flow** | Mandatory sequential flow for replies/sends: 1. Get thread/context → 2. Read thread completely via `get-email` (No assumptions, no guessing) → 3. Draft the email (To/CC, Subject, Body as plain text; "no-redundancy" rule prevents repeating thread facts) → 4. Send ONLY after explicit, turn-specific user approval. |
 | **Email Thread Tracking** | ConversationID-based thread matching — once an email is linked to a task, all future emails in the same thread auto-match |
 | **Related Email Discovery** | Multi-strategy search (thread + sender + keyword) for cross-thread discovery |
 | **Enrollment & Shortlisting** | Playwright-backed automated downloader of YourLearning classroom rosters. Evaluates registrations, automatically cross-references headcount databases, excludes duplicates/non-regular/non-geo staff, scores candidates by band/role, and exports beautifully highlighted, color-coded participant shortlists to Excel for LDM sharing. |
-| **TU Sync & Balance Ledger** | On-demand tracking of Red Hat Training Units. Automatically scans order confirmations from `no-reply@training.redhat.com`, parses line items, TUs, and accounts into reference ledger `redhat-tu-tracking.md`. Cross-references Smartsheet updates from `automation@app.smartsheet.com`, updates balances, and flags near-depletion alerts. |
 | **Blue Pages & Employee Lookup** | Queries CNUM, employee types, reporting structure (managers and direct reports), Slack handles, and active statuses via the IBM W3 Unified Profile/Blue Pages API. |
-| **Memory System** | Preferences, cognitive blind-spot patterns, contacts, achievements (述职 fact base) |
-| **Achievement Auto-capture** | Task completion prompts the AI to extract 述职 material from `[decision]` / `[milestone]` / `[delivery]` Timeline entries |
 | **Process Intelligence** | Auto-match tasks to process templates, suggest next actions + contacts. Detect undocumented process steps during email sync and codify recurring patterns into process files |
 | **Follow-up Automation** | Detect stale tasks, draft follow-up emails with tone-aware templates, track chase history |
 | **Web Search & Browse** | Search the web, extract page content, crawl sites, deep research via Tavily MCP |
@@ -145,17 +141,14 @@ BrainClaw/
     ├── recurring_tasks.md    ⭐ # Scheduled recurring tasks
     ├── formats/
     │   └── EMAIL_SYNC_FORMAT.md        # Email sync layout specification
-    ├── references/
-    │   ├── redhat-tu-tracking.md       # TU tracking ledger & guidelines
-    │   └── redhat_audience_filtering_rules.md # Audience criteria & filters for large mailers
     ├── process/
     │   └── README.md         ⭐ # Process index (grouped by geo)
     ├── workflows/               # Orchestration + business logic (on-demand)
     │   ├── TASK_WORKFLOW.md
     │   ├── EMAIL_WORKFLOW.md
     │   ├── PROCESS_WORKFLOW.md        # Process matching, auto-advance, learning
-    │   ├── REDHAT_WORKFLOW.md         # Red Hat audience & TU ledger sync
-    │   └── VIEWS_WORKFLOW.md          # status/owed/waiting/before/review
+    │   ├── REDHAT_WORKFLOW.md         # Red Hat audience targeting & shortlist
+    │   └── VIEWS_WORKFLOW.md          # status/owed/waiting/before/digest/timesheet
     ├── contacts.md          ⭐ # Single source of truth for people (tone, email, role, process roles)
     ├── scripts/                 # Python automation scripts
     │   ├── dashboard.py            # Startup display, taskboard, pending, digest, timesheet
@@ -164,11 +157,6 @@ BrainClaw/
     │   ├── manage_ignore_candidates.py # Manage and restore default-ignored sync emails
     │   ├── followup.py             # Stale task detection for follow-up workflow
     │   └── shared_config.py        # Centralized script and file paths configurations
-    ├── memory/                  # User-derived data (learned over time)
-    │   ├── preferences.md       ⭐ # User preferences (tone, time format, etc.)
-    │   ├── things_to_avoid.md   ⭐ # Cognitive blind-spot patterns + tactical Don'ts
-    │   ├── achievements.md         # 述职 fact base (auto-fed from Complete Task)
-    │   └── vendor-accounts.md      # Vendor portal accounts & credentials
     ├── skills/                  # I/O against external systems
     │   ├── outlook-com-skill/      # Outlook COM — Python backend + CLI
     │   │   ├── SKILL.md            #   Command reference
@@ -201,8 +189,6 @@ BrainClaw/
 | **Prep before a meeting** | "见 Beng 之前", "明天 and Mridul 开会前", "before Beng", "prep for X" | Pull all open items with that person + suggested agenda |
 | **Corporate lookups** | "who is Beng", "bluepages HONG YANG", "reports to X" | Search profiles, Slack handles, roles, and teams via Blue Pages |
 | **Class shortlisting** | "download roster T134", "check enrollment 10580795", "evaluate roster" | Connects via browser, downloads waitlist, cross-references and outputs styled Excel shortlisted rosters |
-| **TU Sync & Balance** | "tu sync", "sync tu", "tu balance", "TU余额" | Processes Red Hat order confirmation emails, updates the ledger and reports remaining balances/warnings |
-| **Performance review / 述职** | "述职", "半年述职", "Q2 做了啥", "总结这半年", "review Q2 2026" | Bullet summary + narrative draft from achievements.md |
 | **See full task list** | "show all", "全部任务", "完整队列" | Same output as startup — re-render the grouped task list |
 | **Task operations** | "新建任务", "完成 T033", "block T040", "create/update/complete/block task" | Task lifecycle |
 | **Process / next step** | "next step T033", "推进 T033", "下一步", "固化流程" | Match task to process template, suggest next action + contact; codify recurring patterns |
@@ -238,18 +224,6 @@ BrainClaw uses a smart keyword system to help you trace tasks back to their sour
 - ✅ Good: `Req 11695, Informatica PowerCenter` → unique request
 - ❌ Bad: `certification, approval, Salesforce` → finds hundreds of emails
 
-## Memory System
-
-BrainClaw learns and remembers across sessions:
-
-| Memory File | Purpose |
-|-------------|---------|
-| `memory/preferences.md` | User preferences (timezone, tone, time format) |
-| `memory/things_to_avoid.md` | **Patterns** (cognitive blind spots) + **Tactical Don'ts** (output-format mistakes) |
-| `memory/achievements.md` | 述职 fact base — auto-fed from Complete Task; 2-axis structure (quarter × category) |
-| `memory/vendor-accounts.md` | Vendor portal accounts & credentials reference |
-| `views_config.md` | (NOT memory — system config) Thresholds + defaults for view ops. Lives at `assistant_brain/` root, not in memory/. |
-
 ## Architecture: Workflows & Skills
 
 BrainClaw uses a layered architecture with clear separation of concerns:
@@ -261,11 +235,10 @@ CLAUDE.md (Single source of truth — startup rules + core policies)
 │    Workflows (orchestration + logic)     │  ← All business logic lives here
 │  - TASK_WORKFLOW                         │     Process matching, auto-advance,
 │  - EMAIL_WORKFLOW                        │     keyword extraction, composition
-│  - PROCESS_WORKFLOW                      │     guidelines, achievement extraction,
-│  - REDHAT_WORKFLOW                       │     process learning & codification,
-│  - VIEWS_WORKFLOW                        │     digest & timesheet generation,
-│                                         │     views (status/owed/waiting/...)
-│                                         │     Red Hat audience & TU ledger sync
+│  - PROCESS_WORKFLOW                      │     guidelines, process learning & codification,
+│  - REDHAT_WORKFLOW                       │     digest & timesheet generation,
+│  - VIEWS_WORKFLOW                        │     views (status/owed/waiting/...),
+│                                         │     Red Hat audience targeting & shortlist
 └──────────────┬───────────────────────────┘
                ↓ (only when external I/O needed)
 ┌──────────────────────────────────────────┐
