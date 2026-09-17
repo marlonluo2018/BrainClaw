@@ -50,7 +50,11 @@
 
 ## External (not in GAL)
 
-- **LearnQuest MLS APAC** <mls-apac@learnquest.com> — PH training vendor (ITIL, certs) | Contacts: Madhushree K, Manjula Kumarswamy
+- **LearnQuest MLS APAC** <mls-apac@learnquest.com> — PH training vendor (ITIL, certs)
+  - **Madhushree K** <madhushree.k@learnquest.com> — Education Delivery Manager - APAC | Mobile: 09036555934
+  - **Manjula Kumarswamy** <manjula.kumarswamy@learnquest.com> — Learning Services - APAC | Phone: +91 9632723569 / +65 6813 2177 | Calendly: https://calendly.com/manjula-kumarswamy-learnquest/30min
+  - **Anvi Dsouza** — Project Coordinator (Q2 ops focal)
+  - **Sapna Kothari** — Operations focal (CDMP)
 - **Kirk Abbott** <kabbot@redhat.com> — Red Hat purchase contact
 - **Red Hat Learning Subscription** <apac-rhls@redhat.com> — RHLS assignment
 - **Red Hat Exam Requests** <support.india.training@redhat.com>

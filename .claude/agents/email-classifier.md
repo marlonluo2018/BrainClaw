@@ -1,4 +1,5 @@
 ---
+name: email-classifier
 description: Single-pass Email Sync Sub-Agent for BrainClaw - reads sync results, performs intelligent semantic matching, and executes task updates via update_task.py.
 ---
 
