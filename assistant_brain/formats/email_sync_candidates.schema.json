@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brainclaw.local/schemas/email-sync-candidates.schema.json",
+  "title": "BrainClaw Email Sync Evidence Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "snapshot_id", "generated_at", "snapshot", "task_catalog", "emails"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "snapshot_id": {"$ref": "#/$defs/one_line"},
+    "generated_at": {"$ref": "#/$defs/one_line"},
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fetched_at", "source", "stale", "stale_reason", "email_count"],
+      "properties": {
+        "fetched_at": {"$ref": "#/$defs/line"},
+        "source": {"$ref": "#/$defs/line"},
+        "stale": {"type": "boolean"},
+        "stale_reason": {"$ref": "#/$defs/line"},
+        "email_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "task_catalog": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/task"}
+    },
+    "emails": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/email"}
+    }
+  },
+  "$defs": {
+    "line": {"type": "string", "pattern": "^[^\\r\\n]*$"},
+    "one_line": {"type": "string", "minLength": 1, "pattern": "^[^\\r\\n]+$"},
+    "string_array": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/one_line"},
+      "uniqueItems": true
+    },
+    "recipient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address"],
+      "properties": {
+        "name": {"$ref": "#/$defs/line"},
+        "address": {"$ref": "#/$defs/line"}
+      }
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "email", "role"],
+      "properties": {
+        "name": {"$ref": "#/$defs/line"},
+        "email": {"$ref": "#/$defs/line"},
+        "role": {"$ref": "#/$defs/line"}
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task", "title", "path", "status", "priority", "geo", "due", "scope", "exclude",
+        "contacts", "identifiers"
+      ],
+      "properties": {
+        "task": {"$ref": "#/$defs/one_line"},
+        "title": {"$ref": "#/$defs/one_line"},
+        "path": {"$ref": "#/$defs/one_line"},
+        "status": {"$ref": "#/$defs/line"},
+        "priority": {"$ref": "#/$defs/line"},
+        "geo": {"$ref": "#/$defs/line"},
+        "due": {"$ref": "#/$defs/line"},
+        "scope": {"$ref": "#/$defs/line"},
+        "exclude": {"$ref": "#/$defs/line"},
+        "contacts": {"type": "array", "items": {"$ref": "#/$defs/contact"}},
+        "identifiers": {"$ref": "#/$defs/string_array"}
+      }
+    },
+    "evidence_hit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task", "values"],
+      "properties": {
+        "task": {"$ref": "#/$defs/one_line"},
+        "values": {"$ref": "#/$defs/string_array"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry_id_tasks", "conversation_tasks", "archived_entry_tasks", "archived_conversation_tasks", "identifier_hits", "contact_hits", "lexical_hits"],
+      "properties": {
+        "entry_id_tasks": {"$ref": "#/$defs/string_array"},
+        "conversation_tasks": {"$ref": "#/$defs/string_array"},
+        "archived_entry_tasks": {"$ref": "#/$defs/string_array"},
+        "archived_conversation_tasks": {"$ref": "#/$defs/string_array"},
+        "identifier_hits": {"type": "array", "items": {"$ref": "#/$defs/evidence_hit"}},
+        "contact_hits": {"type": "array", "items": {"$ref": "#/$defs/evidence_hit"}},
+        "lexical_hits": {"type": "array", "items": {"$ref": "#/$defs/evidence_hit"}}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task", "title", "path", "lifecycle", "reasons", "warnings"],
+      "properties": {
+        "task": {"$ref": "#/$defs/one_line"},
+        "title": {"$ref": "#/$defs/one_line"},
+        "path": {"$ref": "#/$defs/one_line"},
+        "lifecycle": {"const": "active"},
+        "reasons": {"$ref": "#/$defs/string_array"},
+        "warnings": {"$ref": "#/$defs/string_array"}
+      }
+    },
+    "email": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number", "entry_id", "conversation_id", "direction", "message_type", "folder", "received_time",
+        "subject", "sender", "to_recipients", "cc_recipients", "body_preview", "message_class",
+        "meeting_status", "start_time", "end_time", "review_status", "deterministic_reason", "evidence",
+        "candidate_tasks"
+      ],
+      "properties": {
+        "number": {"type": "integer", "minimum": 1},
+        "entry_id": {"$ref": "#/$defs/one_line"},
+        "conversation_id": {"$ref": "#/$defs/line"},
+        "direction": {"enum": ["in", "out", "calendar"]},
+        "message_type": {"enum": ["mail", "calendar"]},
+        "folder": {"$ref": "#/$defs/line"},
+        "received_time": {"$ref": "#/$defs/line"},
+        "subject": {"$ref": "#/$defs/line"},
+        "sender": {"$ref": "#/$defs/line"},
+        "to_recipients": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
+        "cc_recipients": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
+        "body_preview": {"type": "string"},
+        "message_class": {"$ref": "#/$defs/line"},
+        "meeting_status": {"$ref": "#/$defs/line"},
+        "start_time": {"$ref": "#/$defs/line"},
+        "end_time": {"$ref": "#/$defs/line"},
+        "review_status": {"enum": ["review", "filtered", "ignored"]},
+        "deterministic_reason": {"$ref": "#/$defs/line"},
+        "evidence": {"$ref": "#/$defs/evidence"},
+        "candidate_tasks": {"type": "array", "items": {"$ref": "#/$defs/candidate"}}
+      }
+    }
+  }
+}

@@ -28,6 +28,7 @@ build/
 *.swp
 *.swo
 *~
+~$*
 
 # OS
 .DS_Store
@@ -43,21 +44,50 @@ backups/
 
 # Downloads folder - email attachments, etc.
 downloads/
+outbox/
 
 # Memory directory - keep files locally but don't sync to GitHub
 assistant_brain/memory/
 
-# Process directory - company processes, keep local only
-assistant_brain/process/
+# Process content remains local/private; the machine-readable schema is versioned
+assistant_brain/process/*
+!assistant_brain/process/process.schema.json
 
-# Tasks directory - all task files are personal work data, keep local only
-assistant_brain/tasks/
+# Task content is private; the reusable format contract is version-controlled.
+assistant_brain/tasks/*
+!assistant_brain/tasks/FORMATS.md
 
 # Sync results - runtime artifacts, keep local only
 assistant_brain/sync_results/
 
-# One-time local scripts
-scripts/
+# One-time local scripts (root only)
+/adhoc/
+
+# assistant_brain/scripts is private by default. Only reviewed, reusable,
+# task-data-free runtime and quality tooling is allowlisted for the main repository.
+assistant_brain/scripts/*
+!assistant_brain/scripts/README.md
+!assistant_brain/scripts/check_links.py
+!assistant_brain/scripts/dashboard.py
+!assistant_brain/scripts/doctor.py
+!assistant_brain/scripts/email_sync.py
+!assistant_brain/scripts/email_sync_candidates.py
+!assistant_brain/scripts/email_sync_catalog.py
+!assistant_brain/scripts/email_sync_apply.py
+!assistant_brain/scripts/followup.py
+!assistant_brain/scripts/generate_prompts.py
+!assistant_brain/scripts/manage_ignore_candidates.py
+!assistant_brain/scripts/ooxml_workbook.py
+!assistant_brain/scripts/run_email_sync.py
+!assistant_brain/scripts/shared_config.py
+!assistant_brain/scripts/update_task.py
+!assistant_brain/scripts/validate_processes.py
+!assistant_brain/scripts/validate_tasks.py
+
+# Local/private generated Red Hat working guides.
+assistant_brain/workflows/REDHAT_MANUAL_WORK_GUIDE.md
+assistant_brain/workflows/Red_Hat_Training_Manual_Work_Guide.docx
+assistant_brain/workflows/Red_Hat_Training_Manual_Work_Guide.pptx
 Q2_Budget_HCD_Training_Certifications.xlsx
 ~$Q2_Budget_HCD_Training_Certifications.xlsx
 Copy of EPD Plan Rows Q2-March 19.xlsx
@@ -67,6 +97,7 @@ assistant_brain/references/pes-distribution-list.txt
 .gitignore
 assistant_brain/references/pes-distribution-list.csv
 assistant_brain/contacts.md
+assistant_brain/profile.md
 
 # Temporary logs and testing scripts
 confirm_submission.py

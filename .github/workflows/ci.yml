@@ -1,0 +1,39 @@
+﻿name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install quality tools
+        run: python -m pip install -r requirements-dev.txt
+      - name: Prompt synchronization
+        run: python assistant_brain/scripts/generate_prompts.py --check
+      - name: Process schema
+        run: python assistant_brain/scripts/validate_processes.py --process-dir tests/fixtures/process
+      - name: Task schema
+        run: python assistant_brain/scripts/validate_tasks.py --task-dir tests/fixtures/tasks
+      - name: Markdown links
+        run: python assistant_brain/scripts/check_links.py
+      - name: Unit tests
+        run: python -m pytest
+      - name: Ruff
+        run: python -m ruff check .
+      - name: Syntax check
+        run: python -m compileall -q assistant_brain/scripts tests

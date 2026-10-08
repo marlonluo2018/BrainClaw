@@ -3,6 +3,8 @@
 > Red Hat Training operations domain: **audience targeting & shortlisting**.
 >
 > **Script execution** (extract/select CLI args) lives in `skills/redhat-audience-processor/SKILL.md` — load it before running any script.
+>
+> **Exam codes and certification names** (including the May 2026 renames): `assistant_brain/redhat_cert_codes.md`.
 
 ---
 
@@ -33,9 +35,9 @@
 | 4 | Prerequisite Transcripts | +80 pts for prereq course completers (bypassed for foundational courses with no prereqs like DO188) |
 | 5 | Headcount Database (GDMIS PIR) | Base pool; +15~35 pts for skill/role match |
 
-### 📥 5-File Report Input Process (MANDATORY USER PROMPT)
+### 📥 5-File Report Input Process (ask the user)
 
-> **⛔ DO NOT AUTO-SCAN FOLDERS:** The agent MUST NOT automatically scan `Downloads/` or workspace folders for report files without asking the user first, as local files may be stale or outdated.
+> Ask the user for the report files instead of scanning `Downloads/` or workspace folders — local copies are often stale.
 
 When executing Phase 2 (Target Audience Extraction) or Phase 3 (Participant Shortlist):
 

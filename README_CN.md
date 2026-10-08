@@ -25,8 +25,21 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 
 1. 打开你的 AI IDE（Claude、Cursor 等）
 2. 进入自定义指令 / 系统提示词设置
-3. 粘贴 [`CLAUDE.md`](CLAUDE.md) 的内容（Claude Code 会自动加载；其他 IDE 需要手动粘贴）
+3. 使用 [`assistant_brain/prompts/SYSTEM_PROMPT.md`](assistant_brain/prompts/SYSTEM_PROMPT.md) 作为唯一系统提示词；`AGENTS.md` 和 `CLAUDE.md` 是为不同工具生成的兼容副本
 4. 将工作区设置为 BrainClaw 文件夹
+
+### 可重复开发环境（可选）
+
+核心运行时仅使用 Python 标准库。如需运行测试和静态检查：
+
+```powershell
+py -3 -m pip install -r requirements-dev.txt
+py -3 assistant_brain/scripts/doctor.py
+```
+
+`pyproject.toml` 中还定义了 `documents` 和 `outlook` 可选依赖。
+
+> **隐私：** 真实 `assistant_brain/contacts.md` 仅供本地使用；新环境请从 `assistant_brain/contacts.example.md` 复制创建。如果旧版本中该文件已经被 Git 追踪，仅添加 `.gitignore` 不会把它从索引或历史中删除；这需要单独执行隐私迁移。
 
 ### 日常使用
 
@@ -44,7 +57,7 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 ┌──────────────────────────────────────────────────────────────┐
 │  AI IDE (Claude / Cursor / etc.)                             │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │  系统提示词  (CLAUDE.md)                               │  │
+│  │  系统提示词  (prompts/SYSTEM_PROMPT.md)              │  │
 │  │  "启动时，读取 brain 文件..."                          │  │
 │  └────────────────────────────────────────────────────────┘  │
 │                        ↓                                     │
@@ -57,8 +70,8 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 │  │  │   ├── REDHAT_WORKFLOW.md                            │  │
 │  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — 外部系统)            │  │
-│  │  │   ├── outlook-com-skill/    (Outlook COM 后端)      │  │
-│  │  │   ├── minimax-xlsx/     (Excel 读写)                │  │
+│  │  │   ├── outlook_com_skill/    (Outlook COM 后端)      │  │
+│  │  │   ├── xlsx-ibm/            (Excel 读写)              │  │
 │  │  │   ├── bluepage-skill/   (W3 统一 Profile)           │  │
 │  │  │   ├── enrollment-downloader/ (报名名册下载)          │  │
 │  │  │   └── skill-creator/    (新技能脚手架)              │  │
@@ -75,9 +88,9 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | **任务管理** | 详细任务追踪，包含状态、优先级、分类、地理位置、截止时间、RACI 利益相关方、父子关系、结构化 `Asks`（我欠的 / 别人欠我的）|
 | **任务优先规则** | 当被询问任何任务的状态、排期或进度时，系统**总是**首先检查任务文件（单一可信源），然后再检索邮件或外部资源。 |
 | **视图引擎** | `status T###`（或直接 `T###`）/ `待我处理` / `等待` / `before {人}` / `digest` / `timesheet` —— 跨任务揭示逾期、欠回复、待办事项、周报和工时 |
-| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪、撰写邮件。三级匹配：ConversationID 线程 → 任务联系人 → 关键词+地区。自动抽取 ask/decision/deadline 写入任务。邮件同步使用稳定的包装脚本（`py -3 assistant_brain/scripts/run_email_sync.py`），支持保存 `latest-input.json`、`latest.md` 以及维护增量忽略候选池 `ignore_candidates.json`。所有发送命令自动输出 EntryID 供 Timeline 追踪 |
+| **邮件管理** | 通过原生 Outlook COM 查找、搜索、线程追踪和撰写邮件。同步管道先生成结构化证据包，再由单一语义分类器判断邮件与任务的归属，随后通过 Schema、快照时效与跨记录校验进行原子应用；确定性代码不再用置信度阈值替模型做决定，未匹配邮件也不会被自动忽略。 |
 | **精简四步邮件流** | 邮件发送/回复的强制流：1. 获取线程/上下文 → 2. 通过 `get-email` 完整读取历史邮件（零猜测、无假定）→ 3. 撰写草稿（To/CC、Subject、纯文本正文；“无冗余原则”防止重复已有参数事实）→ 4. **仅**在当前轮次获得显式授权批复后执行发送。 |
-| **邮件线程追踪** | 基于 ConversationID 的线程匹配——邮件一旦关联到任务，同线程后续邮件自动命中 |
+| **邮件线程追踪** | ConversationID 提供强线程连续性证据；同线程新邮件仍由语义分类器结合完整任务范围作最终判断。 |
 | **关联邮件发现** | 多策略搜索（线程 + 发件人 + 关键词）实现跨线程发现 |
 | **报名名册与短名单** | 基于 Playwright 自动下载 YourLearning 课程报名名册。评估注册情况、自动交叉比对人员 headcount 数据库、排除历史重复/非正式/非特定 geo 员工、按照职级和岗位打分，并向 Excel 导出高亮显色、清晰明了的学员入选（绿色）与备份名单（黄色），方便与 LDM 分享。 |
 | **Blue Pages 员工查询** | 通过 IBM W3 Unified Profile/Blue Pages API 快速查询 CNUM、员工类型、上下级汇报关系（经理和下属）、Slack 账号和 HR 在职状态。 |
@@ -87,17 +100,17 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 | **周报生成** | 自动生成过去一周的任务活动、完成情况、关键事件摘要 |
 | **工时生成** | 按 Geo → Category 分组进行自上而下工时分配，含 EPD 编号 |
 | **定期任务** | 自动创建定期任务（月度报告、季度流程） |
-| **Office 文档** | 通过 `minimax-xlsx` skill 创建/读取/编辑/分析 Excel 文件 |
+| **Office 文档** | 通过 `xlsx-ibm` skill 创建/读取/编辑/分析 Excel 文件 |
 | **可扩展技能** | 通过模块化技能系统添加新能力 |
 
 ## 技能
 
-技能仅用于与外部系统交互（I/O）。业务逻辑（任务生命周期、RACI、事件记录、邮件撰写规则）直接写在 workflow 文件里。
+技能仅用于与外部系统交互（I/O）。它们是挂载在 `assistant_brain/skills/` 下的独立仓库，本仓库不追踪其内容。业务逻辑仍直接写在 workflow 文件中。
 
 | 技能 | 用途 | 外部系统 |
 |------|------|----------|
-| **outlook-com-skill** | 查找、线程、关联、撰写、回复、全部回复、转发、重定向、批量转发 | Microsoft Outlook (COM) |
-| **minimax-xlsx** | 创建、读取、编辑、分析 Excel/电子表格文件 | `.xlsx`、`.xlsm`、`.csv` |
+| **outlook_com_skill** | 查找、线程、关联、撰写、回复、全部回复、转发、重定向、批量转发 | Microsoft Outlook (COM) |
+| **xlsx-ibm** | 创建、读取、编辑、分析 Excel/电子表格文件 | `.xlsx`、`.xlsm`、`.csv` |
 | **bluepage-skill** | 查询 IBM 员工 Profile、Slack ID、汇报关系、在职状态 | IBM Blue Pages (W3 Unified Profile API) |
 | **enrollment-downloader** | 基于 Playwright 自动下载和评估 YourLearning 班级报名名册 | IBM YourLearning / E&C Manager |
 | **skill-creator** | 新技能脚手架 | (元) |
@@ -119,13 +132,13 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 
 **EntryID 追踪：** 所有发送命令（`compose`、`reply`、`forward`、`redirect`）发送后自动输出邮件的 `EntryID`。用于在任务 Timeline 中添加 `<!-- email:ID -->` 标记，实现可靠的邮件追溯。追踪遵循统一的**关键邮件标准**（收发一致）：包含请求/审批/决策/承诺的邮件、交付/请求交付物的邮件、任务里程碑邮件、或可能需要后续回复/转发的邮件。纯 FYI 确认（"noted"、"thanks"、"got it"）豁免。
 
-**邮件↔任务匹配（三级优先）：**
+**邮件到任务分类（模型中心）：**
 
-1. **线程匹配** — 邮件的 ConversationID 已在某任务的 Email References 中 → 直接命中
-2. **联系人匹配** — 发件人出现在某任务的 `## Contacts` 段 → 高置信度
-3. **关键词+地区** — 兜底：关键词重叠 + 邮件域名地区检测
+1. **确定性证据准备** — 构建活动任务目录，收集 EntryID、ConversationID、业务标识符、联系人、词汇和范围证据。
+2. **语义归属判断** — 单一分类器审查所有非噪音邮件，包括日历项和没有候选任务的邮件，并完整读取所有可能相关的任务文件。
+3. **校验后写入** — 分类器生成符合 Schema 且包含显式匹配元数据复核的计划；确定性程序校验快照与跨记录约束，并原子写入时间线、Asks、字段、标签、联系人、RACI、备注和忽略池。
 
-**关键词评分权重**：EPD 计划行 ID（3.0×），课程/PO代码（1.5×），英文单词（1.0×），中文3个或以上字符（1.0×）。数据源自：`## Tags`、`**EPD:**`字段、RACI联系人、内容中的字母数字编码。发出的邮件会在主题中携带最高权重的标识符，使回复能自动关联回来。详见 [ARCHITECTURE.md §4.5](ARCHITECTURE.md)。
+不再使用人为置信度分数或确定性归属阈值。候选原因只是显式证据，不是结论。同一封邮件在内容确实涉及多个独立任务事件时，可以更新多个任务；唯一性按 `(task, entry_id)` 校验。每次任务更新都会复核 Scope、Exclude、Tags、Contacts/RACI 和稳定标识符，避免新证据只留在 Timeline 文字里。活动任务结构由 `validate_tasks.py` 按 `task_file.schema.json` 校验。`latest-candidates.json` 是分类器的权威输入，`latest.md` 仅用于人工诊断。发件主题应使用可识别的公开标识符，但绝不能包含 EPD 编号或 Class ID。详见 [ARCHITECTURE.md 第 4.5 节](ARCHITECTURE.md)。
 
 ## 项目结构
 
@@ -133,47 +146,30 @@ OpenClaw 等自动化工具需要技术配置（二进制文件、环境变量�
 
 ```
 BrainClaw/
-├── CLAUDE.md                           # 系统提示词（单一可信源）
-├── README.md                           # 英文说明
-├── README_CN.md                        # 中文说明（本文件）
-├── ARCHITECTURE.md                     # 系统架构
+├── AGENTS.md                     # 生成的兼容提示词副本
+├── CLAUDE.md                     # 生成的兼容提示词副本
+├── README.md                     # 英文说明
+├── README_CN.md                  # 中文说明（本文件）
+├── ARCHITECTURE.md               # 系统架构
 └── assistant_brain/
-    ├── views_config.md       ⭐ # 视图命令的阈值与默认值
-    ├── recurring_tasks.md    ⭐ # 定期任务定义
+    ├── prompts/
+    │   └── SYSTEM_PROMPT.md      # 唯一系统提示词
+    ├── views_config.md       ⭐  # 视图阈值与默认值
+    ├── recurring_tasks.md    ⭐  # 定期任务定义
+    ├── contacts.md           ⭐  # 本地隐私联系人数据
+    ├── contacts.example.md       # 可安全提交的脱敏模板
     ├── formats/
-    │   └── EMAIL_SYNC_FORMAT.md        # 邮件同步排版规范
+    │   ├── EMAIL_SYNC_FORMAT.md          # 邮件同步排版规范
+    │   ├── email_sync_candidates.schema.json
+    │   ├── email_sync_plan.schema.json
+    │   └── task_file.schema.json         # 活动任务契约
     ├── process/
-    │   └── README.md         ⭐ # 流程索引（按地区分组）
-    ├── workflows/               # 编排 + 业务逻辑（按需加载）
-    │   ├── TASK_WORKFLOW.md
-    │   ├── EMAIL_WORKFLOW.md
-    │   ├── PROCESS_WORKFLOW.md        # 流程匹配、自动推进、学习
-    │   ├── REDHAT_WORKFLOW.md         # Red Hat 受众提取与短名单筛选
-    │   └── VIEWS_WORKFLOW.md          # status/owed/waiting/before/digest/timesheet
-    ├── contacts.md          ⭐ # 联系人唯一数据源（语气、邮箱、角色、流程角色）
-    ├── scripts/                 # Python 自动化脚本
-    │   ├── dashboard.py            # 启动面板、taskboard、pending、digest、timesheet
-    │   ├── email_sync.py           # 邮件预处理器：3 信号匹配，噪音过滤，上下文缩减 (~78%)
-    │   ├── run_email_sync.py       # 稳定运行邮件同步管道并保存输出的包装脚本
-    │   ├── manage_ignore_candidates.py # 管理和恢复被默认忽略的同步邮件
-    │   ├── followup.py             # 超期任务检测（供催办工作流使用）
-    │   └── shared_config.py        # 集中管理脚本与文件路径配置
-    ├── skills/                  # 与外部系统交互的 I/O
-    │   ├── outlook-com-skill/      # Outlook COM — Python 后端 + CLI
-    │   │   ├── SKILL.md            #   命令参考
-    │   │   ├── scripts/            #   CLI 入口点
-    │   │   └── backend/            #   搜索、撰写、会话管理
-    │   ├── minimax-xlsx/           # Excel 文件读写分析
-    │   ├── bluepage-skill/         # IBM Blue Pages 查询客户端
-    │   │   └── SKILL.md            #   触发词和 CLI 入口参考
-    │   ├── enrollment-downloader/  # YourLearning/E&C Manager 报名名册下载技能
-    │   │   └── SKILL.md            #   命令规范
-    │   └── skill-creator/          # 新技能脚手架
-    └── tasks/                   # 任务队列与历史
-        ├── queue.md          ⭐ # 活跃任务 + 近期事件
-        ├── FORMATS.md            # 任务格式规范
-        ├── T0xx-xxx.md           # 活跃任务详情（按需加载）
-        └── history/              # 已完成任务与月度归档
+    │   ├── README.md         ⭐  # 本地流程索引
+    │   └── process.schema.json   # 版本化流程 Schema
+    ├── workflows/                # 编排与业务逻辑
+    ├── scripts/                  # 白名单运行时/质量工具；任务脚本默认仅本地保存
+    ├── skills/                   # 独立仓库；主仓库不追踪
+    └── tasks/                    # 本地隐私任务文件与历史
 ```
 
 ### 启动时加载的文件 (⭐)
@@ -183,7 +179,7 @@ BrainClaw/
 | 文件 | 用途 |
 |------|------|
 | `views_config.md` | 视图命令的阈值与默认值 |
-| `tasks/queue.md` | 活跃任务与近期事件 |
+| `tasks/T*.md` + `tasks/history/` | 活跃及归档任务元数据；近期事件由 `dashboard.py` 动态生成 |
 | `recurring_tasks.md` | 定期任务定义 |
 | `contacts.md` | 联系人数据库（含流程角色速查表）|
 | `process/README.md` | 流程索引 |
@@ -245,7 +241,8 @@ BrainClaw 使用智能关键字系统帮助你追溯任务来源：
 BrainClaw 采用分层架构，更好地组织代码：
 
 ```
-CLAUDE.md (单一可信源 — 启动规则 + 核心策略)
+assistant_brain/prompts/SYSTEM_PROMPT.md (唯一系统提示词)
+        ↓ 生成兼容副本：AGENTS.md + CLAUDE.md
         ↓
 ┌──────────────────────────────────────────┐
 │  Workflows（编排 + 业务逻辑）            │  ← 所有业务逻辑都在这里
@@ -258,8 +255,8 @@ CLAUDE.md (单一可信源 — 启动规则 + 核心策略)
                ↓ （仅在需要 I/O 时调用）
 ┌──────────────────────────────────────────┐
 │  Skills（I/O — 外部系统）                │
-│  - outlook-com-skill/  Outlook COM       │
-│  - minimax-xlsx/   Excel 文件            │
+│  - outlook_com_skill/  Outlook COM       │
+│  - xlsx-ibm/   Excel 文件            │
 │  - bluepage-skill/  W3 Profile API       │
 │  - enrollment-downloader/  YourLearning  │
 │  - skill-creator/  元技能                │
@@ -315,7 +312,7 @@ BrainClaw 弥合了强大 AI 工具与日常办公人员之间的鸿沟。通过
 
 ## 通过 Skills 扩展
 
-Skills 是存储在 `assistant_brain/skills/` 中的模块化能力。每个 skill 添加新功能而无需修改代码。使用 `skill-creator` skill 来构建你自己的 skill。
+Skills 是挂载在 `assistant_brain/skills/` 下的独立仓库。每个 skill 可以独立版本控制，BrainClaw 主仓库通过 `SKILL.md` 按需加载。
 
 ---
 

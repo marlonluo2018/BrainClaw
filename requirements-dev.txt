@@ -1,0 +1,2 @@
+# Reproducible quality-gate environment.
+-e .[dev]

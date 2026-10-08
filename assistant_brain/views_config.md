@@ -1,6 +1,6 @@
 # Views Config
 
-> Thresholds and display preferences for view commands (`status`, `owed`, `waiting`, `before`). The view workflow MUST read this file before computing — never hardcode thresholds elsewhere.
+> Thresholds and display preferences for view commands (`status`, `owed`, `waiting`, `before`). Read this file before computing a view; thresholds live only here.
 >
 > **Implementation:** Scripts consume these values via `assistant_brain/scripts/shared_config.py`. If thresholds change here, update `shared_config.py` to match.
 

@@ -1,0 +1,446 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brainclaw.local/schemas/email-sync-plan.schema.json",
+  "title": "BrainClaw Email Sync Mutation Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "evaluated_tasks",
+    "task_updates",
+    "ignore"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\r\\n]+$"
+    },
+    "evaluated_tasks": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/one_line"
+      },
+      "description": "Task files completely opened and semantically evaluated by the classifier."
+    },
+    "task_updates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/task_update"
+      },
+      "description": "Validated task mutations. The same EntryID may update multiple tasks, but each (task, entry_id) pair is unique."
+    },
+    "ignore": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ignore"
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unresolved"
+      },
+      "default": []
+    }
+  },
+  "$defs": {
+    "one_line": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\r\\n]+$"
+    },
+    "string_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/one_line"
+      },
+      "default": []
+    },
+    "ask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "$ref": "#/$defs/one_line"
+        },
+        "contact": {
+          "type": "string",
+          "pattern": "^[^\\r\\n]*$",
+          "default": ""
+        },
+        "due": {
+          "type": "string",
+          "pattern": "^[^\\r\\n]*$",
+          "default": "TBD"
+        }
+      }
+    },
+    "task_update": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task",
+        "source",
+        "matching_review"
+      ],
+      "properties": {
+        "task": {
+          "$ref": "#/$defs/one_line"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entry_id",
+            "conversation_id",
+            "received_at",
+            "direction"
+          ],
+          "properties": {
+            "entry_id": {
+              "$ref": "#/$defs/one_line"
+            },
+            "conversation_id": {
+              "type": "string",
+              "pattern": "^[^\\r\\n]*$"
+            },
+            "received_at": {
+              "$ref": "#/$defs/one_line"
+            },
+            "direction": {
+              "enum": [
+                "in",
+                "out",
+                "calendar"
+              ]
+            }
+          }
+        },
+        "timeline": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "tag",
+                "summary"
+              ],
+              "properties": {
+                "tag": {
+                  "enum": [
+                    "created",
+                    "update",
+                    "email-in",
+                    "email-out",
+                    "decision",
+                    "milestone",
+                    "delivery",
+                    "ask",
+                    "waiting",
+                    "blocker",
+                    "resolved",
+                    "deadline",
+                    "slack",
+                    "meeting"
+                  ]
+                },
+                "summary": {
+                  "$ref": "#/$defs/one_line"
+                }
+              }
+            }
+          ]
+        },
+        "asks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "add_my_actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ask"
+              },
+              "default": []
+            },
+            "add_waiting": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ask"
+              },
+              "default": []
+            },
+            "complete_my_actions": {
+              "$ref": "#/$defs/string_array"
+            },
+            "remove_waiting": {
+              "$ref": "#/$defs/string_array"
+            }
+          }
+        },
+        "current_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "add": {
+              "$ref": "#/$defs/string_array"
+            },
+            "complete": {
+              "$ref": "#/$defs/string_array"
+            }
+          }
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Due": {
+              "$ref": "#/$defs/one_line"
+            },
+            "Status": {
+              "$ref": "#/$defs/one_line"
+            },
+            "Priority": {
+              "$ref": "#/$defs/one_line"
+            },
+            "Category": {
+              "$ref": "#/$defs/one_line"
+            },
+            "Geo": {
+              "$ref": "#/$defs/one_line"
+            },
+            "EPD": {
+              "$ref": "#/$defs/one_line"
+            },
+            "Scope": {
+              "$ref": "#/$defs/one_line"
+            },
+            "Exclude": {
+              "$ref": "#/$defs/one_line"
+            }
+          }
+        },
+        "matching_review": {
+          "$ref": "#/$defs/matching_review"
+        },
+        "tags": {
+          "$ref": "#/$defs/tags_update"
+        },
+        "contacts": {
+          "$ref": "#/$defs/contact_changes"
+        },
+        "raci": {
+          "$ref": "#/$defs/raci_changes"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes_update"
+        }
+      }
+    },
+    "ignore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_id",
+        "reason"
+      ],
+      "properties": {
+        "entry_id": {
+          "$ref": "#/$defs/one_line"
+        },
+        "reason": {
+          "$ref": "#/$defs/one_line"
+        }
+      }
+    },
+    "unresolved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_id",
+        "reason"
+      ],
+      "properties": {
+        "entry_id": {
+          "$ref": "#/$defs/one_line"
+        },
+        "reason": {
+          "$ref": "#/$defs/one_line"
+        },
+        "task_candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/one_line"
+          },
+          "default": []
+        }
+      }
+    },
+    "email": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+    },
+    "matching_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "exclude",
+        "tags",
+        "contacts",
+        "identifiers"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "checked-no-change",
+            "updated",
+            "not-applicable"
+          ]
+        },
+        "exclude": {
+          "enum": [
+            "checked-no-change",
+            "updated",
+            "not-applicable"
+          ]
+        },
+        "tags": {
+          "enum": [
+            "checked-no-change",
+            "updated",
+            "not-applicable"
+          ]
+        },
+        "contacts": {
+          "enum": [
+            "checked-no-change",
+            "updated",
+            "not-applicable"
+          ]
+        },
+        "identifiers": {
+          "enum": [
+            "checked-no-change",
+            "updated",
+            "not-applicable"
+          ]
+        }
+      }
+    },
+    "tags_update": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "$ref": "#/$defs/string_array"
+        },
+        "remove": {
+          "$ref": "#/$defs/string_array"
+        }
+      }
+    },
+    "contact_upsert": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "email",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/one_line"
+        },
+        "email": {
+          "$ref": "#/$defs/email"
+        },
+        "role": {
+          "$ref": "#/$defs/one_line"
+        }
+      }
+    },
+    "raci_upsert": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "email",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/one_line"
+        },
+        "email": {
+          "$ref": "#/$defs/email"
+        },
+        "role": {
+          "type": "string",
+          "pattern": "^[RACI](?:[/,][RACI])*$"
+        }
+      }
+    },
+    "contact_changes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "upsert": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/contact_upsert"
+          },
+          "default": []
+        },
+        "remove": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/email"
+          },
+          "default": []
+        }
+      }
+    },
+    "raci_changes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "upsert": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/raci_upsert"
+          },
+          "default": []
+        },
+        "remove": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/email"
+          },
+          "default": []
+        }
+      }
+    },
+    "notes_update": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "$ref": "#/$defs/string_array"
+        }
+      }
+    }
+  }
+}

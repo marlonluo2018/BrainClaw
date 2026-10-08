@@ -1,1203 +1,234 @@
-"""BrainClaw Email Sync Pre-Processor.
+"""BrainClaw email-sync evidence processor.
 
-Reads JSON email data from stdin (output of outlook_skill.py find-recent --json),
-builds a task index, matches emails to tasks, filters noise, and outputs a compact
-pre-matched summary for Claude to process with minimal context usage.
+The processor deliberately does not assign emails to tasks. It builds a
+structured task catalog, prepares explicit evidence for the semantic classifier,
+filters only strict deterministic noise, and renders a diagnostic Markdown view.
 
 Usage:
-    py -3 assistant_brain/scripts/run_email_sync.py --days 1
-    py -3 .../email_sync.py --input-file assistant_brain/sync_results/latest-input.json
-    py -3 .../email_sync.py --input-file assistant_brain/sync_results/latest-input.json --output-file assistant_brain/sync_results/custom-sync.md
+    py -3 assistant_brain/scripts/email_sync.py --input-file INPUT.json
 """
 
-import sys
-import io
-import re
-import json
-import argparse
-from datetime import date, datetime, timedelta
-from pathlib import Path
+from __future__ import annotations
 
-# followup.py wraps stdout/stderr at import time; avoid double-wrap
-from shared_config import BRAIN_DIR, scan_tasks, safe_read
-from followup import parse_task_file
+import argparse
+from datetime import datetime, timedelta
+import hashlib
+import json
+import os
+from pathlib import Path
+import sys
+from typing import Any
+
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
+
+from email_sync_candidates import prepare_candidate_payload, render_diagnostic
+from email_sync_catalog import build_task_catalog
+from manage_ignore_candidates import cleanup_candidates
+from shared_config import BRAIN_DIR, configure_utf8_stdio
+
+configure_utf8_stdio()
 
 SYNC_RESULTS_DIR = BRAIN_DIR / "sync_results"
 IGNORE_CANDIDATES_FILE = SYNC_RESULTS_DIR / "ignore_candidates.json"
-IGNORE_CANDIDATE_TTL_DAYS = 14
-IGNORE_CANDIDATE_MAX_ITEMS = 500
+DEFAULT_CANDIDATES_FILE = SYNC_RESULTS_DIR / "latest-candidates.json"
+DEFAULT_CANDIDATES_SCHEMA = BRAIN_DIR / "formats" / "email_sync_candidates.schema.json"
 
 
-def save_sync_output(output: str, output_file: str | None = None) -> Path:
-    """Save sync output to a specified file or a timestamped default path."""
-    if output_file:
-        out_file = Path(output_file)
-        if not out_file.is_absolute():
-            out_file = (BRAIN_DIR.parent / out_file).resolve()
-    else:
-        ts = datetime.now().strftime("%Y-%m-%d_%H%M")
-        out_file = SYNC_RESULTS_DIR / f"{ts}.md"
-
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    out_file.write_text(output, encoding="utf-8")
-    return out_file
+class EvidenceBundleError(ValueError):
+    """Raised when an evidence bundle cannot be generated safely."""
 
 
-def cleanup_old_results(days: int = 14):
-    """Remove sync result files older than N days."""
-    if not SYNC_RESULTS_DIR.exists():
-        return
-    protected_names = {
-        IGNORE_CANDIDATES_FILE.name,
-        "latest.md",
-        "latest-input.json",
-    }
-    cutoff = datetime.now() - timedelta(days=days)
-    for f in SYNC_RESULTS_DIR.iterdir():
-        if f.name in protected_names:
-            continue
-        if f.is_file() and f.stat().st_mtime < cutoff.timestamp():
-            f.unlink()
+def _resolve_path(raw: str | None, default: Path) -> Path:
+    path = Path(raw) if raw else default
+    return path if path.is_absolute() else (BRAIN_DIR.parent / path).resolve()
 
 
-def load_ignore_candidates() -> dict:
-    """Load the incremental ignore-candidate pool."""
-    if not IGNORE_CANDIDATES_FILE.exists():
+def _atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temp.write_text(text, encoding="utf-8")
+    temp.replace(path)
+
+
+def load_ignore_candidates(path: Path = IGNORE_CANDIDATES_FILE) -> dict[str, Any]:
+    if not path.exists():
         return {"updated_at": None, "candidates": {}}
     try:
-        data = json.loads(IGNORE_CANDIDATES_FILE.read_text(encoding="utf-8"))
-    except Exception:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
         return {"updated_at": None, "candidates": {}}
     if not isinstance(data, dict):
         return {"updated_at": None, "candidates": {}}
     candidates = data.get("candidates", {})
     if not isinstance(candidates, dict):
         candidates = {}
-    return {
-        "updated_at": data.get("updated_at"),
-        "candidates": candidates,
+    return {"updated_at": data.get("updated_at"), "candidates": cleanup_candidates(candidates)}
+
+
+def cleanup_old_results(days: int = 14) -> None:
+    if not SYNC_RESULTS_DIR.exists():
+        return
+    protected = {
+        "ignore_candidates.json",
+        "latest.md",
+        "latest-input.json",
+        "latest-meta.json",
+        "latest-run.json",
+        "latest-candidates.json",
+        "latest-plan.json",
+        "latest-applied.json",
     }
+    cutoff = datetime.now() - timedelta(days=days)
+    for path in SYNC_RESULTS_DIR.iterdir():
+        if path.is_file() and path.name not in protected and path.stat().st_mtime < cutoff.timestamp():
+            path.unlink()
 
 
-def save_ignore_candidates(candidates: dict):
-    """Persist the incremental ignore-candidate pool."""
-    payload = {
-        "updated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-        "candidates": candidates,
-    }
-    IGNORE_CANDIDATES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    IGNORE_CANDIDATES_FILE.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-
-def parse_iso_datetime(value: str | None):
-    if not value:
-        return None
+def _load_snapshot(path: Path) -> tuple[list[dict[str, Any]], str]:
     try:
-        return datetime.fromisoformat(value)
-    except Exception:
-        return None
+        raw = path.read_text(encoding="utf-8-sig")
+        payload = json.loads(raw)
+    except FileNotFoundError as exc:
+        raise EvidenceBundleError(f"Snapshot does not exist: {path}") from exc
+    except (OSError, json.JSONDecodeError) as exc:
+        raise EvidenceBundleError(f"Could not read snapshot: {exc}") from exc
+    if not isinstance(payload, list):
+        raise EvidenceBundleError("Snapshot must be a JSON list")
+    seen: set[str] = set()
+    for index, email in enumerate(payload, 1):
+        if not isinstance(email, dict):
+            raise EvidenceBundleError(f"Snapshot item {index} must be an object")
+        entry_id = str(email.get("entry_id", "")).strip()
+        if not entry_id:
+            raise EvidenceBundleError(f"Snapshot item {index} has no entry_id")
+        if "conversation_id" not in email:
+            raise EvidenceBundleError(f"Snapshot item {index} has no conversation_id field")
+        if entry_id in seen:
+            raise EvidenceBundleError(f"Snapshot contains duplicate entry_id: {entry_id}")
+        seen.add(entry_id)
+    normalized = raw.lstrip("\ufeff")
+    snapshot_id = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+    return payload, snapshot_id
 
 
-def cleanup_ignore_candidates(candidates: dict, active_seen_ids: set[str]) -> dict:
-    """Prune old/confirmed/stale candidate entries and cap total size."""
-    now = datetime.now().astimezone()
-    cleaned = {}
-    for entry_id, item in candidates.items():
-        if not entry_id or not isinstance(item, dict):
-            continue
-        if active_seen_ids and entry_id not in active_seen_ids:
-            last_seen = parse_iso_datetime(item.get("last_seen_at"))
-            if last_seen and now - last_seen > timedelta(days=IGNORE_CANDIDATE_TTL_DAYS):
-                continue
-        cleaned[entry_id] = item
-
-    if len(cleaned) > IGNORE_CANDIDATE_MAX_ITEMS:
-        ordered = sorted(
-            cleaned.items(),
-            key=lambda kv: parse_iso_datetime(kv[1].get("last_seen_at")) or datetime.min,
-            reverse=True,
-        )[:IGNORE_CANDIDATE_MAX_ITEMS]
-        cleaned = dict(ordered)
-
-    return cleaned
-
-
-def build_ignore_candidate(email: dict, reason: str, source_section: str, suggested_action: str,
-                           task_candidates: list[dict] | None = None,
-                           existing: dict | None = None) -> dict:
-    """Build or refresh a recoverable ignore-candidate record without unstable email numbers."""
-    now_iso = datetime.now().astimezone().isoformat(timespec="seconds")
-    candidates = []
-    for item in task_candidates or []:
-        candidates.append({
-            "task_id": item.get("task_id", ""),
-            "confidence": item.get("confidence"),
-            "signal": item.get("signal", ""),
-        })
-    seen_count = 1
-    first_seen_at = now_iso
-    if isinstance(existing, dict):
-        seen_count = int(existing.get("seen_count", 0) or 0) + 1
-        first_seen_at = existing.get("first_seen_at", now_iso)
-    return {
-        "entry_id": email.get("entry_id", ""),
-        "subject": email.get("subject", ""),
-        "sender": email.get("sender", ""),
-        "received_time": email.get("received_time", ""),
-        "folder": email.get("folder", ""),
-        "body_preview": (email.get("body_preview", "") or "").replace("\r\n", " ").replace("\n", " ").strip(),
-        "reason": reason,
-        "source_section": source_section,
-        "suggested_action": suggested_action,
-        "task_candidates": candidates,
-        "first_seen_at": first_seen_at,
-        "last_seen_at": now_iso,
-        "seen_count": seen_count,
-    }
-
-
-# --- Generic System Noise filter patterns ---
-
-NOISE_SUBJECT_PREFIXES = [
-    "Automatic reply:", "automatic reply:",
-    "Out of office:", "Out of Office:",
-    "Message Recall Report:",
-    "One-time Passcode",
-    "Undeliverable:",
-]
-
-NOISE_SUBJECT_CONTAINS = [
-    "Recall: ", "recall:",
-]
-
-NOISE_SENDER_CONTAINS = [
-    "noreply", "no-reply", "donotreply", "do-not-reply",
-    "mailer-daemon", "postmaster",
-]
-
-SYSTEM_SENDERS = [
-    "servicenow", "service-now", "jira", "confluence",
-    "sharepoint", "microsoft flow", "power automate",
-    "successfactors", "workday",
-]
-
-NOISE_MEETING_STATUSES = {"meeting_canceled"}
-CALENDAR_MEETING_STATUSES = {"meeting_request", "meeting"}
-
-GEO_DOMAIN_MAP = {}
-
-GEO_FLAGS = {
-    "China": "\U0001f1e8\U0001f1f3",
-    "Philippines": "\U0001f1f5\U0001f1ed",
-    "India": "\U0001f1ee\U0001f1f3",
-    "Global": "\U0001f310",
-    "ASEAN": "\U0001f30f",
-}
-
-# Chinese stopwords — high-frequency generic words
-ZH_STOPWORDS = {
-    "答复", "转发", "回复", "请", "您好", "你好", "谢谢", "感谢",
-    "关于", "通知", "提醒", "确认", "更新", "信息", "邮件", "附件",
-    "需要", "问题", "情况", "工作", "时间", "申请", "进度", "安排",
-    "完成", "已经", "可以", "如果", "是否", "希望", "麻烦", "帮忙",
-    "收到", "发送", "联系", "处理", "参加", "了解", "看看", "知道",
-    "好的", "没有", "这个", "那个", "我们", "他们", "大家", "公司",
-    "团队", "部门", "同事", "老师", "经理", "主管", "领导",
-}
-
-# English stopwords for subject/preview matching
-EN_STOPWORDS = {
-    # Generic
-    "the", "this", "that", "with", "from", "have", "has", "been",
-    "will", "would", "could", "should", "can", "are", "was", "were",
-    "for", "and", "not", "but", "all", "any", "our", "your", "their",
-    "please", "thanks", "thank", "regards", "dear", "hello",
-    "fwd", "ext", "msg", "subject", "sent", "date",
-    # Months
-    "january", "february", "march", "april", "may", "june",
-    "july", "august", "september", "october", "november", "december",
-    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
-}
-
-
-def is_calendar_item(email: dict) -> bool:
-    """Return True if this email is a meeting invite/calendar item (not noise, shown separately)."""
-    meeting = email.get('meeting_status', '')
-    if meeting in CALENDAR_MEETING_STATUSES:
-        return True
-    msg_class = email.get('message_class', '')
-    if msg_class.startswith('IPM.Schedule.Meeting'):
-        return True
-    return False
-
-
-def _meeting_type_label(email: dict) -> str:
-    """Derive a short English label for the calendar item type from MessageClass."""
-    msg_class = email.get('message_class', '')
-    if 'Canceled' in msg_class:
-        return "Canceled"
-    if 'Resp.Pos' in msg_class:
-        return "Accepted"
-    if 'Resp.Neg' in msg_class:
-        return "Declined"
-    if 'Resp.Tent' in msg_class:
-        return "Tentative"
-    if 'Request' in msg_class:
-        return "New Invite"
-    if msg_class.startswith('IPM.Schedule.Meeting'):
-        return "Update"
-    meeting = email.get('meeting_status', '')
-    if meeting == 'meeting_request':
-        return "New Invite"
-    if meeting == 'meeting_canceled':
-        return "Canceled"
-    return "Meeting"
-
-
-def _parse_dt(raw: str):
-    """Parse a datetime string from the pipeline."""
-    from datetime import datetime as _dt
-    if not raw:
-        return None
-    try:
-        return _dt.fromisoformat(raw.replace(" ", "T")) if "T" not in raw else _dt.fromisoformat(raw)
-    except Exception:
-        try:
-            return _dt.strptime(raw[:16], "%Y-%m-%d %H:%M")
-        except Exception:
-            return None
-
-
-def _format_start_time(email: dict) -> str:
-    """Format start/end time like '2026-06-26 13:30-15:00'."""
-    start_dt = _parse_dt(email.get('start_time', ''))
-    if not start_dt:
-        return ""
-    end_dt = _parse_dt(email.get('end_time', ''))
-    base = f"{start_dt.strftime('%Y-%m-%d')} {start_dt.strftime('%H:%M')}"
-    if end_dt:
-        return f"{base}-{end_dt.strftime('%H:%M')}"
-    return base
-
-
-def is_noise(email: dict) -> str | None:
-    """Return noise category if email is noise, None if relevant."""
-    subject = email.get('subject', '')
-    sender = email.get('sender', '').lower()
-    meeting = email.get('meeting_status', '')
-
-    if meeting in NOISE_MEETING_STATUSES:
-        return "calendar"
-
-    for prefix in NOISE_SUBJECT_PREFIXES:
-        if subject.startswith(prefix):
-            if "One-time Passcode" in prefix:
-                return "OTP"
-            if "Recall" in prefix:
-                return "recall"
-            return "auto-reply"
-
-    subj_lower = subject.lower()
-    # Event heuristic (same as outlook_skill.py)
-    event_subj_kw = ('webinar', 'join us', 'register now', 'you are invited',
-                     "you're invited", 'invitation:', 'save the date',
-                     'live event', 'virtual event')
-    if any(kw in subj_lower for kw in event_subj_kw):
-        return "calendar"
-
-    for kw in NOISE_SUBJECT_CONTAINS:
-        if kw.lower() in subj_lower:
-            return "newsletter"
-
-    for kw in NOISE_SENDER_CONTAINS:
-        if kw in sender:
-            if "identity assurance" in sender:
-                return "OTP"
-            return "auto-reply"
-
-    return None
-
-
-def is_system_sender(email: dict) -> bool:
-    sender = email.get('sender', '').lower()
-    for kw in SYSTEM_SENDERS:
-        if kw in sender:
-            return True
-    return False
-
-
-def build_task_index() -> tuple[dict, dict, dict]:
-    """Build task index with contacts, entry_ids, and keywords.
-
-    Returns:
-        task_index: {task_id: {title, geo, priority, due, path, contacts, entry_ids, keywords}}
-        email_to_tasks: {email_addr: [task_ids]}
-        name_to_tasks: {lowercase_name: [task_ids]}
-    """
-    active_tasks, _, _ = scan_tasks()
-    tasks_dir = BRAIN_DIR / 'tasks'
-
-    task_index = {}
-    email_to_tasks = {}
-    name_to_tasks = {}
-
-    for t in active_tasks:
-        if t.status == "Completed":
-            continue
-
-        content = safe_read(tasks_dir / f"{t.id}-{_slug_from_path(t.path)}.md")
-        if not content:
-            # Try finding by ID prefix
-            matches = list(tasks_dir.glob(f"{t.id}-*.md"))
-            if matches:
-                content = safe_read(matches[0])
-        if not content:
-            continue
-
-        parsed = parse_task_file(content)
-
-        # Extract entry_ids from timeline (<!-- email:XXXX -->)
-        entry_ids = set(re.findall(r'<!-- email:(\S+?) -->', content))
-
-        # Build keyword set from title + category + scope (English + Chinese)
-        def extract_keywords(text: str) -> set:
-            en = set(re.findall(r'[a-zA-Z]{3,}', text.lower())) - EN_STOPWORDS
-            zh = set(re.findall(r'[一-鿿]{2,}', text)) - ZH_STOPWORDS
-            # Alphanumeric codes: Q3, DO288, RH294, EX288, etc.
-            codes = set(re.findall(r'[A-Za-z]+\d+[\w]*', text.upper()))
-            codes |= set(re.findall(r'\b[Qq][1-4]\b', text.upper()))
-            return en | zh | codes
-
-        keywords = extract_keywords(t.title)
-        keywords |= extract_keywords(parsed.get("category", ""))
-
-        # Extract scope keywords (positive only — exclude text after "NOT")
-        scope_text = ""
-        scope_m = re.search(r'^\*\*Scope:\*\*\s*(.+)$', content, re.MULTILINE)
-        if scope_m:
-            scope_text = scope_m.group(1).strip()
-            # Split on NOT clauses — only use text before first "NOT" for positive keywords
-            scope_include = re.split(r'[.,;]\s*NOT\b', scope_text, flags=re.IGNORECASE)[0]
-            keywords |= extract_keywords(scope_include)
-
-        # Extract exclusion keywords from Exclude field or NOT clauses in Scope
-        exclusion_keywords = set()
-        exclude_m = re.search(r'^\*\*Exclude:\*\*\s*(.+)$', content, re.MULTILINE)
-        if exclude_m:
-            exclusion_keywords = extract_keywords(exclude_m.group(1).strip())
-        elif scope_text:
-            # Fallback: parse NOT clauses from Scope text
-            not_parts = re.findall(r'(?:[.,;]\s*|^)NOT\s+(.+?)(?=[.,;]|$)', scope_text, re.IGNORECASE)
-            for part in not_parts:
-                exclusion_keywords |= extract_keywords(part)
-        # Remove identity words (title+tags) from exclusion set — these are the task's
-        # own brand words and would false-flag every legitimate email for this task.
-        identity_words = extract_keywords(t.title)
-        # Tags added below, but compute them here for exclusion filtering
-        tags_m_pre = re.search(r'^## Tags\s*\n(.+)$', content, re.MULTILINE)
-        if tags_m_pre:
-            for tag in re.findall(r'`([^`]+)`', tags_m_pre.group(1)):
-                identity_words |= extract_keywords(tag)
-        exclusion_keywords -= identity_words
-
-        # Remove exclusion keywords from positive set to avoid false boosting
-        keywords -= exclusion_keywords
-
-        # Extract Tags (backtick-delimited, curated high-quality discriminators)
-        tags_m = re.search(r'^## Tags\s*\n(.+)$', content, re.MULTILINE)
-        if tags_m:
-            tags_line = tags_m.group(1)
-            tags = re.findall(r'`([^`]+)`', tags_line)
-            for tag in tags:
-                keywords |= extract_keywords(tag)
-
-        # Extract EPD (plan row IDs — unique numeric identifiers, weight 3.0)
-        epd_ids = set()
-        epd_m = re.search(r'^\*\*EPD:\*\*\s*(.+)$', content, re.MULTILINE)
-        if epd_m:
-            epd_val = epd_m.group(1).strip()
-            if epd_val != '—' and epd_val != '-':
-                epd_ids = set(re.findall(r'\d{6,}', epd_val))
-                keywords |= epd_ids
-
-        # Extract alphanumeric codes from header section only (above ## Timeline)
-        # Timeline accumulates codes from all past emails — scanning it makes tasks
-        # progressively broader keyword magnets, causing false matches.
-        header_content = re.split(r'^## Timeline\b', content, maxsplit=1, flags=re.MULTILINE)[0]
-        all_codes = set(re.findall(r'[A-Za-z]+\d+[\w]*', header_content.upper()))
-        all_codes |= set(re.findall(r'\b[Qq][1-4]\b', header_content.upper()))
-        # Filter out noise codes: years, generic IDs, hex strings
-        all_codes = {c for c in all_codes if len(c) <= 10 and not re.match(r'^20\d\d$', c)}
-        keywords |= all_codes
-
-        task_index[t.id] = {
-            "title": t.title,
-            "geo": t.geo or parsed.get("geo", ""),
-            "priority": t.priority,
-            "due": t.due,
-            "path": t.path,
-            "scope": scope_text,
-            "contacts": parsed.get("contacts", []),
-            "entry_ids": entry_ids,
-            "keywords": keywords,
-            "exclusion_keywords": exclusion_keywords,
-            "epd_ids": epd_ids,
+def _load_metadata(path: Path, actual_snapshot_id: str, email_count: int) -> dict[str, Any]:
+    if not path.exists():
+        return {
+            "schema_version": 1,
+            "snapshot_id": actual_snapshot_id,
+            "fetched_at": "",
+            "source": "direct-email-sync-invocation",
+            "stale": False,
+            "stale_reason": "",
+            "email_count": email_count,
         }
-
-        # Build inverted indexes from Contacts section
-        for contact in parsed.get("contacts", []):
-            email_addr = contact.get("email", "").lower().strip()
-            if email_addr:
-                email_to_tasks.setdefault(email_addr, []).append(t.id)
-            name = contact.get("name", "").lower().strip()
-            if name:
-                name_to_tasks.setdefault(name, []).append(t.id)
-
-        # Also extract emails from RACI table (stakeholders not in Contacts)
-        raci_emails = re.findall(r'<([^>]+@[^>]+)>', content)
-        for addr in raci_emails:
-            addr_lower = addr.lower().strip()
-            if addr_lower and t.id not in email_to_tasks.get(addr_lower, []):
-                email_to_tasks.setdefault(addr_lower, []).append(t.id)
-        # Extract names from RACI table rows: | Name <email> | Role |
-        raci_names = re.findall(r'\|\s*([A-Z][a-z]+ [A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*(?:<[^>]+>)?\s*\|', content)
-        for rname in raci_names:
-            rname_lower = rname.lower().strip()
-            if rname_lower and rname_lower != "stakeholder" and t.id not in name_to_tasks.get(rname_lower, []):
-                name_to_tasks.setdefault(rname_lower, []).append(t.id)
-
-    # Scan closed/history tasks for entry_ids only — prevents false matching
-    # when emails already recorded in a closed task fall through to contact signal
-    history_dir = tasks_dir / 'history'
-    if history_dir.exists():
-        for hist_file in history_dir.rglob('T*.md'):
-            content = safe_read(hist_file)
-            if not content:
-                continue
-            entry_ids = set(re.findall(r'<!-- email:(\S+?) -->', content))
-            if not entry_ids:
-                continue
-            tid_m = re.match(r'(T\d+)', hist_file.stem)
-            if not tid_m:
-                continue
-            tid = tid_m.group(1)
-            if tid in task_index:
-                continue
-            rel_path = str(hist_file.relative_to(BRAIN_DIR.parent)).replace('\\', '/')
-            task_index[tid] = {
-                "title": "(closed)",
-                "geo": "",
-                "priority": "",
-                "due": "",
-                "path": rel_path,
-                "scope": "",
-                "contacts": [],
-                "entry_ids": entry_ids,
-                "keywords": set(),
-                "exclusion_keywords": set(),
-                "epd_ids": set(),
-            }
-
-    return task_index, email_to_tasks, name_to_tasks
+    try:
+        metadata = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise EvidenceBundleError(f"Could not read snapshot metadata: {exc}") from exc
+    if not isinstance(metadata, dict):
+        raise EvidenceBundleError("Snapshot metadata must be a JSON object")
+    if metadata.get("schema_version") != 1:
+        raise EvidenceBundleError("Snapshot metadata schema_version must be 1")
+    if not isinstance(metadata.get("stale"), bool):
+        raise EvidenceBundleError("Snapshot metadata stale flag must be a boolean")
+    recorded_count = metadata.get("email_count")
+    if recorded_count is not None and recorded_count != email_count:
+        raise EvidenceBundleError(
+            f"Snapshot metadata email_count {recorded_count} does not match snapshot count {email_count}"
+        )
+    recorded = str(metadata.get("snapshot_id", "")).strip()
+    if recorded and recorded != actual_snapshot_id:
+        raise EvidenceBundleError(
+            f"Snapshot content hash {actual_snapshot_id} does not match metadata snapshot_id {recorded}"
+        )
+    metadata["snapshot_id"] = actual_snapshot_id
+    return metadata
 
 
-def _slug_from_path(path: str) -> str:
-    """Extract filename slug from path like 'assistant_brain/tasks/T053-temenos-tlc.md'."""
-    name = Path(path).stem
-    # Remove the TXXX- prefix
-    m = re.match(r'T\d+-(.+)', name)
-    return m.group(1) if m else name
-
-
-def load_global_contacts(contacts_path: Path) -> dict:
-    """Parse contacts.md into {email: {name, role, section}}."""
-    content = safe_read(contacts_path)
-    if not content:
-        return {}
-
-    contacts = {}
-    current_section = ""
-    for line in content.split('\n'):
-        if line.startswith('## '):
-            current_section = line.lstrip('#').strip()
-            continue
-        m = re.match(r'^- \*\*(.+?)\*\*\s+<(.+?)>', line)
-        if m:
-            name = m.group(1).strip()
-            email = m.group(2).strip().lower()
-            contacts[email] = {"name": name, "section": current_section}
-
-    return contacts
-
-
-def extract_sender_email(sender_str: str) -> str:
-    """Extract email address from sender string like 'Name <email@domain.com>'."""
-    m = re.search(r'<(.+?@.+?)>', sender_str)
-    if m:
-        return m.group(1).lower()
-    if '@' in sender_str:
-        return sender_str.strip().lower()
-    return ""
-
-
-def extract_sender_name(sender_str: str) -> str:
-    """Extract display name from sender string."""
-    if '<' in sender_str:
-        return sender_str.split('<')[0].strip()
-    return sender_str.strip()
-
-
-GEO_SUBJECT_KEYWORDS = {
-    "americas": "Americas",
-    "america": "Americas",
-    "emea": "EMEA",
-    "europe": "EMEA",
-    "apac": "APAC",
-    "asia pacific": "APAC",
-    "india": "India",
-    "china": "China",
-    "philippines": "Philippines",
-}
-
-
-def extract_geo_from_email(email: dict) -> str | None:
-    """Infer geo from sender/recipient email domains, then subject keywords."""
-    sender = email.get('sender', '')
-    sender_email = extract_sender_email(sender)
-    for domain, geo in GEO_DOMAIN_MAP.items():
-        if sender_email.endswith(domain):
-            return geo
-    # Check recipients
-    for recip in email.get('to_recipients', []):
-        addr = (recip.get('address', '') or '').lower()
-        for domain, geo in GEO_DOMAIN_MAP.items():
-            if addr.endswith(domain):
-                return geo
-    # Fallback: subject keyword geo detection
-    subject_lower = email.get('subject', '').lower()
-    for kw, geo in GEO_SUBJECT_KEYWORDS.items():
-        if kw in subject_lower:
-            return geo
-    return None
-
-
-QUARTER_MONTHS = {
-    "Q1": (1, 3), "Q2": (4, 6), "Q3": (7, 9), "Q4": (10, 12),
-}
-
-MONTH_NAMES = {
-    "jan": 1, "january": 1, "feb": 2, "february": 2,
-    "mar": 3, "march": 3, "apr": 4, "april": 4,
-    "may": 5, "jun": 6, "june": 6,
-    "jul": 7, "july": 7, "aug": 8, "august": 8,
-    "sep": 9, "september": 9, "oct": 10, "october": 10,
-    "nov": 11, "november": 11, "dec": 12, "december": 12,
-}
-
-
-def parse_scope_time_window(scope_text: str) -> tuple[int, int] | None:
-    """Parse a time window from scope text. Returns (start_month, end_month) or None."""
-    if not scope_text:
-        return None
-    # Try explicit month range: (Jul–Sep), (Apr–Jun), Jan-Mar
-    m = re.search(r'[\(（]?\b([A-Za-z]{3,9})\s*[–\-−to]+\s*([A-Za-z]{3,9})\b[\)）]?', scope_text)
-    if m:
-        start = MONTH_NAMES.get(m.group(1).lower())
-        end = MONTH_NAMES.get(m.group(2).lower())
-        if start and end:
-            return (start, end)
-    # Try quarter: Q3, Q2
-    m = re.search(r'\b(Q[1-4])\b', scope_text, re.IGNORECASE)
-    if m:
-        q = m.group(1).upper()
-        return QUARTER_MONTHS.get(q)
-    return None
-
-
-def extract_email_months(subject: str) -> set[int]:
-    """Extract referenced months from email subject. Returns set of month numbers."""
-    months = set()
-    # Pattern: "22nd June", "June 22", "Jun 2026", month names standalone
-    for m in re.finditer(r'\b([A-Za-z]{3,9})\b', subject):
-        month_num = MONTH_NAMES.get(m.group(1).lower())
-        if month_num:
-            months.add(month_num)
-    return months
-
-
-def check_temporal_scope(email: dict, task_scope: str) -> str | None:
-    """Check if email dates conflict with task scope. Returns conflict description or None."""
-    window = parse_scope_time_window(task_scope)
-    if not window:
-        return None
-    start_month, end_month = window
-    subject = email.get("subject", "")
-    email_months = extract_email_months(subject)
-    if not email_months:
-        return None
-    # Check if ANY referenced month falls outside the window
-    outside = {m for m in email_months if not (start_month <= m <= end_month)}
-    if not outside:
-        return None
-    month_names = {v: k for k, v in MONTH_NAMES.items() if len(k) == 3}
-    outside_str = ", ".join(sorted(month_names.get(m, str(m)).capitalize() for m in outside))
-    window_str = f"{month_names.get(start_month, '?').capitalize()}–{month_names.get(end_month, '?').capitalize()}"
-    return f"email refs {outside_str}, task scope={window_str}"
-
-
-def match_email_to_tasks(email: dict, task_index: dict,
-                         email_to_tasks: dict, name_to_tasks: dict) -> list[dict]:
-    """Match an email to tasks using 3 generic candidate signals.
-
-    Returns candidate list of {task_id, confidence, signal, already_known} sorted by confidence desc.
-    All business/domain judgments are delegated to the email-classifier sub-agent.
-    """
-    entry_id = email.get('entry_id', '')
-    sender = email.get('sender', '')
-    sender_email = extract_sender_email(sender)
-    sender_name = extract_sender_name(sender).lower()
-
-    matches = []
-
-    # Signal 1: Thread/entry_id match (confidence 1.0)
-    for tid, info in task_index.items():
-        if entry_id and entry_id in info["entry_ids"]:
-            matches.append({
-                "task_id": tid,
-                "confidence": 1.0,
-                "signal": "entry_id",
-                "already_known": True,
-            })
-            return matches  # Definitive thread match
-
-    # Signal 2: Contact match (confidence 0.8)
-    contact_matches = set()
-    if sender_email:
-        for tid in email_to_tasks.get(sender_email, []):
-            contact_matches.add(tid)
-    if sender_name:
-        for tid in name_to_tasks.get(sender_name, []):
-            contact_matches.add(tid)
-    for recip in email.get('to_recipients', []):
-        addr = (recip.get('address', '') or '').lower()
-        if addr:
-            for tid in email_to_tasks.get(addr, []):
-                contact_matches.add(tid)
-        rname = (recip.get('name', '') or '').lower()
-        if rname:
-            for tid in name_to_tasks.get(rname, []):
-                contact_matches.add(tid)
-
-    if contact_matches:
-        for tid in contact_matches:
-            matches.append({
-                "task_id": tid,
-                "confidence": 0.8,
-                "signal": "contact",
-                "already_known": False,
-            })
-
-    # Signal 3: Keyword / Identifier overlap match (confidence 0.5)
-    subject_raw = email.get('subject', '')
-    preview = email.get('body_preview', '')
-    text = f"{subject_raw} {preview}"
-    email_words = set(re.findall(r'[a-zA-Z]{3,}', text.lower())) - EN_STOPWORDS
-    email_words |= set(re.findall(r'[一-鿿]{2,}', text)) - ZH_STOPWORDS
-    email_codes = set(re.findall(r'[A-Za-z0-9_-]{4,}', text))
-    email_all = email_words | email_codes
-
-    for tid, info in task_index.items():
-        if any(m["task_id"] == tid for m in matches):
-            continue
-        overlap = email_all & info.get("keywords", set())
-        if len(overlap) >= 2:
-            matches.append({
-                "task_id": tid,
-                "confidence": 0.5,
-                "signal": "keyword",
-                "already_known": False,
-            })
-
-    matches.sort(key=lambda x: x["confidence"], reverse=True)
-    return matches
-
-    # Check scope exclusions — flag matches where email content hits exclusion keywords
-    subject_raw = email.get('subject', '')
-    preview = email.get('body_preview', '')
-    email_text_for_exclusion = f"{subject_raw} {preview}".upper()
-    email_excl_words = set(re.findall(r'[A-Za-z]{3,}', email_text_for_exclusion.lower())) - EN_STOPWORDS
-    email_excl_words |= set(re.findall(r'[A-Za-z]+\d+[\w]*', email_text_for_exclusion))
-
-    for m in matches:
-        tid = m["task_id"]
-        excl_kw = task_index.get(tid, {}).get("exclusion_keywords", set())
-        if excl_kw:
-            hit = email_excl_words & excl_kw
-            if len(hit) >= 2:
-                m["exclusion_flag"] = sorted(hit)
-                m["confidence"] = round(m["confidence"] - 0.3, 2)
-            elif len(hit) == 1:
-                m["exclusion_flag"] = sorted(hit)
-                m["confidence"] = round(m["confidence"] - 0.15, 2)
-
-    # Sort by confidence descending
-    matches.sort(key=lambda x: x["confidence"], reverse=True)
-    return matches
-
-
-def format_output(matched: dict, ambiguous: list, unmatched: list,
-                  noise_stats: dict, task_index: dict, global_contacts: dict,
-                  total_count: int, emails_by_num: dict,
-                  calendar_items: list | None = None,
-                  ignored_count: int = 0,
-                  ignored_emails: list | None = None) -> str:
-    """Format compact pre-matched summary for Claude."""
-    today = date.today().strftime('%Y-%m-%d')
-    calendar_items = calendar_items or []
-    noise_total = sum(len(v) for v in noise_stats.values())
-    relevant_count = total_count - noise_total - len(calendar_items)
-
-    lines = []
-    cal_note = f", {len(calendar_items)} calendar" if calendar_items else ""
-    lines.append(f"## Email Sync Pre-Match | {today} | "
-                 f"{relevant_count} relevant / {total_count} total "
-                 f"({noise_total} noise filtered{cal_note})")
-    lines.append("")
-
-    # --- Task-Matched ---
-    # Count only tasks with new (unrecorded) emails
-    tasks_with_new = sum(
-        1 for emails in matched.values()
-        if any(not e["_match"]["already_known"] for e in emails)
+def validate_candidate_payload(
+    payload: dict[str, Any],
+    schema_path: Path = DEFAULT_CANDIDATES_SCHEMA,
+) -> None:
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8-sig"))
+        Draft202012Validator.check_schema(schema)
+        validator = Draft202012Validator(schema)
+    except FileNotFoundError as exc:
+        raise EvidenceBundleError(f"Candidate schema does not exist: {schema_path}") from exc
+    except (OSError, json.JSONDecodeError, SchemaError) as exc:
+        raise EvidenceBundleError(f"Invalid candidate schema: {exc}") from exc
+    errors = sorted(
+        validator.iter_errors(payload),
+        key=lambda error: tuple(str(part) for part in error.absolute_path),
     )
-    new_email_count = sum(
-        sum(1 for e in emails if not e["_match"]["already_known"])
-        for emails in matched.values()
+    if errors:
+        error = errors[0]
+        location = "$" + "".join(
+            f"[{part}]" if isinstance(part, int) else f".{part}"
+            for part in error.absolute_path
+        )
+        raise EvidenceBundleError(f"Candidate schema validation failed at {location}: {error.message}")
+
+    if payload["snapshot"]["email_count"] != len(payload["emails"]):
+        raise EvidenceBundleError("Candidate snapshot.email_count must equal the number of email records")
+    numbers = [item["number"] for item in payload["emails"]]
+    if numbers != list(range(1, len(numbers) + 1)):
+        raise EvidenceBundleError("Candidate email numbers must be consecutive and preserve snapshot order")
+
+
+def build_evidence_bundle(
+    snapshot_file: Path,
+    metadata_file: Path,
+    ignore_file: Path = IGNORE_CANDIDATES_FILE,
+    schema_file: Path = DEFAULT_CANDIDATES_SCHEMA,
+) -> dict[str, Any]:
+    emails, actual_snapshot_id = _load_snapshot(snapshot_file)
+    metadata = _load_metadata(metadata_file, actual_snapshot_id, len(emails))
+    ignore_payload = load_ignore_candidates(ignore_file)
+    catalog = build_task_catalog()
+    payload = prepare_candidate_payload(
+        emails,
+        catalog,
+        metadata,
+        set(ignore_payload["candidates"]),
     )
-    known_only_count = len(matched) - tasks_with_new
-    known_note = f", {known_only_count} known-only hidden" if known_only_count else ""
-    lines.append(f"### Task-Matched ({new_email_count} new emails → {tasks_with_new} tasks{known_note})")
-    lines.append("")
-
-    for tid in sorted(matched.keys(), key=lambda t: task_index.get(t, {}).get("priority", "P9")):
-        info = task_index.get(tid, {})
-
-        new_emails = [e for e in matched[tid] if not e["_match"]["already_known"]]
-        known_emails = [e for e in matched[tid] if e["_match"]["already_known"]]
-
-        # Skip tasks with only known emails — nothing new to act on
-        if not new_emails:
-            continue
-
-        geo = info.get("geo", "")
-        flag = GEO_FLAGS.get(geo, "")
-        priority = info.get("priority", "")
-        due = info.get("due", "")
-        path = info.get("path", "")
-
-        lines.append(f"**[{tid}]({path}) {info.get('title', '')}** | "
-                     f"{priority} {flag} | Due: {due}")
-        scope = info.get("scope", "")
-        if scope:
-            lines.append(f"  Scope: {scope}")
-
-        for em_info in new_emails:
-            num = em_info["_num"]
-            received = em_info.get("received_time", "")[:16]
-            sender_name = extract_sender_name(em_info.get("sender", ""))
-            subject = em_info.get("subject", "")
-            signal = em_info["_match"]["signal"]
-
-            excl_flag = ""
-            if em_info["_match"].get("exclusion_flag"):
-                excl_words = ", ".join(em_info["_match"]["exclusion_flag"][:4])
-                excl_flag = f" ⚠️EXCLUDED?[{excl_words}]"
-            generic_flag = " ⚠️GENERIC" if em_info.get("_system_sender") else ""
-
-            is_sent = "sent" in em_info.get("folder", "").lower()
-            if is_sent:
-                to_names = []
-                for r in em_info.get("to_recipients", []):
-                    n = r.get("name", r.get("address", ""))
-                    if n:
-                        to_names.append(n.split('<')[0].strip() if '<' in n else n)
-                to_str = ", ".join(to_names[:2])
-                label = f"← #{num} [{signal}] {received} to {to_str}: \"{subject}\""
-            else:
-                label = f"→ #{num} [{signal}] {received} {sender_name}: \"{subject}\""
-
-            lines.append(f"  {label} ⚡NEW{excl_flag}{generic_flag}")
-            eid = em_info.get("entry_id", "")
-            if eid:
-                lines.append(f"    ID: {eid}")
-            preview = em_info.get("body_preview", "").replace("\r\n", " ").replace("\n", " ").strip()
-            if is_sent:
-                if preview:
-                    lines.append(f"    Preview: {preview[:300]}")
-                lines.append("    ⚠️READ_BODY: Must get-email before summarizing outbound")
-            elif preview:
-                lines.append(f"    Preview: {preview[:150]}")
-
-        if known_emails:
-            latest_time = max(e.get("received_time", "")[:16] for e in known_emails)
-            lines.append(f"  ✅ {len(known_emails)} known emails (latest: {latest_time})")
-
-        lines.append("")
-
-    # --- Ambiguous ---
-    if ambiguous:
-        lines.append(f"### Ambiguous — Needs Scope Check ({len(ambiguous)})")
-        lines.append("")
-        for em_info in ambiguous:
-            num = em_info["_num"]
-            received = em_info.get("received_time", "")[:16]
-            sender_name = extract_sender_name(em_info.get("sender", ""))
-            subject = em_info.get("subject", "")
-            candidates = em_info["_candidates"]
-
-            is_sent = "sent" in em_info.get("folder", "").lower()
-            if is_sent:
-                to_names = []
-                for r in em_info.get("to_recipients", []):
-                    n = r.get("name", r.get("address", ""))
-                    if n:
-                        to_names.append(n.split('<')[0].strip() if '<' in n else n)
-                to_str = ", ".join(to_names[:2])
-                lines.append(f"← #{num} {received} to {to_str}: \"{subject}\"")
-            else:
-                lines.append(f"→ #{num} {received} {sender_name}: \"{subject}\"")
-            eid = em_info.get("entry_id", "")
-            if eid:
-                lines.append(f"  ID: {eid}")
-            preview = em_info.get("body_preview", "").replace("\r\n", " ").replace("\n", " ").strip()
-            if preview:
-                lines.append(f"  Preview: {preview[:150]}")
-            if em_info.get("_system_sender"):
-                lines.append(f"  ⚠️GENERIC: System sender — must read body before attribution")
-            for c in candidates[:3]:
-                tid = c["task_id"]
-                info = task_index.get(tid, {})
-                scope = info.get("scope", "")
-                scope_str = f" | Scope: {scope}" if scope else ""
-                lines.append(
-                    f"  → {tid} ({info.get('title', '')[:30]}, "
-                    f"{info.get('geo', '')}, {c['confidence']:.1f}){scope_str}")
-            geo = extract_geo_from_email(em_info)
-            if geo:
-                lines.append(f"  Geo signal: {geo}")
-            lines.append("")
-
-    # --- Non-Task ---
-    if unmatched:
-        lines.append(f"### Non-Task — No Match ({len(unmatched)})")
-        lines.append("")
-
-        for em_info in unmatched:
-            num = em_info["_num"]
-            received = em_info.get("received_time", "")[:16]
-            sender_name = extract_sender_name(em_info.get("sender", ""))
-            sender_email = extract_sender_email(em_info.get("sender", ""))
-            subject = em_info.get("subject", "")
-
-            known_str = ""
-            if sender_email in global_contacts:
-                gc = global_contacts[sender_email]
-                known_str = f" [Known: {gc['section']}]"
-
-            lines.append(f"→ #{num} {received} {sender_name}: \"{subject}\"{known_str}")
-            eid = em_info.get("entry_id", "")
-            if eid:
-                lines.append(f"  ID: {eid}")
-        lines.append("")
-
-    # --- Calendar ---
-    if calendar_items:
-        lines.append(f"### 📅 Calendar ({len(calendar_items)})")
-        for em in calendar_items:
-            num = em.get("_num", "?")
-            sender_name = em.get("sender_name") or em.get("sender", "").split("@")[0]
-            subj = em.get("subject", "")
-            short_subj = (subj[:50] + "…") if len(subj) > 52 else subj
-            label = _meeting_type_label(em)
-            time_str = _format_start_time(em)
-            meta_parts = []
-            if label:
-                meta_parts.append(label)
-            if time_str:
-                meta_parts.append(time_str)
-            meta = " ".join(meta_parts)
-            match_info = em.get("_match")
-            if match_info:
-                tid = match_info["task_id"]
-                t_title = task_index.get(tid, {}).get("title", "")
-                short_title = (t_title[:30] + "…") if len(t_title) > 32 else t_title
-                lines.append(f"  #{num} [{meta}] {sender_name}: \"{short_subj}\" → {tid} ({short_title})")
-            else:
-                lines.append(f"  #{num} [{meta}] {sender_name}: \"{short_subj}\"")
-            entry_id = em.get("entry_id", "")
-            if entry_id:
-                lines.append(f"    ID: {entry_id}")
-        lines.append("")
-
-    # --- Noise ---
-    if noise_stats:
-        total_noise = sum(len(v) for v in noise_stats.values())
-        lines.append(f"### Noise Filtered ({total_noise})")
-        lines.append("")
-        for cat in sorted(noise_stats.keys()):
-            for em in noise_stats[cat]:
-                num = em.get("_num", "?")
-                received = em.get("received_time", "")[:16]
-                sender_name = extract_sender_name(em.get("sender", ""))
-                subject = em.get("subject", "")
-                lines.append(f"  → #{num} {received} {sender_name}: \"{subject}\" (Reason: noise:{cat})")
-                eid = em.get("entry_id", "")
-                if eid:
-                    lines.append(f"    ID: {eid}")
-        lines.append("")
-
-    # --- Ignored by Library ---
-    if ignored_emails:
-        lines.append(f"### Ignored by Library ({len(ignored_emails)})")
-        lines.append("")
-        for em in ignored_emails:
-            num = em.get("_num", "?")
-            received = em.get("received_time", "")[:16]
-            sender_name = extract_sender_name(em.get("sender", ""))
-            subject = em.get("subject", "")
-            reason = em.get("_ignore_reason", "ignored")
-            lines.append(f"  → #{num} {received} {sender_name}: \"{subject}\" (Reason: {reason})")
-            eid = em.get("entry_id", "")
-            if eid:
-                lines.append(f"    ID: {eid}")
-        lines.append("")
-
-    # --- Active Task Reference (Complete Index for Sub-Agent Semantic Matching) ---
-    all_active_tasks = {tid: info for tid, info in task_index.items() if info.get("title") != "(closed)"}
-    if all_active_tasks:
-        lines.append("### 📋 Active Tasks Compact Index (Complete Reference for Sub-Agent)")
-        lines.append("")
-        for tid in sorted(all_active_tasks.keys()):
-            info = all_active_tasks[tid]
-            title = info.get("title", "")
-            scope = info.get("scope", "")
-            contacts = info.get("contacts", [])
-            geo = info.get("geo", "")
-            epd_ids = info.get("epd_ids", set())
-            keywords = info.get("keywords", set())
-            flag = GEO_FLAGS.get(geo, "")
-            
-            contact_str = ", ".join(
-                c.get("name", c.get("email", "")) if isinstance(c, dict) else str(c)
-                for c in contacts[:5]
-            ) if contacts else "none"
-            epd_str = ", ".join(sorted(epd_ids)) if epd_ids else "none"
-            
-            codes = [k for k in keywords if re.match(r'^[A-Za-z]+\d+[\w]*$', k)]
-            code_str = ", ".join(sorted(set(codes))[:6]) if codes else "none"
-
-            line = f"- **{tid}** {title} {flag} | Geo: {geo or 'TBD'} | EPDs: {epd_str} | Codes: {code_str} | Contacts: {contact_str}"
-            if scope:
-                line += f" | Scope: {scope[:120]}"
-            lines.append(line)
-        lines.append("")
-
-    # --- Stats ---
-    lines.append(f"### Index Stats")
-    lines.append(f"Tasks indexed: {len(task_index)} | "
-                 f"Matched: {new_email_count} new + {sum(len(v) for v in matched.values()) - new_email_count} known | "
-                 f"Ambiguous: {len(ambiguous)} | "
-                 f"Non-task: {len(unmatched)} | "
-                 f"Calendar: {len(calendar_items)} | "
-                 f"Noise: {sum(len(v) for v in noise_stats.values())} | "
-                 f"Ignored by library: {ignored_count}")
-
-    return "\n".join(lines)
+    validate_candidate_payload(payload, schema_file)
+    return payload
 
 
-def main():
-    parser = argparse.ArgumentParser(description='BrainClaw email sync pre-processor')
-    parser.add_argument('--input-file', type=str, help='Read JSON from file instead of stdin')
-    parser.add_argument('--output-file', type=str, help='Save sync result to a specific markdown file path')
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Prepare structured evidence for semantic email classification")
+    parser.add_argument("--input-file", required=True, help="Outlook JSON snapshot")
+    parser.add_argument("--metadata-file", help="Snapshot metadata JSON")
+    parser.add_argument("--output-file", help="Human-readable diagnostic Markdown")
+    parser.add_argument("--candidates-file", help="Structured candidate evidence JSON")
+    parser.add_argument("--ignore-file", default=str(IGNORE_CANDIDATES_FILE))
+    parser.add_argument("--candidates-schema-file", default=str(DEFAULT_CANDIDATES_SCHEMA))
     args = parser.parse_args()
 
-    def emit_and_save(output: str):
-        out_file = save_sync_output(output, args.output_file)
-        try:
-            shown_path = out_file.relative_to(BRAIN_DIR.parent)
-        except ValueError:
-            shown_path = out_file
+    input_path = _resolve_path(args.input_file, SYNC_RESULTS_DIR / "latest-input.json")
+    metadata_path = _resolve_path(args.metadata_file, input_path.with_name("latest-meta.json"))
+    output_path = _resolve_path(args.output_file, SYNC_RESULTS_DIR / "latest.md")
+    candidates_path = _resolve_path(args.candidates_file, DEFAULT_CANDIDATES_FILE)
+    ignore_path = _resolve_path(args.ignore_file, IGNORE_CANDIDATES_FILE)
+    schema_path = _resolve_path(args.candidates_schema_file, DEFAULT_CANDIDATES_SCHEMA)
 
-        if not args.output_file:
-            print(output)
-            print(f"\n📁 Saved: {shown_path}")
-
-    # Read input
-    if args.input_file:
-        raw = Path(args.input_file).read_text(encoding='utf-8-sig')
-    else:
-        raw_bytes = sys.stdin.buffer.read()
-        raw = raw_bytes.decode('utf-8-sig')
-        if raw and raw[0] == '\ufeff':
-            raw = raw.lstrip('\ufeff')
-
-    if not raw.strip():
-        output = f"## Email Sync Pre-Match | {date.today()} | 0 emails found\n\nNo email data received. Check outlook_skill.py output."
-        emit_and_save(output)
-        return
-
-    # Parse JSON
     try:
-        emails = json.loads(raw)
-    except json.JSONDecodeError as e:
-        print(f"Error: Failed to parse email JSON: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    if not emails:
-        output = f"## Email Sync Pre-Match | {date.today()} | 0 emails"
-        emit_and_save(output)
-        return
-
-    ignore_candidates_payload = load_ignore_candidates()
-    ignore_candidates_map = ignore_candidates_payload.get("candidates", {})
-    ignored_entry_ids = set(ignore_candidates_map.keys())
-    active_seen_ids = set()
-
-    # Build task index
-    task_index, email_to_tasks, name_to_tasks = build_task_index()
-
-    # Load global contacts
-    global_contacts = load_global_contacts(BRAIN_DIR / 'contacts.md')
-
-    # Process emails: filter noise, then match
-    noise_stats = {}    # category -> [email dicts]
-    calendar_items = []  # meeting invites (shown separately, not noise)
-    matched = {}        # task_id -> [email dicts with match info]
-    ambiguous = []      # emails with multiple weak candidates
-    unmatched = []      # no match at all
-    emails_by_num = {}  # email_num -> email dict
-    ignored_emails_list = []
-    ignored_count = 0
-
-    for idx, email in enumerate(emails, 1):
-        email["_num"] = idx
-        email["_system_sender"] = is_system_sender(email)
-        emails_by_num[idx] = email
-
-        entry_id = email.get("entry_id", "")
-        if entry_id:
-            active_seen_ids.add(entry_id)
-        if entry_id and entry_id in ignored_entry_ids:
-            ignored_count += 1
-            # Skip already ignored emails silently — do not add to ignored_emails_list so they won't be shown to the user
-            continue
-
-        # Calendar items — task-linked ones go into matched section; unlinked/ambiguous ones shown separately
-        if is_calendar_item(email):
-            cal_matches = match_email_to_tasks(email, task_index, email_to_tasks, name_to_tasks)
-            cal_matches = [m for m in cal_matches if m["confidence"] >= 0.5]
-            if cal_matches:
-                top_conf = cal_matches[0]["confidence"]
-                same_conf_count = sum(1 for m in cal_matches if m["confidence"] == top_conf)
-                if top_conf == 1.0 or same_conf_count == 1:
-                    # Uniquely task-linked calendar item → treat as regular task-matched email
-                    email["_match"] = cal_matches[0]
-                    email["_is_calendar"] = True
-                    tid = cal_matches[0]["task_id"]
-                    matched.setdefault(tid, []).append(email)
-                else:
-                    # Multiple candidates at top confidence → ambiguous for sub-agent semantic check
-                    email["_candidates"] = cal_matches
-                    email["_is_calendar"] = True
-                    ambiguous.append(email)
-            else:
-                # Unlinked calendar item → separate section for AI semantic review
-                calendar_items.append(email)
-            continue
-
-        # Noise filter
-        noise_cat = is_noise(email)
-        if noise_cat:
-            # Directly filter and skip noise, no storing or printing
-            continue
-
-        # Match to tasks
-        matches = match_email_to_tasks(email, task_index, email_to_tasks, name_to_tasks)
-
-        # Filter out matches below minimum confidence threshold
-        matches = [m for m in matches if m["confidence"] >= 0.4]
-
-        if not matches:
-            unmatched.append(email)
-        elif len(matches) == 1 and matches[0]["confidence"] >= 0.6:
-            tid = matches[0]["task_id"]
-            scope = task_index.get(tid, {}).get("scope", "")
-            if not matches[0]["already_known"] and check_temporal_scope(email, scope):
-                unmatched.append(email)
-            else:
-                email["_match"] = matches[0]
-                matched.setdefault(tid, []).append(email)
-        elif len(matches) >= 1 and matches[0]["confidence"] >= 0.8:
-            # Multiple matches at same confidence → ambiguous (contact in multiple tasks)
-            top_conf = matches[0]["confidence"]
-            same_conf_count = sum(1 for m in matches if m["confidence"] == top_conf)
-            if same_conf_count > 1:
-                email["_candidates"] = matches
-                ambiguous.append(email)
-            else:
-                tid = matches[0]["task_id"]
-                scope = task_index.get(tid, {}).get("scope", "")
-                if not matches[0]["already_known"] and check_temporal_scope(email, scope):
-                    unmatched.append(email)
-                else:
-                    email["_match"] = matches[0]
-                    matched.setdefault(tid, []).append(email)
-        else:
-            email["_candidates"] = matches
-            ambiguous.append(email)
-
-    # Save unmatched emails to ignore candidates map for subsequent runs
-    for email in unmatched:
-        if email.get("entry_id"):
-            ignore_candidates_map[email["entry_id"]] = build_ignore_candidate(
-                email,
-                reason="unmatched",
-                source_section="unmatched",
-                suggested_action="consider_permanent_ignore",
-                existing=ignore_candidates_map.get(email["entry_id"]),
-            )
-
-    # Clean up old results
-    cleanup_old_results()
-
-    # Format output
-    output = format_output(
-        matched, ambiguous, unmatched, noise_stats,
-        task_index, global_contacts, len(emails), emails_by_num,
-        calendar_items=calendar_items,
-        ignored_count=ignored_count,
-        ignored_emails=ignored_emails_list,
-    )
-
-    # Save output to file for later reference
-    out_file = save_sync_output(output, args.output_file)
-
-    ignore_candidates_map = cleanup_ignore_candidates(ignore_candidates_map, active_seen_ids)
-    save_ignore_candidates(ignore_candidates_map)
-    try:
-        shown_path = out_file.relative_to(BRAIN_DIR.parent)
-    except ValueError:
-        shown_path = out_file
+        payload = build_evidence_bundle(input_path, metadata_path, ignore_path, schema_path)
+        rendered = render_diagnostic(payload)
+        _atomic_write(candidates_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+        _atomic_write(output_path, rendered)
+        cleanup_old_results()
+    except (OSError, EvidenceBundleError) as exc:
+        print(f"Email sync evidence generation failed: {exc}", file=sys.stderr)
+        raise SystemExit(1)
 
     if not args.output_file:
-        print(output)
-        print(f"\n📁 Saved: {shown_path}")
+        print(rendered)
+        print(f"\nStructured evidence: {candidates_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
-

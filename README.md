@@ -25,8 +25,21 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 
 1. Open your AI IDE (Claude, Cursor, etc.)
 2. Go to custom instructions / system prompt settings
-3. Paste the content of [`CLAUDE.md`](CLAUDE.md) (Claude Code auto-loads it; other IDEs need it pasted manually)
+3. Use [`assistant_brain/prompts/SYSTEM_PROMPT.md`](assistant_brain/prompts/SYSTEM_PROMPT.md) as the canonical prompt. `AGENTS.md` and `CLAUDE.md` are generated compatibility copies for tools that auto-load those filenames
 4. Set your workspace to the BrainClaw folder
+
+### Reproducible developer setup (optional)
+
+The core runtime uses the Python standard library. For tests and linting:
+
+```powershell
+py -3 -m pip install -r requirements-dev.txt
+py -3 assistant_brain/scripts/doctor.py
+```
+
+Optional extras are declared in `pyproject.toml`: `documents` for workbook/Word utilities and `outlook` for Windows Outlook COM.
+
+> **Privacy:** Keep the real `assistant_brain/contacts.md` local. For a new environment, copy `assistant_brain/contacts.example.md` and populate it privately. If `contacts.md` was already tracked in an older clone, `.gitignore` alone does not remove it from the index or history; handle that as a separate privacy migration.
 
 ### Daily Use
 
@@ -44,7 +57,7 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 ┌──────────────────────────────────────────────────────────────┐
 │  AI IDE (Claude / Cursor / etc.)                             │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │  System Prompt  (CLAUDE.md)                            │  │
+│  │  System Prompt (prompts/SYSTEM_PROMPT.md)               │  │
 │  │  "On startup, read brain files..."                     │  │
 │  └────────────────────────────────────────────────────────┘  │
 │                        ↓                                     │
@@ -57,8 +70,8 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 │  │  │   ├── REDHAT_WORKFLOW.md                            │  │
 │  │  │   └── VIEWS_WORKFLOW.md                             │  │
 │  │  ├── skills/               (I/O — external systems)    │  │
-│  │  │   ├── outlook-com-skill/    (Outlook COM backend)   │  │
-│  │  │   ├── minimax-xlsx/     (Excel I/O)                 │  │
+│  │  │   ├── outlook_com_skill/    (Outlook COM backend)   │  │
+│  │  │   ├── xlsx-ibm/            (Excel I/O)               │  │
 │  │  │   ├── bluepage-skill/   (W3 Unified Profile)        │  │
 │  │  │   ├── enrollment-downloader/ (Classroom rosters)    │  │
 │  │  │   └── skill-creator/    (scaffold new skills)       │  │
@@ -75,9 +88,9 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 | **Task Management** | Detailed task tracking with Status, Priority, Category, Geo, Due Time, RACI stakeholders, Parent-Child relationships, structured `Asks` (owed by me / owed to me) |
 | **Task-First Rule** | When asked about a task's status, schedule, or progress, the system ALWAYS checks the task file first (the single source of truth) before checking email or other resources. |
 | **Views Engine** | `status T###` (or bare `T###`), `owed`, `waiting`, `before {person}`, `digest`, `timesheet` — surface what's overdue, owed, and pending across all tasks |
-| **Email Management** | Find, search, thread-track, compose emails via native Outlook COM. Three-tier matching: ConversationID thread → task contacts → keyword+geo. Auto-extracts asks/decisions/deadlines into task slots. Email sync now uses a stable wrapper command (`py -3 assistant_brain/scripts/run_email_sync.py`) that manages `assistant_brain/sync_results/latest-input.json`, `assistant_brain/sync_results/latest.md`, and an incremental default-ignore pool at `assistant_brain/sync_results/ignore_candidates.json`. All send commands auto-output EntryID for timeline tracking |
+| **Email Management** | Find, search, thread-track, and compose via native Outlook COM. Email sync uses a guarded pipeline: public Outlook-skill JSON contract -> fresh snapshot + metadata -> structured evidence bundle -> one semantic classifier decides ownership and emits a JSON plan -> Draft 2020-12 Schema/staleness validation -> atomic apply -> verified summary. ConversationID and EntryID support direct thread matching; unmatched mail is never auto-ignored. All send commands output EntryID for timeline tracking. |
 | **Streamlined 4-Step Email Flow** | Mandatory sequential flow for replies/sends: 1. Get thread/context → 2. Read thread completely via `get-email` (No assumptions, no guessing) → 3. Draft the email (To/CC, Subject, Body as plain text; "no-redundancy" rule prevents repeating thread facts) → 4. Send ONLY after explicit, turn-specific user approval. |
-| **Email Thread Tracking** | ConversationID-based thread matching — once an email is linked to a task, all future emails in the same thread auto-match |
+| **Email Thread Tracking** | ConversationID-based continuity evidence — once an email is linked to a task, future messages in the same thread become strong candidates for semantic review |
 | **Related Email Discovery** | Multi-strategy search (thread + sender + keyword) for cross-thread discovery |
 | **Enrollment & Shortlisting** | Playwright-backed automated downloader of YourLearning classroom rosters. Evaluates registrations, automatically cross-references headcount databases, excludes duplicates/non-regular/non-geo staff, scores candidates by band/role, and exports beautifully highlighted, color-coded participant shortlists to Excel for LDM sharing. |
 | **Blue Pages & Employee Lookup** | Queries CNUM, employee types, reporting structure (managers and direct reports), Slack handles, and active statuses via the IBM W3 Unified Profile/Blue Pages API. |
@@ -87,17 +100,17 @@ OpenClaw and similar AI automation tools require technical setup (binaries, envi
 | **Weekly Digest** | Auto-generated weekly summary of task activity, completions, and key events |
 | **Timesheet Generation** | Top-down hour allocation across tasks grouped by Geo → Category with EPD numbers |
 | **Recurring Tasks** | Auto-create scheduled tasks (monthly reports, quarterly invoices, etc.) |
-| **Office Documents** | Create/read/edit/analyze Excel files via `minimax-xlsx` skill |
+| **Office Documents** | Create/read/edit/analyze Excel files via `xlsx-ibm` skill |
 | **Extensible Skills** | Add new capabilities through modular skill system |
 
 ## Skills
 
-Skills are reserved for I/O against external systems. Business logic (task lifecycle, RACI, event recording, email composition rules) lives in workflow files directly.
+Skills are reserved for I/O against external systems. They are mounted as separate repositories under `assistant_brain/skills/` and are intentionally excluded from this repository. Business logic lives in workflow files directly.
 
 | Skill | Purpose | External system |
 |-------|---------|-----------------|
-| **outlook-com-skill** | Find, thread, related, compose, reply, forward, redirect, batch-forward | Microsoft Outlook (COM) |
-| **minimax-xlsx** | Create, read, edit, analyze Excel/spreadsheet files | `.xlsx`, `.xlsm`, `.csv` |
+| **outlook_com_skill** | Find, thread, related, compose, reply, forward, redirect, batch-forward | Microsoft Outlook (COM) |
+| **xlsx-ibm** | Create, read, edit, analyze Excel/spreadsheet files | `.xlsx`, `.xlsm`, `.csv` |
 | **bluepage-skill** | Look up IBM employee profiles, Slack handles, reporting structures, active statuses | IBM Blue Pages (W3 Unified Profile API) |
 | **enrollment-downloader** | Playwright-backed browser to download and shortlist classroom rosters | IBM YourLearning / E&C Manager |
 | **skill-creator** | Scaffold a new skill | (meta) |
@@ -119,12 +132,13 @@ All commands use the `find-*` naming convention:
 
 **EntryID Tracking:** All send commands (`compose`, `reply`, `forward`, `redirect`) automatically output the sent email's `EntryID` after sending. This enables reliable timeline tracking with `<!-- email:ID -->` markers in task files. Tracking follows unified **Key Email Criteria** (same for inbound and outbound): emails containing an ask/approval/decision/commitment, delivering/requesting a deliverable, representing a task milestone, or likely needing future reply/forward. Pure FYI acknowledgements ("noted", "thanks", "got it") are exempt.
 
-**Email↔Task Matching (3-tier priority):**
-1. **Thread match** — email's ConversationID already in a task's Email References → instant hit
-2. **Contact match** — sender appears in a task's `## Contacts` or RACI table → high confidence
-3. **Keyword + geo** — subject/preview tokens scored against task keywords + domain geo detection
+**Email-to-Task Classification (model-centric):**
 
-**Keyword scoring weights:** EPD plan-row IDs (3.0×), course/PO codes (1.5×), English words (1.0×), Chinese 3+ char (1.0×). Data sources: `## Tags`, `**EPD:**` field, RACI table contacts, alphanumeric codes in content. Outgoing emails carry the highest-priority identifier in the subject so replies auto-match back. See [ARCHITECTURE.md §4.5](ARCHITECTURE.md) for full details.
+1. **Deterministic evidence preparation** - build the active-task catalog and collect EntryID, ConversationID, identifier, contact, lexical, and scope evidence.
+2. **Semantic ownership decision** - one classifier reviews every non-noise item, including calendar and zero-candidate messages, and reads every plausible task file completely.
+3. **Validated mutation** - the classifier writes a Schema-conforming plan with an explicit matching-metadata review; deterministic code validates freshness and atomically applies timeline, asks, fields, tags, contacts, RACI, notes, and ignore changes.
+
+There are no artificial confidence scores or deterministic ownership thresholds. Candidate reasons are explicit evidence only. One email can update multiple tasks when its content contains independently supported events; uniqueness is enforced per `(task, entry_id)`. Each task update rechecks Scope, Exclude, Tags, Contacts/RACI, and identifiers so newly learned matching evidence is not stranded in timeline prose. Active task structure is validated by `validate_tasks.py` against `task_file.schema.json`. `latest-candidates.json` is the authoritative classifier input, while `latest.md` is a diagnostic rendering. Outgoing subjects should use recognizable public identifiers, but never EPD numbers or Class IDs. See [ARCHITECTURE.md section 4.5](ARCHITECTURE.md).
 
 ## Project Structure
 
@@ -132,47 +146,30 @@ Files marked with ⭐ are loaded at **startup**. Others are loaded **on-demand**
 
 ```
 BrainClaw/
-├── CLAUDE.md                           # System prompt (single source of truth)
-├── README.md                           # This file
-├── README_CN.md                        # Chinese documentation
-├── ARCHITECTURE.md                     # System architecture
+├── AGENTS.md                     # Generated compatibility prompt
+├── CLAUDE.md                     # Generated compatibility prompt
+├── README.md                     # This file
+├── README_CN.md                  # Chinese documentation
+├── ARCHITECTURE.md               # System architecture
 └── assistant_brain/
-    ├── views_config.md       ⭐ # Thresholds + defaults for view ops
-    ├── recurring_tasks.md    ⭐ # Scheduled recurring tasks
+    ├── prompts/
+    │   └── SYSTEM_PROMPT.md      # Canonical system prompt
+    ├── views_config.md       ⭐  # View thresholds and defaults
+    ├── recurring_tasks.md    ⭐  # Scheduled recurring tasks
+    ├── contacts.md           ⭐  # Local/private people data
+    ├── contacts.example.md       # Sanitized setup template
     ├── formats/
-    │   └── EMAIL_SYNC_FORMAT.md        # Email sync layout specification
+    │   ├── EMAIL_SYNC_FORMAT.md          # Email sync layout specification
+    │   ├── email_sync_candidates.schema.json
+    │   ├── email_sync_plan.schema.json
+    │   └── task_file.schema.json         # Active-task contract
     ├── process/
-    │   └── README.md         ⭐ # Process index (grouped by geo)
-    ├── workflows/               # Orchestration + business logic (on-demand)
-    │   ├── TASK_WORKFLOW.md
-    │   ├── EMAIL_WORKFLOW.md
-    │   ├── PROCESS_WORKFLOW.md        # Process matching, auto-advance, learning
-    │   ├── REDHAT_WORKFLOW.md         # Red Hat audience targeting & shortlist
-    │   └── VIEWS_WORKFLOW.md          # status/owed/waiting/before/digest/timesheet
-    ├── contacts.md          ⭐ # Single source of truth for people (tone, email, role, process roles)
-    ├── scripts/                 # Python automation scripts
-    │   ├── dashboard.py            # Startup display, taskboard, pending, digest, timesheet
-    │   ├── email_sync.py           # Email pre-processor: 3-signal matching, noise filter, context reduction (~78%)
-    │   ├── run_email_sync.py       # Wrapper executing email sync pipeline & saving outputs safely
-    │   ├── manage_ignore_candidates.py # Manage and restore default-ignored sync emails
-    │   ├── followup.py             # Stale task detection for follow-up workflow
-    │   └── shared_config.py        # Centralized script and file paths configurations
-    ├── skills/                  # I/O against external systems
-    │   ├── outlook-com-skill/      # Outlook COM — Python backend + CLI
-    │   │   ├── SKILL.md            #   Command reference
-    │   │   ├── scripts/            #   CLI entry point
-    │   │   └── backend/            #   Search, compose, session mgmt
-    │   ├── minimax-xlsx/           # Excel/spreadsheet I/O
-    │   ├── bluepage-skill/         # IBM Blue Pages lookup client
-    │   │   └── SKILL.md            #   Triggers and CLI references
-    │   ├── enrollment-downloader/  # Playwright YourLearning/E&C Manager download skill
-    │   │   └── SKILL.md            #   Commands reference
-    │   └── skill-creator/          # Scaffold new skills
-    └── tasks/                   # Task queue & history
-        ├── queue.md          ⭐ # Active tasks + Recent Events
-        ├── FORMATS.md            # Task format specification
-        ├── T0xx-xxx.md           # Active task details (on-demand)
-        └── history/              # Completed tasks & monthly archives
+    │   ├── README.md         ⭐  # Local process index
+    │   └── process.schema.json   # Version-controlled process schema
+    ├── workflows/                # Orchestration and business logic
+    ├── scripts/                  # Allowlisted runtime/quality tools; task scripts stay local
+    ├── skills/                   # Separate repositories; Git-ignored here
+    └── tasks/                    # Local/private task files and history
 ```
 
 ## Commands
@@ -229,7 +226,8 @@ BrainClaw uses a smart keyword system to help you trace tasks back to their sour
 BrainClaw uses a layered architecture with clear separation of concerns:
 
 ```
-CLAUDE.md (Single source of truth — startup rules + core policies)
+assistant_brain/prompts/SYSTEM_PROMPT.md (canonical rules)
+        ↓ generated compatibility copies: AGENTS.md + CLAUDE.md
         ↓
 ┌──────────────────────────────────────────┐
 │    Workflows (orchestration + logic)     │  ← All business logic lives here
@@ -243,8 +241,8 @@ CLAUDE.md (Single source of truth — startup rules + core policies)
                ↓ (only when external I/O needed)
 ┌──────────────────────────────────────────┐
 │   Skills (I/O — external systems)        │
-│  - outlook-com-skill/  Outlook COM       │
-│  - minimax-xlsx/   Excel files           │
+│  - outlook_com_skill/  Outlook COM       │
+│  - xlsx-ibm/   Excel files           │
 │  - bluepage-skill/  Blue Pages API       │
 │  - enrollment-downloader/  YourLearning  │
 │  - skill-creator/  meta                  │

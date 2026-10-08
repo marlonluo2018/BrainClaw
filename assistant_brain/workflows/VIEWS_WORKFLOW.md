@@ -8,7 +8,7 @@
 
 | User intent | Operation |
 |-------------|-----------|
-| `T###` or "T### status/怎么样/啥情况" or topic/course query | `status T###` (Apply `AGENTS.md` Task-First Rule) |
+| `T###` or "T### status/怎么样/啥情况" or topic/course query | `status T###` (read the task file first) |
 | "pending/待办/owed/waiting" | Run `py -3 assistant_brain/scripts/dashboard.py` with appropriate arg |
 | "before {person}" / "见X之前" / "和X开会前" | `before {person}` |
 | "processes" / "流程" / "查看所有流程" | Run `py -3 assistant_brain/scripts/dashboard.py processes` |
@@ -77,6 +77,8 @@ Suggested agenda:
 Run: `py -3 assistant_brain/scripts/dashboard.py digest [--days N] [--since YYYY-MM-DD]`
 
 Defaults to last 7 days. Copy the ENTIRE stdout output as the response.
+
+The user sees only your reply, not the tool output — so paste the full stdout into the reply rather than summarizing it.
 
 Options:
 

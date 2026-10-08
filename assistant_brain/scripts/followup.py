@@ -1,18 +1,13 @@
 """BrainClaw follow-up automation — scans for stale tasks and outputs structured data for follow-up drafting."""
 
-import sys
-import io
-import os
 import re
 import json
 import argparse
-from datetime import datetime, date, timedelta
-from pathlib import Path
+from datetime import date
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS, PROCESS_MATCH_RULES, safe_read, scan_tasks, _parse_date_field, configure_utf8_stdio
 
-from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS, PROCESS_MATCH_RULES, safe_read, scan_tasks, _parse_date_field
+configure_utf8_stdio()
 
 
 def parse_task_file(content: str) -> dict:
@@ -120,7 +115,7 @@ def parse_task_file(content: str) -> dict:
             if am:
                 result["asks_out"].append({
                     "date": am.group(1).strip(),
-                    "person": am.group(2).strip() if am.group(2) else "Marlon",
+                    "person": am.group(2).strip() if am.group(2) else "Me",
                     "what": am.group(3).strip(),
                 })
 

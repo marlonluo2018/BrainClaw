@@ -1,19 +1,15 @@
 """BrainClaw startup script — replaces prompt-driven startup with deterministic Python."""
 
 import sys
-import io
-import os
 import re
 import argparse
-import glob as glob_mod
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass, field
 from pathlib import Path
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS, scan_tasks, configure_utf8_stdio
 
-from shared_config import BRAIN_DIR, PROJECT_ROOT, STALE_THRESHOLDS, scan_tasks, ScannedTask
+configure_utf8_stdio()
 
 
 STATUS_ICONS = {"Not Started": "📋", "In Progress": "⏳", "Blocked": "🔴"}
@@ -308,7 +304,14 @@ def format_brief(tasks, skills, processes_grouped, contacts, today, recurring_du
     date_str = today.strftime('%A %b %d, %Y %H:%M')
     lines = []
 
-    lines.append(f"## ✅ Ready | {date_str} | User: Marlon Luo | OS: Windows 11")
+    user_name = "User"
+    profile_path = BRAIN_DIR / "profile.md"
+    if profile_path.exists():
+        m = re.search(r"^Name:\s*(.+)$", profile_path.read_text(encoding="utf-8"), re.MULTILINE)
+        if m:
+            user_name = m.group(1).strip()
+
+    lines.append(f"## ✅ Ready | {date_str} | User: {user_name} | OS: Windows 11")
     lines.append("")
 
     # Info lines
@@ -446,7 +449,7 @@ def format_brief(tasks, skills, processes_grouped, contacts, today, recurring_du
                     lines.append(f"  - {ask}")
                 # Warn if open task has no pending items and no subtasks with pending
                 if not t.asks_in and not t.asks_out and not t.subtasks:
-                    lines.append(f"  - ⚠️ **no pending** — add an active item to `Waiting on Others`")
+                    lines.append("  - ⚠️ **no pending** — add an active item to `Waiting on Others`")
 
                 # Subtasks
                 for sub in t.subtasks:
@@ -464,7 +467,7 @@ def format_brief(tasks, skills, processes_grouped, contacts, today, recurring_du
                     for ask in sub.asks_in:
                         lines.append(f"    - {ask}")
                     if not sub.asks_in and not sub.asks_out:
-                        lines.append(f"    - ⚠️ **no pending** — add an active item to `Waiting on Others`")
+                        lines.append("    - ⚠️ **no pending** — add an active item to `Waiting on Others`")
 
             lines.append("")
 
@@ -691,7 +694,7 @@ def format_events(events, filter_name, today):
             lines.append(fixed_line)
 
     lines.append("")
-    lines.append(f"Filters: `all` · `created` · `closed` · `blocked`")
+    lines.append("Filters: `all` · `created` · `closed` · `blocked`")
 
     return '\n'.join(lines)
 
@@ -773,7 +776,6 @@ def format_digest(tasks, events, today, days=7, since_date=None):
     key_activity = []
     stale_tasks = []
     upcoming = []
-    asks_fulfilled_count = 0
     asks_waiting = []
 
     all_tasks_flat = tasks
@@ -884,7 +886,7 @@ def format_digest(tasks, events, today, days=7, since_date=None):
     # --- Upcoming ---
     if upcoming:
         upcoming.sort(key=lambda x: x[1])
-        lines.append(f"━━━ Upcoming (Next 7 Days) ━━━")
+        lines.append("━━━ Upcoming (Next 7 Days) ━━━")
         for t, due_date in upcoming:
             lines.append(f"• [{t.id}]({t.path}): Due {due_date.strftime('%a %b %d, %Y')} ({t.title})")
         lines.append("")
@@ -1280,7 +1282,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(f"## ⚠️ Dashboard Error — Degraded Mode\n", file=sys.stdout)
+        print("## ⚠️ Dashboard Error — Degraded Mode\n", file=sys.stdout)
         print(f"Script error: `{type(e).__name__}: {e}`\n", file=sys.stdout)
         # Fallback: list active task files
         tasks_dir = BRAIN_DIR / 'tasks'
@@ -1292,5 +1294,5 @@ if __name__ == "__main__":
                     print(f"  {f.name}")
         except Exception:
             print("Cannot read tasks directory — check file system.")
-        print(f"\nFix the error and run `start` again.", file=sys.stdout)
+        print("\nFix the error and run `start` again.", file=sys.stdout)
         sys.exit(1)

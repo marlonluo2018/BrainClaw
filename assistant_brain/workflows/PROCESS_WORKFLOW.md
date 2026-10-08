@@ -2,7 +2,7 @@
 
 > 流程推进引擎。关联 task → process template → next action。支持自动推进、流程学习、固化。
 >
-> **Task-First Mandate:** Apply `AGENTS.md` Task-First Rule — read task markdown files (`T*.md`) before evaluating process steps or searching emails.
+> Read the task file (`T*.md`) before evaluating process steps or searching emails — it is the source of truth for where the task stands.
 
 ---
 
@@ -168,7 +168,7 @@ For tasks that don't match a specific process file.
 
 7. Present draft to user for confirmation
 8. On confirm → write to `process/{geo}/{name}.md` + register a row in `process/README.md` (fill Process / File / **Keywords** / Description columns). This is the single authoritative registration point — no other place needs updating.
-9. **Validate (MANDATORY gate):** run `py -3 -X utf8 assistant_brain/scripts/validate_processes.py`. Fix any **ERROR** before proceeding (dead link / orphan / empty keywords / keyword overlap). Warnings are advisory — report them to the user.
+9. **Validate:** run `py -3 -X utf8 assistant_brain/scripts/validate_processes.py`. Fix any **ERROR** before proceeding (dead link / orphan / empty keywords / keyword overlap). Warnings are advisory — report them to the user.
 
 > **完整性兜底（每次新增或修改 process 后必做）：** `assistant_brain/scripts/validate_processes.py` 是 process 新增/更新的安全网，校验 4 项硬错误（README 死链、孤儿文件、空 Keywords、同 geo 关键词重叠遮蔽）+ 3 项格式告警（geo 目录与章节不一致、缺必需章节、缺 Effective/Geo 元数据）。凡涉及 process 文件或 README 索引表的任何改动，结束后必须运行一次并确认 ERROR=0。
 

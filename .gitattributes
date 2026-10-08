@@ -1,0 +1,27 @@
+# Normalize source and documentation line endings across Windows and CI.
+* text=auto
+.gitattributes text eol=lf
+.gitignore text eol=lf
+.python-version text eol=lf
+
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.txt text eol=lf
+*.js text eol=lf
+
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.docx binary
+*.pptx binary
+*.xlsx binary
+*.xlsm binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary

@@ -5,9 +5,21 @@ If views_config.md changes, update this file to match.
 """
 
 import re
+import sys
 from datetime import date, datetime, timedelta
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+def configure_utf8_stdio() -> None:
+    """Use UTF-8 for CLI output without replacing captured/test streams."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, OSError, ValueError):
+                pass
 
 
 def _parse_date_field(raw: str):
@@ -157,6 +169,13 @@ def _parse_task_frontmatter(content: str, rel_path: str) -> ScannedTask | None:
             break
     if "✅" in status_raw:
         status = "Completed"
+    elif status == "Unknown":
+        # Text fallback keeps parsing stable when terminals, exports, or legacy
+        # task files replace status emoji with placeholder characters.
+        for candidate in ("Not Started", "In Progress", "Blocked", "Completed"):
+            if re.search(rf"\b{re.escape(candidate)}\b", status_raw, re.IGNORECASE):
+                status = candidate
+                break
 
     parent_raw = field_val("Parent Task")
     parent = ""

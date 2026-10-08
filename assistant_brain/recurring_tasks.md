@@ -15,6 +15,11 @@ On startup, calculate next due date from schedule and last_completed. Create a n
 ## Active Tasks
 
 ```yaml
-recurring_tasks: []
+recurring_tasks:
+  - id: R001
+    name: "I&D BUR Review - Function Team Update"
+    schedule: "beginning of every month"
+    last_completed: ""
+    last_period: ""
 ```
 
