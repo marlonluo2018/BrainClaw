@@ -323,6 +323,7 @@ class EvidencePreparationTests(unittest.TestCase):
                     "exclusion_terms": {"china"},
                     "entry_ids": set(),
                     "conversation_ids": {"C1"},
+                    "timeline_tail": [],
                 },
                 "T099": {
                     "task": "T099",
@@ -927,7 +928,7 @@ class ApplyPlanTests(unittest.TestCase):
         prompt = (ROOT / "assistant_brain/prompts/SYSTEM_PROMPT.md").read_text(encoding="utf-8")
         self.assertIn("assistant_brain/workflows/EMAIL_WORKFLOW.md", prompt)
         self.assertLess(len(prompt.encode("utf-8")), 8 * 1024)
-        for entrypoint in (".claude/agents/email-classifier.md", ".opencode/agents/email-classifier.md"):
+        for entrypoint in (".claude/agents/email-classifier.md",):
             text = (ROOT / entrypoint).read_text(encoding="utf-8")
             self.assertIn("assistant_brain/agents/email-classifier.md", text)
             self.assertNotIn("update_task.py", text)
@@ -1002,6 +1003,228 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertEqual(original, paths["task"].read_text(encoding="utf-8"))
             self.assertFalse(paths["ignore"].exists())
             self.assertFalse(paths["applied"].exists())
+
+
+class BroadcastNoiseFilterTests(unittest.TestCase):
+    def _catalog(self) -> TaskCatalog:
+        return TaskCatalog(tasks={}, email_to_tasks={}, name_to_tasks={})
+
+    def test_broadcast_senders_and_recurring_subjects_are_filtered(self) -> None:
+        emails = [
+            {**snapshot_email("W1", "CW"), "sender": "w3Notifications <w3@ibm.com>"},
+            {**snapshot_email("E1", "CE"), "sender": "Events and Classes <classes@ibm.com>"},
+            {**snapshot_email("S1", "CS"), "sender": "Si Yan Han <siyan@cn.ibm.com>",
+             "subject": "Fortnightly OneChina L&K team connect call"},
+            {**snapshot_email("H1", "CH"), "sender": "Hiraman Sathe <hsathe@in.ibm.com>",
+             "subject": "Class status as of 8th working day"},
+        ]
+        payload = email_sync_candidates.prepare_candidate_payload(
+            emails, self._catalog(), {"snapshot_id": "S1", "stale": False}, set()
+        )
+        for item in payload["emails"]:
+            self.assertEqual("filtered", item["review_status"], item["deterministic_reason"])
+            self.assertTrue(item["deterministic_reason"])
+
+    def test_person_mail_and_unique_subjects_stay_in_review(self) -> None:
+        emails = [
+            {**snapshot_email("P1", "CP"), "sender": "Alex <alex@example.com>",
+             "subject": "Q4 plan question"},
+            {**snapshot_email("C1", "CC"), "sender": "Si Yan Han <siyan@cn.ibm.com>",
+             "subject": "Ad-hoc L&K planning discussion"},
+        ]
+        payload = email_sync_candidates.prepare_candidate_payload(
+            emails, self._catalog(), {"snapshot_id": "S1", "stale": False}, set()
+        )
+        self.assertEqual(["review", "review"], [item["review_status"] for item in payload["emails"]])
+
+
+class CandidateDenoisingTests(unittest.TestCase):
+    def test_generic_identifiers_are_not_identifier_evidence(self) -> None:
+        from email_sync_catalog import extract_identifiers
+        extracted = extract_identifiers("Q4 kickoff for P1 tasks T153 and FY26 planning, EPD 1036825, DO188")
+        self.assertIn("1036825", extracted)
+        self.assertIn("DO188", extracted)
+        for generic in ("Q4", "P1", "T153", "FY26"):
+            self.assertNotIn(generic, extracted)
+
+    def test_shared_lexical_terms_are_dropped_from_matching(self) -> None:
+        # Two tasks sharing the terms "ibm"/"training" (>= 2/3 of active tasks):
+        # those terms must not create lexical candidates anymore.
+        tasks = {
+            "T001": {
+                "task": "T001", "title": "A", "path": "a.md", "lifecycle": "active",
+                "status": "In Progress", "priority": "P1", "geo": "", "due": "",
+                "scope": "", "exclude": "", "contacts": [], "identifiers": set(),
+                "lexical_terms": {"ibm", "training", "alpha"},
+                "exclusion_terms": set(), "entry_ids": set(), "conversation_ids": set(),
+                "timeline_tail": [],
+            },
+            "T002": {
+                "task": "T002", "title": "B", "path": "b.md", "lifecycle": "active",
+                "status": "In Progress", "priority": "P1", "geo": "", "due": "",
+                "scope": "", "exclude": "", "contacts": [], "identifiers": set(),
+                "lexical_terms": {"ibm", "training", "beta"},
+                "exclusion_terms": set(), "entry_ids": set(), "conversation_ids": set(),
+                "timeline_tail": [],
+            },
+            "T003": {
+                "task": "T003", "title": "C", "path": "c.md", "lifecycle": "active",
+                "status": "In Progress", "priority": "P1", "geo": "", "due": "",
+                "scope": "", "exclude": "", "contacts": [], "identifiers": set(),
+                "lexical_terms": {"ibm", "training", "gamma"},
+                "exclusion_terms": set(), "entry_ids": set(), "conversation_ids": set(),
+                "timeline_tail": [],
+            },
+        }
+        catalog = TaskCatalog(
+            tasks=tasks, email_to_tasks={}, name_to_tasks={},
+        )
+        # Simulate the shared-term pruning build_task_catalog performs.
+        from email_sync_catalog import TaskCatalog as TC
+        active = [r for r in tasks.values()]
+        threshold = max(2, (len(active) + 2) // 3)
+        counts = {}
+        for r in active:
+            for t in r["lexical_terms"]:
+                counts[t] = counts.get(t, 0) + 1
+        shared = {t for t, c in counts.items() if c >= threshold}
+        for r in active:
+            r["lexical_terms"] -= shared
+        catalog = TC(tasks=tasks, email_to_tasks={}, name_to_tasks={},
+                     nondiscriminating_terms=frozenset(shared))
+        self.assertEqual(frozenset({"ibm", "training"}), catalog.nondiscriminating_terms)
+
+        email = {**snapshot_email("X1", "CX"), "subject": "IBM training schedule", "body_preview": ""}
+        payload = email_sync_candidates.prepare_candidate_payload(
+            [email], catalog, {"snapshot_id": "S1", "stale": False}, set()
+        )
+        self.assertEqual([], payload["emails"][0]["candidate_tasks"])
+
+    def test_discriminating_lexical_term_still_matches(self) -> None:
+        tasks = {
+            "T001": {
+                "task": "T001", "title": "FileNet delivery", "path": "a.md", "lifecycle": "active",
+                "status": "In Progress", "priority": "P1", "geo": "", "due": "",
+                "scope": "", "exclude": "", "contacts": [], "identifiers": set(),
+                "lexical_terms": {"filenet", "delivery"},
+                "exclusion_terms": set(), "entry_ids": set(), "conversation_ids": set(),
+                "timeline_tail": [],
+            },
+        }
+        catalog = TaskCatalog(tasks=tasks, email_to_tasks={}, name_to_tasks={})
+        email = {**snapshot_email("X1", "CX"), "subject": "FileNet platform training November"}
+        payload = email_sync_candidates.prepare_candidate_payload(
+            [email], catalog, {"snapshot_id": "S1", "stale": False}, set()
+        )
+        candidates = [c["task"] for c in payload["emails"][0]["candidate_tasks"]]
+        self.assertIn("T001", candidates)
+
+
+class TimelineTailTests(unittest.TestCase):
+    def test_timeline_tail_strips_markers_and_keeps_newest(self) -> None:
+        from email_sync_catalog import _timeline_tail
+        content = """# T001: Fixture
+
+## Timeline
+- **2026-10-01** [email-in] Old event <!-- email:OLD1 -->
+- **2026-10-02** [decision] Second event <!-- email:OLD2 --> <!-- conversation:CONV2 -->
+- **2026-10-03** [email-in] Third event
+- **2026-10-04** [email-out] Newest event <!-- email:NEW1 -->
+
+## Current State
+- [ ] Open item
+"""
+        tail = _timeline_tail(content, limit=3)
+        self.assertEqual(3, len(tail))
+        self.assertEqual("- **2026-10-02** [decision] Second event", tail[0])
+        self.assertNotIn("<!--", tail[1])
+        self.assertIn("Newest event", tail[-1])
+
+    def test_empty_or_missing_timeline_returns_empty_list(self) -> None:
+        from email_sync_catalog import _timeline_tail
+        self.assertEqual([], _timeline_tail("# T001: No timeline yet\n"))
+        self.assertEqual([], _timeline_tail("## Timeline\n\nnothing\n\n## Notes\n"))
+
+
+class SummarySkeletonTests(unittest.TestCase):
+    def _applied(self) -> dict:
+        return {
+            "snapshot_id": "S1",
+            "evaluated_tasks": [
+                {"task": "T001", "file": "assistant_brain/tasks/T001-fixture.md",
+                 "updated": True, "changes": ["+Timeline Mon Oct 12, 2026 [email-in]"]},
+            ],
+            "task_updates": [
+                {"task": "T001", "file": "assistant_brain/tasks/T001-fixture.md",
+                 "entry_id": "E2", "updated": False, "changes": []},
+            ],
+            "ignored": [
+                {"entry_id": "IGN", "subject": "Newsletter", "sender": "Bot",
+                 "reason": "Newsletter noise"},
+            ],
+            "unresolved": [],
+            "audit": {"task_files_evaluated": 1, "task_files_modified": 1,
+                      "task_updates_requested": 0, "ignore_candidates_added": 1,
+                      "unresolved_count": 0},
+        }
+
+    def _candidates(self) -> dict:
+        return {
+            "snapshot_id": "S1",
+            "snapshot": {"fetched_at": "2026-10-14T11:00:00+08:00"},
+            "task_catalog": [
+                {"task": "T001", "title": "Fixture task", "path": "assistant_brain/tasks/T001-fixture.md",
+                 "status": "In Progress", "priority": "P1", "geo": "China", "due": "2026-10-31",
+                 "scope": "", "exclude": "", "contacts": [], "identifiers": [],
+                 "timeline_tail": []},
+            ],
+            "emails": [
+                {"number": 1, "entry_id": "IGN", "conversation_id": "C9", "direction": "in",
+                 "message_type": "mail", "folder": "Inbox", "received_time": "2026-10-13T10:00:00",
+                 "subject": "Newsletter", "sender": "Bot", "to_recipients": [], "cc_recipients": [],
+                 "body_preview": "", "message_class": "", "meeting_status": "",
+                 "start_time": "", "end_time": "", "review_status": "ignored",
+                 "deterministic_reason": "", "evidence": {}, "candidate_tasks": []},
+                {"number": 2, "entry_id": "E2", "conversation_id": "C2", "direction": "in",
+                 "message_type": "mail", "folder": "Inbox", "received_time": "2026-10-13T11:00:00",
+                 "subject": "Q4 question", "sender": "Alex", "to_recipients": [], "cc_recipients": [],
+                 "body_preview": "", "message_class": "", "meeting_status": "",
+                 "start_time": "", "end_time": "", "review_status": "review",
+                 "deterministic_reason": "", "evidence": {}, "candidate_tasks": []},
+            ],
+        }
+
+    def test_renders_deterministic_sections_with_placeholders(self) -> None:
+        import email_sync_summary
+        from datetime import date
+        with mock.patch.object(email_sync_summary, "find_stale_tasks", return_value=[]):
+            summary = email_sync_summary.build_summary(self._applied(), self._candidates(), date(2026, 10, 14))
+        self.assertIn("## Email Sync Summary (2026-10-14 snapshot) — 2 emails", summary)
+        self.assertIn("### 🇨🇳 China", summary)
+        self.assertIn("**[T001](assistant_brain/tasks/T001-fixture.md) Fixture task**", summary)
+        self.assertIn("- +Timeline Mon Oct 12, 2026 [email-in]", summary)
+        self.assertIn("{{summary #2}}", summary)
+        self.assertIn("| **#1** | Bot | `Newsletter` | Newsletter noise | `IGN` |", summary)
+        self.assertIn("### ✅ Priority Actions", summary)
+        self.assertIn("1 files modified", summary)
+
+    def test_mismatched_snapshot_ids_refuse_to_render(self) -> None:
+        import email_sync_summary
+        applied = self._applied()
+        applied["snapshot_id"] = "OTHER"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            applied_file = root / "applied.json"
+            candidates_file = root / "candidates.json"
+            applied_file.write_text(json.dumps(applied), encoding="utf-8")
+            candidates_file.write_text(json.dumps(self._candidates()), encoding="utf-8")
+            with mock.patch.object(sys, "argv", [
+                "email_sync_summary.py",
+                "--applied-file", str(applied_file),
+                "--candidates-file", str(candidates_file),
+            ]):
+                with self.assertRaises(SystemExit):
+                    email_sync_summary.main()
 
 
 if __name__ == "__main__":

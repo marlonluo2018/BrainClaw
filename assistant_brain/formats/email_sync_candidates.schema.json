@@ -62,7 +62,7 @@
       "additionalProperties": false,
       "required": [
         "task", "title", "path", "status", "priority", "geo", "due", "scope", "exclude",
-        "contacts", "identifiers"
+        "contacts", "identifiers", "timeline_tail"
       ],
       "properties": {
         "task": {"$ref": "#/$defs/one_line"},
@@ -75,7 +75,8 @@
         "scope": {"$ref": "#/$defs/line"},
         "exclude": {"$ref": "#/$defs/line"},
         "contacts": {"type": "array", "items": {"$ref": "#/$defs/contact"}},
-        "identifiers": {"$ref": "#/$defs/string_array"}
+        "identifiers": {"$ref": "#/$defs/string_array"},
+        "timeline_tail": {"type": "array", "items": {"$ref": "#/$defs/line"}}
       }
     },
     "evidence_hit": {

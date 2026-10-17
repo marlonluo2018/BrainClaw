@@ -197,17 +197,18 @@ Email sync separates three concerns: deterministic evidence collection, model-ba
 ```text
 run_email_sync.py [--days N]   # exactly once after each explicit full-sync trigger
         | public outlook_com_skill find-recent --json contract
-        | fresh Outlook fetch -> latest-input.json + latest-meta.json
+        | fresh Outlook fetch (body previews carry ~2000 chars) -> latest-input.json + latest-meta.json
         v
 email_sync.py
-        | builds a structured active-task catalog
+        | builds a structured active-task catalog (incl. per-task timeline_tail for dedup)
         | collects EntryID, ConversationID, identifier, contact, lexical, and scope evidence
-        | filters only strict noise and exact semantic-ignore EntryIDs
+        | pre-filters strict noise, recurring broadcast senders/subjects, and semantic-ignore EntryIDs
+        | denoises candidates: generic identifiers (Q4/P1/T###) and terms shared by >=1/3 of active tasks
         | writes latest-candidates.json + diagnostic latest.md
         v
 exactly one email-classifier
         | semantically reviews every review item, including calendar and zero-candidate mail
-        | reads every plausible task file and exact key/outbound messages
+        | works from body previews and timeline tails; opens task files only for updates about to be written
         | may link one email to multiple tasks when the content supports it
         | writes latest-plan.json against email_sync_plan.schema.json
         v
@@ -218,7 +219,8 @@ email_sync_apply.py
         | atomically applies timeline, asks, fields, tags, contacts, RACI, notes, and ignore changes
         | writes latest-applied.json
         v
-classifier verifies files and renders summary from applied results
+email_sync_summary.py renders the deterministic summary skeleton from latest-applied.json;
+classifier fills semantic placeholders (email one-liners, suggestions, priority actions)
 ```
 
 `latest-candidates.json` is the classifier's authoritative input. `latest.md` is only a human-readable diagnostic rendering. There is no fallback or reprocessing mode: a failed fetch stops the sync, and `email_sync_apply.py` rejects any plan that leaves a `review` email without an outcome.

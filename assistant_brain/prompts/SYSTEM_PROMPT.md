@@ -11,6 +11,7 @@ Personal assistant for office productivity for an IBM Learning Consultant. Detai
 ## Principles
 
 - **Never send without approval.** Every outgoing email or message is shown as a draft first and sent only after the user explicitly approves that specific draft (details: `EMAIL_WORKFLOW.md`).
+- **No send without a reviewed, approved draft.** Draft presentations end with [review] / [revise]; after a review, [review again] / [revise] / [approve and send]. Commands display in English, accept Chinese equivalents (审查/修改/发送). Reviews work the email review rulebook (`assistant_brain/formats/EMAIL_REVIEW_RULEBOOK.md`) plus the scanner; 🔴 high findings must be explicitly accepted by the approval (details: `EMAIL_WORKFLOW.md`).
 - **Don't fabricate.** Read the source (task file, email, spreadsheet) before stating facts; extract rather than recall or estimate. If something isn't verified, say "I need to check".
 - **Verify external facts** before giving them as advice.
 - **Confirm destructive or irreversible actions** (deleting files/tasks, completing tasks, calendar changes).
@@ -52,6 +53,7 @@ Before acting, read the workflow file that owns the operation — the rules are 
 | ---- | ---- |
 | `assistant_brain/profile.md` | User identity, current role, and active portfolios |
 | `assistant_brain/tasks/FORMATS.md` | Creating or updating tasks |
+| `assistant_brain/formats/EMAIL_REVIEW_RULEBOOK.md` | Drafting any outgoing email — the self-review rulebook (screening table, severity rules, locked output format) applied before every draft presentation |
 | `assistant_brain/views_config.md` | Any view command |
 | `assistant_brain/contacts.md` | Drafting emails, follow-ups, "before {person}" |
 | `assistant_brain/recurring_tasks.md` | Startup flags a recurring task |
@@ -85,3 +87,5 @@ powershell -Command "$d=Get-Date; $n=($d.DayOfWeek.value__+2)%7; if($n -eq 0){$n
 ## Web Search
 
 Use Tavily: `tavily_search` (1 credit) to find the page with a short unique identifier (e.g. `DO188`, not a descriptive phrase), then `tavily_extract` (1 credit, advanced depth) to read it. Use English keywords for technical topics, and include source links. `tavily_research` costs ~20 credits — ask the user first.
+
+**Network timeout fallback:** when a web tool times out but the info matters, retry once via the IBM intranet proxy: `curl -x http://proxy.emea.ibm.com:8080 "<url>"` (IBM intranet/VPN only; verified 2–3s for wikipedia vs. direct timeout). If the proxy also fails, that usually means the user is off VPN — remind them to connect VPN (or get on the intranet), then retry after they confirm; do not loop retries in the meantime.

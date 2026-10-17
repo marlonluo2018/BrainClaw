@@ -11,9 +11,11 @@ The root `/adhoc/` directory remains Git-ignored and is the required location fo
 - `email_sync_catalog.py` - extracts the structured active-task catalog and archived thread markers
 - `email_sync_candidates.py` - prepares explicit candidate reasons without confidence scores or ownership decisions
 - `email_sync_apply.py` - executes the published Draft 2020-12 plan Schema, validates cross-record invariants, and atomically applies classifier plans
+- `email_sync_summary.py` - renders the deterministic email-sync summary skeleton (geo grouping, updated blocks, open asks, ignored table, stale tasks, audit) from `latest-applied.json`, leaving `{{placeholders}}` for the classifier's semantic content
 - `followup.py` - stale-task and follow-up analysis
 - `shared_config.py` - shared paths, parsing, and console setup
 - `run_email_sync.py` - mandatory first executable step for every explicit full sync; fetches through the Outlook skill's public JSON contract, accepts verified empty results, and blocks overlapping active fetches (a lock older than 5 minutes is treated as abandoned); failures stop without fallback
+- `screen_outgoing_body.py` - deterministic scanner for outgoing email bodies; flags EPD/Class/PO/task identifiers, internal-only link hosts, and deliberation wording for the EMAIL_REVIEW_RULEBOOK.md review
 - `manage_ignore_candidates.py` - manage email-sync ignore state
 - `update_task.py` - structured task-file updates
 - `validate_processes.py` - process schema/index validation

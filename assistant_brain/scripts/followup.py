@@ -239,6 +239,17 @@ def find_stale_tasks(today: date, target_task: str = None) -> list:
             "days_inactive": days_inactive,
             "threshold": threshold,
             "last_activity": last_date_str,
+            # Timeline is newest-first; strip hidden email/conversation markers
+            "timeline_tail": [
+                {
+                    "date": e["date"],
+                    "tag": e["tag"],
+                    "description": re.sub(
+                        r"\s*<!-- (?:email|conversation):[^>]+? -->", "", e["description"]
+                    ).strip(),
+                }
+                for e in parsed["timeline_entries"][:3]
+            ],
         }
 
         # All pending asks owed to me
@@ -284,18 +295,29 @@ def find_stale_tasks(today: date, target_task: str = None) -> list:
         # over asks_in (chase someone else) — action items are more urgent
         if entry.get("owed_by_me"):
             entry["suggested_recipient"] = entry["owed_by_me"][0]["person"]
+            entry["suggested_ask"] = entry["owed_by_me"][0]["ask"]
             entry["action_type"] = "owed_by_me"
         elif entry.get("waiting_on"):
             entry["suggested_recipient"] = entry["waiting_on"][0]["person"]
+            entry["suggested_ask"] = entry["waiting_on"][0]["ask"]
             entry["action_type"] = "waiting_on"
-        elif parsed["contacts"]:
-            for c in parsed["contacts"]:
-                if c["role"] not in ("Requester",):
-                    entry["suggested_recipient"] = c["name"]
-                    if c["email"]:
-                        entry["suggested_email"] = c["email"]
-                    entry["action_type"] = "contact"
-                    break
+        else:
+            # No open ask recorded: the task is accountable to its Requester —
+            # suggest them rather than an arbitrary non-Requester contact.
+            requester = next(
+                (c for c in parsed["contacts"] if c["role"] == "Requester" and c["name"]),
+                None,
+            )
+            if requester:
+                entry["suggested_recipient"] = requester["name"]
+                if requester["email"]:
+                    entry["suggested_email"] = requester["email"]
+                entry["action_type"] = "contact"
+            elif parsed["contacts"]:
+                entry["suggested_recipient"] = parsed["contacts"][0]["name"]
+                if parsed["contacts"][0]["email"]:
+                    entry["suggested_email"] = parsed["contacts"][0]["email"]
+                entry["action_type"] = "contact"
 
         results.append(entry)
 

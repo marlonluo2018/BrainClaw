@@ -32,9 +32,17 @@ Every outgoing email goes through the same four steps, in order. The point is th
 
 Read the source message or full thread with `get-email` in the current turn and note its actual To, CC, subject, and body. Never state an inherited subject or recipient list you haven't just read.
 
-### 3. Draft
+### 3. Draft, iterate, and self-review (root agent end to end)
 
-**Choose the command yourself** — the user shouldn't need to know Outlook internals. Compare the source To/CC with the intended recipients:
+**The root agent drafts, iterates, and reviews — no subagent in the loop.** Read the task file and `contacts.md`, apply tone rules, write the body to `outbox/T###-<topic>-YYYYMMDD.html` (taskless compose: `outbox/compose-<topic>-YYYYMMDD.html`). Iteration feedback ("shorter", "add link", "drop the EPD number") is applied by editing the file directly and re-presenting — seconds, not a subagent round-trip.
+
+**Self-review is mandatory and format-locked, not vibes.** Before every presentation, review the draft against `assistant_brain/formats/EMAIL_REVIEW_RULEBOOK.md` — that file is the **review rulebook** (screening table, the two deliberation classes, approval-route row, severity meanings), written to be applied by whoever holds it. **Reading the rulebook is part of conducting the review, every time:** if its full text is not already in context from this session, Read it first, then review — a review performed without the rulebook in context is invalid, no matter how well the reviewer remembers it. Working the rulebook removes the drafter's blind spot: the checks are explicit, ordered, and the same every time. The review is only valid if produced in the rulebook's output format — audience classification line, scanner line, 🔴 high findings with exact quotes, 🟡 low findings, checked-clean line. A review that summarizes ("looks clean") instead of working the table is not a review. Then run `py -3 assistant_brain/scripts/screen_outgoing_body.py <file> --subject "..."` as an independent pattern check — fold its findings into the review; anything it flags that your semantic pass cleared still appears as 🟡 "scanner flag, cleared for this audience".
+
+**The review's known limit:** pattern checks and the rulebook cover known leakage shapes (identifiers, links, deliberation phrasings, approval routes, unconfirmed numbers). Reworded or novel phrasings can slip past both — the mitigations are that you (root agent) wrote the draft and read it again line by line against the table, and the user reads the body in full before approving. If a draft touches a genuinely new situation (recipient type or information category not covered by the table) and the call is uncertain, ask the user — do not guess and do not spawn a subagent.
+
+**🔴 High findings must be highlighted, not buried.** High findings go at the **top** of the review block with the exact quoted text and the suggested fix — and the user's approval must explicitly acknowledge them ("approve and send, keep X") before sending. Presenting a high finding below the body, or sending after silent high findings, is a breach.
+
+Command choice is the root agent's call:
 
 | Situation | Command |
 |-----------|---------|
@@ -46,32 +54,34 @@ Read the source message or full thread with `get-email` in the current turn and 
 
 Adding one person to an ongoing discussion is a `reply`; use `redirect` only when `get-email` shows someone must be dropped. If the user names a command, check it can do what they asked; if not, explain and ask before substituting.
 
-**Body:**
-- Don't repeat facts, numbers, dates, course names, budgets, or plan rows already in the thread — the recipients can see them. Say only the new question, update, or ask.
-- Tone by recipient role from `contacts.md`: decision makers — formal, bottom line first; executors — action-first, numbered; colleagues — collaborative; unknown — neutral.
-- In emails to business requesters (Informed stakeholders), refer to vendors by company or role ("Red Hat", "the vendor"), not by vendor contact names — naming them invites requesters to bypass L&K.
-- No closing name or signature (Outlook appends it). Plain ASCII punctuation; no emojis unless asked.
+**Present the draft in the two-stage flow.** Stage 1 — every draft (first or iterated) is presented as: Action Type, To/CC, Subject, the complete body (every paragraph shown in full — the user reviews by reading what is presented, so anything truncated or summarized is effectively unseen), ending with exactly two options:
 
-**Subject (compose/forward):** `Course/Topic — Geo/Context`, e.g. `DO188 Final Shortlist & Roster Selection — FNC India`. Prefer a course/product code, then vendor + geo, then certification name. Never put EPD numbers or Class IDs in a subject — they are internal L&K admin numbers. Replies keep the inherited `Re:` subject.
+> **[review]** — run the rulebook review on this draft (🔍 findings with 🔴 high items highlighted)
+> **[revise]** — give feedback and iterate (stays in stage 1)
 
-**Present the draft** with:
-1. Action type and one-line reason from the recipient comparison (e.g. "reply — keeps all source recipients and adds Prantar to CC")
-2. Target thread: subject, last message date/sender, EntryID
-3. To/CC, marking each recipient as inherited or newly added; suggest changes if a CC seems no longer relevant, a RACI stakeholder is missing, or reply-all hits a large list for a narrow message
-4. Subject
-5. Body as readable text (Markdown, not raw HTML)
+Stage 2 — after the user has requested a review at least once on this draft version, the presentation offers three options:
 
-### 4. Send only after explicit approval of this draft
+> **[review again]** — re-run the review on the current draft (e.g. after accepting/considering findings, or to double-check before sending)
+> **[revise]** — give feedback and iterate (returns the draft to stage 1: the changed version must be reviewed again before send is offered)
+> **[approve and send]** — send this reviewed draft
 
-Send only when the user's latest message explicitly approves the draft you just showed ("approve and send", "同意发送"). "Do it" / "发送" before a draft exists means *start drafting*, not send. If the user asks for anything else first (e.g. "update the task file"), do that, re-present the final draft, and wait for a fresh approval. Before sending, check the draft matches every requested change and nothing extra.
+**Command language:** the options are always displayed in English, and the user may invoke them in either English or Chinese — treat "审查"/"review" (and "再次审查"/"review again"), "继续修改"/"修改"/"revise", and "同意发送"/"发送"/"approve and send" as the same commands. When presenting, show the English labels (optionally with the Chinese hint in parentheses when the conversation is in Chinese).
 
-**Body transport:** write the HTML body with the Write tool to a new, uniquely named file in `outbox/` (e.g. `outbox/T127-reply-20260924.html`) and pass `--body-file`. Never put body text in a shell command string: Bash/PowerShell expand `$60` into `0`. The CLI deletes the file after a successful send and keeps it on failure.
+**Findings persist across iterations.** Once a review has surfaced a 🔴 or 🟡 finding, it stays visible in every subsequent presentation of that draft — with its current disposition — until it is closed one of exactly two ways: (a) the draft was actually changed so the offending text no longer exists (finding marked resolved), or (b) the user explicitly gave a reason to keep it (finding marked accepted: "X 保留 — user: <reason>"). Re-wording that doesn't remove the underlying content, or a new edit that reintroduces the same pattern, reopens the finding. Findings never silently disappear between rounds — a finding absent from a later presentation must mean it was resolved or accepted, and the presentation shows which.
+
+"approve and send" is only a valid send authorization for a draft whose current text the user has seen reviewed. Never offer "approve and send" on a version that has not been reviewed in its current form.
+
+### 4. Send only after a reviewed draft is explicitly approved
+
+The send gate: the user chose "approve and send" on a draft that was presented together with its 🔍 Review in the rulebook's locked format. "Do it" / "发送" before a draft exists means *start drafting*, not send. If the user asks for anything else first (e.g. "update the task file"), do that, re-present the final draft with its review, and wait for a fresh choice. Before sending, check the draft matches every requested change and nothing extra. **Every 🔴 finding still open (not resolved, not accepted with a stated reason) when the user approves must be explicitly accepted by the approval** ("approve and send, keep X") — approval that is silent over an open high finding is not a valid send authorization.
+
+**Body transport:** the root agent wrote the HTML body to the `outbox/` file; pass it with `--body-file`. Never put body text in a shell command string: Bash/PowerShell expand `$60` into `0`. The CLI deletes the file after a successful send and keeps it on failure.
 
 **After sending:** send commands print the Sent Items EntryID. If the email is task-related, add an `[email-out]` timeline entry with that EntryID (see Record Email in Task).
 
 ### Batch forward
 
-Recipients come from a CSV with an `email` column and go out as BCC. Show the body plus the recipient source and count as the draft; after approval run `batch-forward` with `--body-file`.
+Recipients come from a CSV with an `email` column and go out as BCC. The body is drafted and reviewed like any other draft (the recipient list is the CSV audience, classified as external unless known otherwise). Show the body plus the recipient source and count as the draft; after approval run `batch-forward` with `--body-file`.
 
 ---
 
@@ -82,7 +92,7 @@ Recipients come from a CSV with an `email` column and go out as BCC. Show the bo
 Deterministic scripts fetch and apply; one classifier subagent makes the semantic decisions. The root agent does steps 1, 2, and 4.
 
 1. **Fetch once.** **Codex execution requirement:** run `py -3 assistant_brain/scripts/run_email_sync.py [--days N]` exactly once with desktop/elevated execution directly, not the normal sandbox. Select that execution mode before starting the command; never launch it in the sandbox and retry after a timeout. This is the first step of every explicit sync request, before looking at any sync output. Lookback defaults to the time since the last successful fetch (max 30 days). An empty result is valid — continue. If it fails, stop and report the error; don't retry or fall back to an old snapshot, because the classifier would then apply stale mail. Don't run it for targeted searches, replies, or the dashboard; a new explicit sync request later gets a new fetch.
-2. **Classify.** Spawn exactly one `email-classifier` subagent (SOP: `assistant_brain/agents/email-classifier.md`). It reads the snapshot, decides which task each email belongs to, writes `latest-plan.json`, runs `email_sync_apply.py` once, and returns the formatted summary. It never fetches mail and never edits task files directly.
+2. **Classify.** Spawn exactly one `email-classifier` subagent (SOP: `assistant_brain/agents/email-classifier.md`). It reads the snapshot (each email carries a ~2000-character body preview and each catalog task a `timeline_tail`, so it rarely needs per-email `get-email` or full task-file reads), decides which task each email belongs to, writes `latest-plan.json`, runs `email_sync_apply.py` once, generates the summary skeleton with `email_sync_summary.py`, fills its semantic placeholders, and returns the formatted summary. It never fetches mail and never edits task files directly.
 3. The apply script validates the plan (schema, snapshot identity, every review email has an outcome, no history tasks, EntryIDs from the snapshot, one update per task+email) and writes all changes atomically, including the `<!-- email:... -->` / `<!-- conversation:... -->` markers.
 4. **Relay.** Pass the classifier's summary to the user as-is. It must contain `## Email Sync Summary`, `### ✅ Priority Actions`, and `### 📋 Sync Audit — Files Modified`; if a heading is missing, send it back to the same classifier to fix.
 

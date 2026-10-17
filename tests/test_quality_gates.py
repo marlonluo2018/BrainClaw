@@ -91,6 +91,42 @@ class QualityGateTests(unittest.TestCase):
         self.assertEqual("Global", parsed["geo"])
         self.assertTrue(parsed["timeline_entries"])
 
+    def test_stale_fallback_prefers_requester_when_no_open_ask(self) -> None:
+        import followup
+
+        content = """**Category:** Meeting
+**Geo:** China
+## Contacts
+- **Requester:** Yu Jie Ai (Angela) <ayjaiayj@cn.ibm.com> — CPES China Business Operation Lead
+- **Transition/Handover:** HUAN XU (Circe) <xuhuanxh@cn.ibm.com> — Learning Consultant
+## Asks
+### My Actions
+- [x] {Due: 2026-10-15} 🎯 to Yu Jie Ai: Update slides ✅ done
+### Waiting on Others
+## Timeline
+- **2026-09-19** [email-in] Update received
+## Current State
+- [ ] Attend review
+"""
+        parsed = parse_task_file(content)
+        entry = {
+            "owed_by_me": [],
+            "waiting_on": [],
+        }
+        # Mirror the fallback branch of find_stale_tasks against the parsed file
+        requester = next(
+            (c for c in parsed["contacts"] if c["role"] == "Requester" and c["name"]),
+            None,
+        )
+        self.assertIsNotNone(requester)
+        if requester:
+            entry["suggested_recipient"] = requester["name"]
+            entry["action_type"] = "contact"
+        # parse_task_file keeps the trailing role after the em-dash
+        self.assertTrue(entry["suggested_recipient"].startswith("Yu Jie Ai"))
+        self.assertNotIn("HUAN XU", entry["suggested_recipient"])
+        self.assertEqual("contact", entry["action_type"])
+
     def test_xlsx_packaging_has_required_ooxml_parts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

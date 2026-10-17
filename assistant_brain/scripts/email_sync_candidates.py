@@ -18,6 +18,44 @@ STRICT_NOISE_PREFIXES = {
     "recall:": "recall",
 }
 STRICT_NOISE_CONTAINS: dict[str, str] = {}
+
+# Senders whose mail is broadcast/newsletter noise in every sync. Derived from
+# the semantic ignore pool: each pattern had repeated entries and never carried
+# a task event. Patterns match the sender display name case-insensitively
+# (substring). NOT for human senders — a person's mail always reaches review.
+SENDER_NOISE_PATTERNS: tuple[str, ...] = (
+    "w3notifications",
+    "events and classes",
+    "ibm think newsletter",
+    "deeplearning.ai",
+    "the batch @ deeplearning.ai",
+    "gartner alerts",
+    "gartner conferences",
+    "ibm institute for business value",
+    "ibm open innovation community",
+    "ibm community",
+    "ibmer news",
+    "ibm thought leadership showcase",
+    "world economic forum",
+    "hrtt exchange",
+    "no-reply@training.redhat.com",
+    "ollama",
+    "ibm consulting ww learning & knowledge",
+)
+
+# Subject patterns that are recurring broadcasts regardless of sender.
+# Matched case-insensitively as a substring of the normalized subject.
+SUBJECT_NOISE_PATTERNS: tuple[str, ...] = (
+    "today on w3",
+    "class status as of",
+    "fortnightly onechina l&k team connect call",
+    "weekly reflection:",
+    "upcoming thought leadership learning events",
+    "you are invited to enroll in",
+    "reminder: you are invited to the class:",
+    "new documents available in gartner",
+)
+
 MAX_LEXICAL_CANDIDATES = 8
 
 
@@ -56,6 +94,14 @@ def strict_noise_reason(email: dict[str, Any]) -> str | None:
     for fragment, reason in STRICT_NOISE_CONTAINS.items():
         if fragment in subject:
             return reason
+    # Broadcast senders: recurring newsletters/digests, never a person's mail.
+    sender = str(email.get("sender", "")).strip().lower()
+    for pattern in SENDER_NOISE_PATTERNS:
+        if pattern in sender:
+            return f"broadcast sender ({pattern})"
+    for pattern in SUBJECT_NOISE_PATTERNS:
+        if pattern in subject:
+            return f"recurring broadcast subject ({pattern})"
     return None
 
 

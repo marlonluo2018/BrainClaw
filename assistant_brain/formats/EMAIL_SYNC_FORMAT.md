@@ -21,6 +21,7 @@
 ### {flag} Geo Name
 
 **[TID](path) Task Name** | Due: YYYY-MM-DD | Last activity: YYYY-MM-DD
+
 Updated:
 - Timeline: `YYYY-MM-DD [Tag]: Description`
 - Ask added: `YYYY-MM-DD → Person: description`
@@ -28,12 +29,12 @@ Updated:
 - Field: `Due: TBD → 2026-10-15`
 
 Emails:
-→ #X — Wkd Mon DD HH:MM — Sender: one-line summary
-← #Y — Wkd Mon DD HH:MM — to Recipient: one-line summary
+- → #X — Wkd Mon DD HH:MM — Sender: one-line summary
+- ← #Y — Wkd Mon DD HH:MM — to Recipient: one-line summary
 
 Actions:
-🎯 [action I need to take] — Contact: {name} | Due in {N}d
-⏳ [waiting for someone] — Contact: {name} | expected {date/timeframe}
+- 🎯 [action I need to take] — Contact: {name} | Due in {N}d
+- ⏳ [waiting for someone] — Contact: {name} | expected {date/timeframe}
 
 &nbsp;
 
@@ -41,37 +42,38 @@ Actions:
 Updated: no changes — already up to date.
 
 Emails:
-→ #X — Wkd Mon DD HH:MM — Sender: one-line summary
+- → #X — Wkd Mon DD HH:MM — Sender: one-line summary
 
 Actions:
-⏳ [what I'm waiting for] — Contact: {name} | expected {date/timeframe}
+- ⏳ [what I'm waiting for] — Contact: {name} | expected {date/timeframe}
 
 ### {flag} Another Geo
 
 **[TID](path) Task Name** | Due: YYYY-MM-DD | Last activity: YYYY-MM-DD
+
 Updated:
 - Timeline: `YYYY-MM-DD [Tag]: Description`
 
 Emails:
-→ #X — Wkd Mon DD HH:MM — Sender: one-line summary
+- → #X — Wkd Mon DD HH:MM — Sender: one-line summary
 
 Actions:
-🎯 [action I need to take] — Contact: {name} | Due in {N}d
+- 🎯 [action I need to take] — Contact: {name} | Due in {N}d
 
 ---
 
 ### ❌ Non-Task Emails
 
 **Action needed (requires user action; some are small one-offs, some are big tasks):**
-→ #X — Wkd Mon DD HH:MM — Sender: brief description
-  🎯/⏳ Suggested: [suggested response/action or what to wait for]
-  💡 Create task? [Yes — big action needing full task tracking / No — small one-off action, handle directly without task file]
+- → #X — Wkd Mon DD HH:MM — Sender: brief description
+  - 🎯/⏳ Suggested: [suggested response/action or what to wait for]
+  - 💡 Create task? [Yes — big action needing full task tracking / No — small one-off action, handle directly without task file]
 
 &nbsp;
 
-→ #Y — Wkd Mon DD HH:MM — Sender: brief description
-  🎯/⏳ Suggested: [suggested response/action or what to wait for]
-  💡 Create task? [Yes — big action needing full task tracking / No — small one-off action, handle directly without task file]
+- → #Y — Wkd Mon DD HH:MM — Sender: brief description
+  - 🎯/⏳ Suggested: [suggested response/action or what to wait for]
+  - 💡 Create task? [Yes — big action needing full task tracking / No — small one-off action, handle directly without task file]
 
 ---
 
@@ -100,8 +102,10 @@ Actions:
 
 ### ⚠️ Stale Tasks (only if any exceed threshold)
 
-- T0XX — Xd no activity | stuck at: "{process step}"
-  🎯 Follow up: {contact} ({role})
+- [TID](path) Task Name — Xd no activity | stuck at: "{process step}"
+  - ⏱ YYYY-MM-DD [tag]: last timeline entry (newest 3, for recall)
+  - 🎯 Follow up: {contact}: {full ask text} — person AND ask from the top open ask; never show the person alone (the person field can be truncated when the ask line lacks a "to Person:" prefix); or
+  - ⚠️ No open ask recorded — key contact: {requester} (when the task has no open ask, the contact falls back to the Requester; never present this as a "Follow up")
 
 ---
 
@@ -136,11 +140,12 @@ Total: X files modified, Y unchanged.
 3. **Report every write.** Sync writes to task files without asking the user first, so the `Updated:` block is how the user learns what changed: list each timeline entry, each ask added/completed/removed, each decision/deadline, and each header/Tags/Contacts/RACI/Scope/Exclude/Notes change, with its actual text (from `latest-applied.json`). Never summarize as counts only.
 3a. **Missing next step:** If, after apply, an open task has no open item in either `### My Actions` or `### Waiting on Others`, add a line `⚠️ No next step recorded — please tell me what this task is waiting on.` to that task's `Actions:` block. Do not invent an ask to fill the gap.
 4. If a matched task required no updates, state "Updated: no changes — already up to date." — still list its Emails section
-5. Each task has two sub-sections: **Emails** (→ in / ← out) then **Actions** (🎯 my action / ⏳ waiting). Use one or both action types as appropriate
+5. Each task has two sub-sections: **Emails** (→ in / ← out) then **Actions** (🎯 my action / ⏳ waiting), each line as a list item (`- `). Use one or both action types as appropriate
    - Every task section has an `Actions:` block, including `Updated: no changes — already up to date.` It reflects the task's currently open asks from its `## Asks` section, not only emails received this run. See template lines 38–45.
    - Show only open items: check the task's `## Asks` and `## Current State`, and leave out anything marked `[x]`, `[✅]`, struck through (`~~`), or suffixed `✅`. An email about a completed action is informational; it doesn't reopen it.
-6. Separate tasks with `&nbsp;` (blank spacer line) for visual clarity — no `---` horizontal rules between tasks
-7. Non-Task "Action needed" items show the email with `→`/`←` prefix, then indented `🎯 Suggested:` line, then `💡 Create task?` recommendation. Separate each "Action needed" email entry with `&nbsp;` (blank spacer line) for visual clarity.
+6. Separate tasks with `&nbsp;` (blank spacer line) for visual clarity — no `---` horizontal rules between tasks. Add a blank line after the task header line (`**[TID](path) ...**`) so the `Updated:` label always starts its own paragraph.
+7. Non-Task "Action needed" items show the email with `→`/`←` prefix as a top-level list item (`- → #X — ...`), then indented sub-items `  - 🎯/⏳ Suggested:` and `  - 💡 Create task?`. Separate each "Action needed" email entry with `&nbsp;` (blank spacer line) for visual clarity.
+7a. **Every content line must be a Markdown list item or separated by a blank line** — plain adjacent text lines get merged into one paragraph when rendered (GFM soft-line-break behavior). Lines under `Emails:`, `Actions:`, stale tasks, and Non-Task entries therefore start with `- ` (or `  - ` for sub-items); never emit bare adjacent text lines.
 8. Email numbers are sequential across the entire summary (not per-task)
 9. **Contact attribution:** The `Contact: {name}` in `🎯`/`⏳` lines is the person relevant to that specific action — NOT the task's generic primary contact. Match the person to the verb.
 10. **Overdue vs ask age:** "overdue" refers to the task's Due date. When surfacing a specific ask, show the ask's age (e.g., "ask: 3d ago") separately from task overdue.

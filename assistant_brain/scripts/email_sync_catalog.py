@@ -6,7 +6,7 @@ belongs to a task; semantic ownership remains the classifier's responsibility.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 from typing import Any
 
@@ -48,11 +48,18 @@ def extract_terms(text: str) -> set[str]:
     return english | chinese | codes | quarters
 
 
+# Tokens that look like identifiers to the raw regex but are generic
+# bookkeeping symbols (quarters, priorities, task cross-references, years).
+# They appear across many tasks and emails and carry no ownership signal.
+GENERIC_IDENTIFIER = re.compile(r"^(?:Q[1-4](?:[-–]Q[1-4])?|P[1-3]|FY\d{2}|T\d+(?:[-–]\d+)?)$")
+
+
 def extract_identifiers(text: str) -> set[str]:
     """Extract stable-looking identifiers without treating ordinary words as IDs."""
     values = {value.upper() for value in re.findall(r"\b[A-Za-z]+\d+[A-Za-z0-9_-]*\b", text)}
     values |= set(re.findall(r"\b\d{6,}\b", text))
-    return {value for value in values if len(value) <= 32 and not re.fullmatch(r"20\d{2}", value)}
+    values = {value for value in values if len(value) <= 32 and not re.fullmatch(r"20\d{2}", value)}
+    return {value for value in values if not GENERIC_IDENTIFIER.fullmatch(value)}
 
 
 def _field(content: str, name: str) -> str:
@@ -121,6 +128,9 @@ class TaskCatalog:
     tasks: dict[str, dict[str, Any]]
     email_to_tasks: dict[str, set[str]]
     name_to_tasks: dict[str, set[str]]
+    # Terms appearing in >= this fraction of active tasks cannot discriminate
+    # between them; computed at build time and dropped from lexical matching.
+    nondiscriminating_terms: frozenset[str] = field(default_factory=frozenset)
 
 
 def _register_contact(
@@ -131,6 +141,29 @@ def _register_contact(
     normalized = value.strip().lower()
     if normalized:
         mapping.setdefault(normalized, set()).add(task_id)
+
+
+TIMELINE_TAIL_LENGTH = 8
+
+
+def _timeline_tail(content: str, limit: int = TIMELINE_TAIL_LENGTH) -> list[str]:
+    """Return the newest timeline lines (markers stripped) for dedup checks.
+
+    The classifier uses these to decide whether an email's event is already
+    recorded, without reading every task file end to end.
+    """
+    lines: list[str] = []
+    in_timeline = False
+    for line in content.splitlines():
+        if line.strip() == "## Timeline":
+            in_timeline = True
+            continue
+        if in_timeline and (line.startswith("## ") or line.strip() == "---"):
+            break
+        if in_timeline and line.strip().startswith("- "):
+            cleaned = re.sub(r"\s*<!-- (?:email|conversation):[^>]+? -->", "", line.strip())
+            lines.append(cleaned)
+    return lines[-limit:]
 
 
 def _active_task_record(task: Any, content: str) -> dict[str, Any]:
@@ -196,6 +229,7 @@ def _active_task_record(task: Any, content: str) -> dict[str, Any]:
         "exclusion_terms": exclusion_terms,
         "entry_ids": set(re.findall(r"<!-- email:(\S+?) -->", content)),
         "conversation_ids": set(re.findall(r"<!-- conversation:(\S+?) -->", content)),
+        "timeline_tail": _timeline_tail(content),
     }
 
 
@@ -254,7 +288,29 @@ def build_task_catalog() -> TaskCatalog:
                 "conversation_ids": conversation_ids,
             }
 
-    return TaskCatalog(tasks=tasks, email_to_tasks=email_to_tasks, name_to_tasks=name_to_tasks)
+    # Terms shared by a large fraction of active tasks match almost every
+    # email and turn the candidate list into noise. Drop them from lexical
+    # evidence (contact/conversation evidence is unaffected; identifiers are
+    # already kept specific by GENERIC_IDENTIFIER).
+    active_records = [record for record in tasks.values() if record["lifecycle"] == "active"]
+    term_task_counts: dict[str, int] = {}
+    for record in active_records:
+        for term in record["lexical_terms"]:
+            term_task_counts[term] = term_task_counts.get(term, 0) + 1
+    threshold = max(2, (len(active_records) + 2) // 3)
+    shared_terms = frozenset(
+        term for term, count in term_task_counts.items() if count >= threshold
+    )
+    if shared_terms:
+        for record in active_records:
+            record["lexical_terms"] = record["lexical_terms"] - shared_terms
+
+    return TaskCatalog(
+        tasks=tasks,
+        email_to_tasks=email_to_tasks,
+        name_to_tasks=name_to_tasks,
+        nondiscriminating_terms=shared_terms,
+    )
 
 
 def public_task_catalog(catalog: TaskCatalog) -> list[dict[str, Any]]:
@@ -276,5 +332,6 @@ def public_task_catalog(catalog: TaskCatalog) -> list[dict[str, Any]]:
             "exclude": record["exclude"],
             "contacts": record["contacts"],
             "identifiers": sorted(record["identifiers"]),
+            "timeline_tail": record["timeline_tail"],
         })
     return result

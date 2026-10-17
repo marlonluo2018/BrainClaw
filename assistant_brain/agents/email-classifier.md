@@ -17,33 +17,36 @@ In `assistant_brain/sync_results/`:
 
 - `latest-meta.json` — `snapshot_id`, `email_count`.
 - `latest-candidates.json` — the evidence bundle (its `snapshot_id` must match the meta file):
-  - `task_catalog[]` — every active task: `task`, `title`, `path`, `geo`, `due`, `scope`, `exclude`, `contacts`, `identifiers`.
-  - `emails[]` — `number`, `entry_id`, `conversation_id`, `direction` (`in`/`out`/`calendar`), `folder`, `received_time`, `subject`, `sender`, `to_recipients`, `cc_recipients`, `body_preview`, `review_status` (`review`/`filtered`/`ignored`), `evidence` (EntryID/ConversationID/identifier/contact/lexical hits), `candidate_tasks[]`.
+  - `task_catalog[]` — every active task: `task`, `title`, `path`, `geo`, `due`, `scope`, `exclude`, `contacts`, `identifiers`, `timeline_tail` (the newest 8 timeline lines, markers stripped — use for dedup checks instead of re-reading task files).
+  - `emails[]` — `number`, `entry_id`, `conversation_id`, `direction` (`in`/`out`/`calendar`), `folder`, `received_time`, `subject`, `sender`, `to_recipients`, `cc_recipients`, `body_preview` (the first ~2000 characters of the body — usually the whole message), `review_status` (`review`/`filtered`/`ignored`), `evidence` (EntryID/ConversationID/identifier/contact hits), `candidate_tasks[]`.
 
 `latest.md` is a human-readable view of the same data; you don't need it.
 
 ## 1. Decide every `review` email
 
-Skip `filtered` (system noise, or already recorded) and `ignored` emails. Every `review` email — including calendar items and emails with no candidates — gets exactly one outcome:
+Skip `filtered` (system noise, recurring broadcasts, or already recorded) and `ignored` emails. Every `review` email — including calendar items and emails with no candidates — gets exactly one outcome:
 
 - **Update** one task, or several tasks when the email carries a distinct event for each.
 - **Already covered** — belongs to a task but adds no new event (a "+1", a repeat in a long thread). Still a task update, with `"timeline": null` and no other changes; it links the email to the task in the report without writing anything.
 - **Unresolved** — actionable or uncertain, no clear active task. Stays visible to the user.
+  - **Recurring task match check:** Compare unmatched actionable emails against `assistant_brain/recurring_tasks.md` (especially those with `trigger: email` / `email_trigger`). If an email matches a recurring pattern (e.g., from Yu Jie Ai re: BUR Review matching R001), specify in reason: `"Matches recurring task R001 ({name}). Suggest creating task 'T### - {name} - {Month YYYY}'"`.
 - **Ignore** — only when the content is affirmatively informational and needs no task or action. Unmatched is not the same as ignorable.
 
 The apply script rejects a plan that leaves any `review` email without one of these outcomes.
 
 **Evidence is a lead, not a verdict.** Same EntryID/ConversationID as a task is strong continuity evidence; identifiers, contacts, and word overlap only tell you which files to open. Decide from the email content against the task's Scope and Exclude. Candidates aren't limited to `candidate_tasks` — if the content points to another task in `task_catalog`, check it.
 
-**Read each plausible task file completely** (`assistant_brain/tasks/T*.md`): Scope, Exclude, Contacts/RACI, Asks, Current State, Timeline, Notes. Don't open anything under `assistant_brain/tasks/history/` — archived tasks are out of scope for sync (the apply script rejects them). If new actionable mail continues an archived conversation, mark it unresolved and suggest reopening or creating a task.
+**Task files — read only what you will write.** The catalog's `timeline_tail` and `scope`/`exclude`/`contacts` cover dedup and matching for most emails, so do NOT open a task file just to classify an email against it. Open the full task file (Scope, Exclude, Contacts/RACI, Asks, Current State, Timeline, Notes) only when you are about to write an update for it and need surrounding context (existing ask text, notes, RACI), or when the timeline tail leaves the dedup question genuinely open. Don't open anything under `assistant_brain/tasks/history/` — archived tasks are out of scope for sync (the apply script rejects them). If new actionable mail continues an archived conversation, mark it unresolved and suggest reopening or creating a task.
 
-**Read the full message** for every outgoing, key, or ambiguous email — the preview is often cut off, and `[email-out]` summaries must reflect what was actually said:
+**Reading full bodies.** `body_preview` carries ~2000 characters, which covers most emails. Call `get-email` only when the preview is visibly cut off mid-decision (e.g., an outgoing email whose actual commitments you must summarize, or an approval/decision buried past the cutoff):
 
 ```text
 py -3 assistant_brain/skills/outlook_com_skill/scripts/outlook_skill.py get-email <EntryID>
 ```
 
 Use the EntryID directly; don't search. (Needs the interactive Outlook session — run with desktop/elevated execution.)
+
+**No scratch files in the OS temp dir.** Keep all working state in your context or under `assistant_brain/sync_results/`. Never write `emails_batch*.txt` or any other intermediate email dumps to `C:\Users\...\AppData\Local\Temp\` — email content must stay inside the project's gitignored folders, and anything you do create there gets orphaned. If you need to chunk the review, iterate over `latest-candidates.json` in memory instead of spilling batches to disk.
 
 **What to write for an update:**
 
@@ -133,4 +136,18 @@ It validates the whole plan first and writes nothing if anything is wrong; the e
 
 Read `latest-applied.json` and re-open each changed task to confirm the changes landed. If they disagree, report an execution error instead of a summary.
 
-Then build the summary with `EMAIL_SYNC_FORMAT.md`, using `latest-applied.json` for what actually changed (never the plan), the task files for current open asks, and `latest-candidates.json` for email numbers and metadata. Sync writes to task files without asking the user, so list every written item with its actual text. Every unresolved email must appear. Return only the formatted summary; the root agent relays it verbatim.
+Then build the summary. **Start from the generated skeleton** — run:
+
+```text
+py -3 assistant_brain/scripts/email_sync_summary.py
+```
+
+It renders every deterministic section from `latest-applied.json` and the task files (geo grouping, Updated blocks, email lines, open asks, ignored table, stale tasks, sync audit) and leaves `{{placeholders}}` for the semantic parts. Your job:
+
+1. Fill every `{{summary #N}}` with a one-line summary of email #N (from its `body_preview`; the skeleton pre-fills sender, time, direction).
+2. Fill `{{suggestion #N}}` / `{{create-task #N}}` for each unresolved email, and fill `{{stale detail T###}}` lines.
+3. Replace the `{{priority actions table}}` marker with the consolidated Priority Actions table per `EMAIL_SYNC_FORMAT.md` rule 11 (ordering and urgency are your semantic call; open asks are already listed in each task block).
+4. Fill or delete the Process Observations section.
+5. Delete any placeholder you judge not applicable — never leave a `{{...}}` marker in the final summary.
+
+Never alter the skeleton's deterministic parts (they come from `latest-applied.json`, the task files, and `latest-candidates.json` — the applied result is the source of truth). Every unresolved email must appear. Return only the formatted summary; the root agent relays it verbatim.

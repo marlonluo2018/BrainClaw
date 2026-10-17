@@ -55,6 +55,7 @@ class RecurringTask:
     schedule: str
     last_completed: str
     last_period: str = ""
+    trigger: str = "schedule"
 
 
 def safe_read(path: Path) -> str:
@@ -195,6 +196,7 @@ def _build_recurring(data: dict) -> RecurringTask:
         schedule=data.get('schedule', ''),
         last_completed=data.get('last_completed', ''),
         last_period=data.get('last_period', ''),
+        trigger=data.get('trigger', 'schedule'),
     )
 
 
@@ -241,7 +243,7 @@ def check_recurring_due(recurring: list, tasks: list, today: date, recurring_ids
         recurring_ids_in_use = set()
 
     for rt in recurring:
-        if rt.id in recurring_ids_in_use:
+        if getattr(rt, 'trigger', 'schedule') == 'email' or rt.id in recurring_ids_in_use:
             continue
 
         is_due = False

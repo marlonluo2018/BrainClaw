@@ -1,0 +1,139 @@
+# Codebuddy folder
+.codebuddy/
+
+# Skills directory - contains separate projects
+assistant_brain/skills/*
+
+# Logs directory - ignore all logs except current.md
+assistant_brain/logs/*
+!assistant_brain/logs/current.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+~$*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Backups folder - keep backups locally only
+assistant_brain/backups/
+backups/
+
+# Downloads folder - email attachments, etc.
+downloads/
+outbox/
+
+# Memory directory - keep files locally but don't sync to GitHub
+assistant_brain/memory/
+
+# Process content remains local/private; the machine-readable schema is versioned
+assistant_brain/process/*
+!assistant_brain/process/process.schema.json
+
+# Task content is private; the reusable format contract is version-controlled.
+assistant_brain/tasks/*
+!assistant_brain/tasks/FORMATS.md
+
+# Sync results - runtime artifacts, keep local only
+assistant_brain/sync_results/
+
+# One-time local scripts (root only)
+/adhoc/
+
+# assistant_brain/scripts is private by default. Only reviewed, reusable,
+# task-data-free runtime and quality tooling is allowlisted for the main repository.
+assistant_brain/scripts/*
+!assistant_brain/scripts/README.md
+!assistant_brain/scripts/check_links.py
+!assistant_brain/scripts/dashboard.py
+!assistant_brain/scripts/doctor.py
+!assistant_brain/scripts/email_sync.py
+!assistant_brain/scripts/email_sync_candidates.py
+!assistant_brain/scripts/email_sync_catalog.py
+!assistant_brain/scripts/email_sync_apply.py
+!assistant_brain/scripts/followup.py
+!assistant_brain/scripts/generate_prompts.py
+!assistant_brain/scripts/manage_ignore_candidates.py
+!assistant_brain/scripts/ooxml_workbook.py
+!assistant_brain/scripts/run_email_sync.py
+!assistant_brain/scripts/screen_outgoing_body.py
+!assistant_brain/scripts/shared_config.py
+!assistant_brain/scripts/split_lk_report_by_focal.py
+!assistant_brain/scripts/update_task.py
+!assistant_brain/scripts/validate_processes.py
+!assistant_brain/scripts/validate_tasks.py
+
+# Local/private generated Red Hat working guides.
+assistant_brain/workflows/REDHAT_MANUAL_WORK_GUIDE.md
+assistant_brain/workflows/Red_Hat_Training_Manual_Work_Guide.docx
+assistant_brain/workflows/Red_Hat_Training_Manual_Work_Guide.pptx
+Q2_Budget_HCD_Training_Certifications.xlsx
+~$Q2_Budget_HCD_Training_Certifications.xlsx
+Copy of EPD Plan Rows Q2-March 19.xlsx
+.claude/settings.local.json
+.mcp.json
+assistant_brain/references/pes-distribution-list.txt
+.gitignore
+assistant_brain/references/pes-distribution-list.csv
+assistant_brain/contacts.md
+assistant_brain/profile.md
+
+# Temporary logs and testing scripts
+confirm_submission.py
+dashboard_output.txt
+dashboard.out.txt
+.codex/
+execute_batch_forwards.py
+generate_do188_audience.py
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+node_modules/
+bower_components/
+jspm_packages/
+site-packages/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）
